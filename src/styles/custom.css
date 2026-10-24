@@ -1,0 +1,3083 @@
+/* =========================================================================
+   Finance Tracker — Design System
+   -------------------------------------------------------------------------
+   Layer order:
+     1. Design tokens (light)            5. Layout & page chrome
+     2. Design tokens (dark)             6. Components
+     3. Bootstrap variable wiring        7. Data display (tables, money)
+     4. Base elements & typography       8. Charts, utilities, responsive
+
+   Theming contract: `<html>` carries BOTH `data-theme` (our tokens) and
+   `data-bs-theme` (Bootstrap 5.3 native component theming). Because every
+   Bootstrap `--bs-*` variable below is derived from our tokens, components
+   theme themselves — there is no need for per-component dark overrides.
+   ========================================================================= */
+
+/* =========================================================================
+   1. Design tokens — light
+   ========================================================================= */
+
+:root {
+    color-scheme: light;
+
+    /* ---- Brand ramp -------------------------------------------------- */
+    --brand-50:  #eff6ff;
+    --brand-100: #dbeafe;
+    --brand-200: #bfdbfe;
+    --brand-300: #93c5fd;
+    --brand-400: #60a5fa;
+    --brand-500: #3b82f6;
+    --brand-600: #2563eb;
+    --brand-700: #1d4ed8;
+    --brand-800: #1e40af;
+
+    /* ---- Neutral ramp ------------------------------------------------ */
+    --neutral-0:   #ffffff;
+    --neutral-25:  #fcfcfd;
+    --neutral-50:  #f8fafc;
+    --neutral-100: #f1f5f9;
+    --neutral-200: #e2e8f0;
+    --neutral-300: #cbd5e1;
+    --neutral-400: #94a3b8;
+    --neutral-500: #64748b;
+    --neutral-600: #475569;
+    --neutral-700: #334155;
+    --neutral-800: #1e293b;
+    --neutral-900: #0f172a;
+
+    /* ---- Semantic accents -------------------------------------------- */
+    --accent:          var(--brand-600);
+    --accent-hover:    var(--brand-700);
+    --accent-subtle:   var(--brand-50);
+    --accent-border:   var(--brand-200);
+    --accent-contrast: #ffffff;
+
+    /*
+     * Semantic colours are dark enough to serve as *text* on their own subtle
+     * fill (badges, alerts) at 4.5:1, not just as button backgrounds — the
+     * lighter 500-level shades failed contrast in both roles.
+     */
+    --positive:        #047857;
+    --positive-subtle: #ecfdf5;
+    --positive-border: #a7f3d0;
+
+    --negative:        #b91c1c;
+    --negative-subtle: #fef2f2;
+    --negative-border: #fecaca;
+
+    --caution:         #92400e;
+    --caution-subtle:  #fffbeb;
+    --caution-border:  #fde68a;
+
+    --neutral-info:        #155e75;
+    --neutral-info-subtle: #ecfeff;
+    --neutral-info-border: #a5f3fc;
+
+    /* ---- Surfaces ----------------------------------------------------- */
+    --surface-0: var(--neutral-50);    /* page background            */
+    --surface-1: var(--neutral-0);     /* cards, tables, popovers    */
+    --surface-2: var(--neutral-100);   /* inset panels, table heads  */
+    --surface-3: var(--neutral-200);   /* pressed / active fill      */
+    --surface-hover: var(--neutral-50);
+    --surface-input: var(--neutral-0);
+    --surface-overlay: rgba(15, 23, 42, 0.45);
+
+    /* Legacy aliases — kept so existing markup keeps resolving. */
+    --bg-primary:   var(--surface-1);
+    --bg-secondary: var(--surface-2);
+    --bg-tertiary:  var(--surface-3);
+    --bg-hover:     var(--surface-hover);
+    --input-bg:     var(--surface-input);
+    --card-bg:      var(--surface-1);
+
+    /* ---- Text --------------------------------------------------------- */
+    --text-primary:   var(--neutral-800);
+    --text-secondary: var(--neutral-600);
+    /* Muted text also lands on `--surface-2` (table heads, inset panels), where
+       the neutral-500 grey only reached 4.34:1. */
+    --text-muted:     #596579;
+    --text-subtle:    #79859a;
+    --text-on-accent: #ffffff;
+
+    /* ---- Borders ------------------------------------------------------ */
+    --border-color:        var(--neutral-200);
+    --border-color-strong: var(--neutral-300);
+    --border-color-light:  var(--neutral-100);
+
+    /* ---- Elevation ---------------------------------------------------- */
+    --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+    --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.07), 0 1px 2px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08), 0 2px 4px rgba(15, 23, 42, 0.04);
+    --shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.12), 0 4px 8px rgba(15, 23, 42, 0.05);
+    --ring: 0 0 0 3px rgba(37, 99, 235, 0.18);
+
+    /* ---- Radii -------------------------------------------------------- */
+    --radius-xs:   0.25rem;
+    --radius-sm:   0.375rem;
+    --radius-md:   0.5rem;
+    --radius-lg:   0.75rem;
+    --radius-xl:   1rem;
+    --radius-pill: 50rem;
+
+    /* Legacy radius aliases */
+    --border-radius-sm:   var(--radius-xs);
+    --border-radius-md:   var(--radius-sm);
+    --border-radius-lg:   var(--radius-md);
+    --border-radius-pill: var(--radius-pill);
+
+    /* ---- Motion ------------------------------------------------------- */
+    --ease: cubic-bezier(0.4, 0, 0.2, 1);
+    --duration-fast: 120ms;
+    --duration: 180ms;
+
+    /* ---- Type -------------------------------------------------------- */
+    --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+                 'Helvetica Neue', Arial, sans-serif;
+    --font-mono: 'SF Mono', 'JetBrains Mono', 'Roboto Mono', ui-monospace,
+                 Menlo, Consolas, monospace;
+
+    /* ---- Currency accents (used by list/detail views) ---------------- */
+    --currency-eur: var(--brand-600);
+    --currency-usd: var(--positive);
+    --currency-chf: var(--negative);
+
+    /* ---- Categorical palette (charts, legends, tags) ----------------- */
+    --cat-1: #2563eb;
+    --cat-2: #0d9488;
+    --cat-3: #7c3aed;
+    --cat-4: #d97706;
+    --cat-5: #db2777;
+    --cat-6: #0891b2;
+    --cat-7: #65a30d;
+    --cat-8: #dc2626;
+
+    /* ---- Compatibility aliases (referenced by older templates) ------- */
+    --primary-color:    var(--accent);
+    --secondary-color:  var(--surface-3);
+    --success-color:    var(--positive);
+    --danger-color:     var(--negative);
+    --warning-color:    var(--caution);
+    --info-color:       var(--neutral-info);
+    --link-color:       var(--accent);
+    --link-hover-color: var(--accent-hover);
+}
+
+/* =========================================================================
+   2. Design tokens — dark
+   ========================================================================= */
+
+[data-theme="dark"] {
+    color-scheme: dark;
+
+    --brand-50:  #172554;
+    --brand-100: #1e3a8a;
+    --brand-200: #1e40af;
+    --brand-300: #2563eb;
+    --brand-400: #3b82f6;
+    --brand-500: #60a5fa;
+    --brand-600: #7cb2fb;
+    --brand-700: #93c5fd;
+    --brand-800: #bfdbfe;
+
+    --neutral-0:   #101317;
+    --neutral-25:  #14181d;
+    --neutral-50:  #171b21;
+    --neutral-100: #1d222a;
+    --neutral-200: #262d37;
+    --neutral-300: #333c48;
+    --neutral-400: #7c8899;
+    --neutral-500: #98a3b3;
+    --neutral-600: #b6c0cd;
+    --neutral-700: #d3dae3;
+    --neutral-800: #e9edf2;
+    --neutral-900: #f7f9fb;
+
+    --accent:          #60a5fa;
+    --accent-hover:    #93c5fd;
+    --accent-subtle:   rgba(96, 165, 250, 0.14);
+    --accent-border:   rgba(96, 165, 250, 0.34);
+    --accent-contrast: #0b1220;
+
+    --positive:        #34d399;
+    --positive-subtle: rgba(52, 211, 153, 0.13);
+    --positive-border: rgba(52, 211, 153, 0.32);
+
+    --negative:        #f87171;
+    --negative-subtle: rgba(248, 113, 113, 0.13);
+    --negative-border: rgba(248, 113, 113, 0.32);
+
+    --caution:         #fbbf24;
+    --caution-subtle:  rgba(251, 191, 36, 0.13);
+    --caution-border:  rgba(251, 191, 36, 0.32);
+
+    --neutral-info:        #22d3ee;
+    --neutral-info-subtle: rgba(34, 211, 238, 0.13);
+    --neutral-info-border: rgba(34, 211, 238, 0.32);
+
+    /* Surfaces: page is darkest, cards lift above it. */
+    --surface-0: #0b0e12;
+    --surface-1: #14181e;
+    --surface-2: #1b2129;
+    --surface-3: #242c36;
+    --surface-hover: #1f2630;
+    --surface-input: #10141a;
+    --surface-overlay: rgba(0, 0, 0, 0.65);
+
+    --text-primary:   #e9edf2;
+    --text-secondary: #b3bdca;
+    --text-muted:     #8c98a8;
+    --text-subtle:    #6b7684;
+    --text-on-accent: #0b1220;
+
+    --border-color:        #29313c;
+    --border-color-strong: #384250;
+    --border-color-light:  #1f262f;
+
+    /* Dark surfaces read depth from contrast, not from heavy shadow. */
+    --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --shadow-md: 0 6px 16px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6);
+    --ring: 0 0 0 3px rgba(96, 165, 250, 0.28);
+
+    --currency-eur: #7cb2fb;
+    --currency-usd: #34d399;
+    --currency-chf: #f87171;
+
+    --cat-1: #60a5fa;
+    --cat-2: #2dd4bf;
+    --cat-3: #a78bfa;
+    --cat-4: #fbbf24;
+    --cat-5: #f472b6;
+    --cat-6: #22d3ee;
+    --cat-7: #a3e635;
+    --cat-8: #f87171;
+}
+
+/* =========================================================================
+   3. Bootstrap variable wiring
+   Every component variable is derived from a token, so Bootstrap components
+   follow the theme without bespoke `[data-theme=dark] .thing` rules.
+   ========================================================================= */
+
+:root,
+[data-theme] {
+    --bs-body-bg: var(--surface-0);
+    --bs-body-color: var(--text-primary);
+    --bs-body-font-family: var(--font-sans);
+    --bs-body-font-size: 0.9375rem;
+    --bs-body-line-height: 1.6;
+
+    --bs-emphasis-color: var(--text-primary);
+    --bs-secondary-color: var(--text-secondary);
+    --bs-secondary-bg: var(--surface-2);
+    --bs-tertiary-color: var(--text-muted);
+    --bs-tertiary-bg: var(--surface-2);
+
+    --bs-border-color: var(--border-color);
+    --bs-border-color-translucent: var(--border-color);
+    --bs-border-radius: var(--radius-sm);
+    --bs-border-radius-sm: var(--radius-xs);
+    --bs-border-radius-lg: var(--radius-md);
+    --bs-border-radius-xl: var(--radius-lg);
+
+    --bs-link-color: var(--accent);
+    --bs-link-color-rgb: 37, 99, 235;
+    --bs-link-hover-color: var(--accent-hover);
+
+    --bs-primary: var(--accent);
+    --bs-success: var(--positive);
+    --bs-danger: var(--negative);
+    --bs-warning: var(--caution);
+    --bs-info: var(--neutral-info);
+    --bs-secondary: var(--text-secondary);
+    --bs-light: var(--surface-2);
+    --bs-dark: var(--neutral-800);
+
+    --bs-heading-color: var(--text-primary);
+    /* Bootstrap's default pink/red code colour made URLs and model names in
+       tables read as error text. */
+    --bs-code-color: var(--text-secondary);
+
+    /* Cards */
+    --bs-card-bg: var(--surface-1);
+    --bs-card-color: var(--text-primary);
+    --bs-card-border-color: var(--border-color);
+    --bs-card-cap-bg: var(--surface-1);
+
+    /* Tables */
+    --bs-table-bg: transparent;
+    --bs-table-color: var(--text-primary);
+    --bs-table-border-color: var(--border-color-light);
+    --bs-table-striped-bg: var(--surface-2);
+    --bs-table-striped-color: var(--text-primary);
+    --bs-table-hover-bg: var(--surface-hover);
+    --bs-table-hover-color: var(--text-primary);
+    --bs-table-accent-bg: transparent;
+
+    /* Form controls */
+    --bs-form-control-bg: var(--surface-input);
+    --bs-form-control-color: var(--text-primary);
+
+    /* Dropdowns */
+    --bs-dropdown-bg: var(--surface-1);
+    --bs-dropdown-color: var(--text-primary);
+    --bs-dropdown-border-color: var(--border-color);
+    --bs-dropdown-link-color: var(--text-primary);
+    --bs-dropdown-link-hover-bg: var(--surface-hover);
+    --bs-dropdown-link-hover-color: var(--text-primary);
+    --bs-dropdown-link-active-bg: var(--accent-subtle);
+    --bs-dropdown-link-active-color: var(--accent);
+    --bs-dropdown-divider-bg: var(--border-color);
+    --bs-dropdown-header-color: var(--text-muted);
+
+    /* Modals & offcanvas */
+    --bs-modal-bg: var(--surface-1);
+    --bs-modal-color: var(--text-primary);
+    --bs-modal-border-color: var(--border-color);
+    --bs-modal-header-border-color: var(--border-color);
+    --bs-modal-footer-border-color: var(--border-color);
+    --bs-offcanvas-bg: var(--surface-1);
+    --bs-offcanvas-color: var(--text-primary);
+    --bs-offcanvas-border-color: var(--border-color);
+    --bs-backdrop-bg: var(--surface-overlay);
+    --bs-backdrop-opacity: 1;
+
+    /* Pagination */
+    --bs-pagination-bg: transparent;
+    --bs-pagination-color: var(--text-secondary);
+    --bs-pagination-border-color: transparent;
+    --bs-pagination-hover-bg: var(--surface-2);
+    --bs-pagination-hover-color: var(--text-primary);
+    --bs-pagination-hover-border-color: transparent;
+    --bs-pagination-focus-bg: var(--surface-2);
+    --bs-pagination-focus-color: var(--text-primary);
+    --bs-pagination-active-bg: var(--accent);
+    --bs-pagination-active-color: var(--text-on-accent);
+    --bs-pagination-active-border-color: var(--accent);
+    --bs-pagination-disabled-bg: transparent;
+    --bs-pagination-disabled-color: var(--text-subtle);
+    --bs-pagination-disabled-border-color: transparent;
+
+    /* List groups */
+    --bs-list-group-bg: transparent;
+    --bs-list-group-color: var(--text-primary);
+    --bs-list-group-border-color: var(--border-color-light);
+    --bs-list-group-action-hover-bg: var(--surface-hover);
+    --bs-list-group-action-hover-color: var(--text-primary);
+
+    /* Misc */
+    --bs-tooltip-bg: var(--neutral-800);
+    --bs-tooltip-color: var(--surface-1);
+    --bs-popover-bg: var(--surface-1);
+    --bs-popover-border-color: var(--border-color);
+    --bs-breadcrumb-divider-color: var(--text-subtle);
+    --bs-progress-bg: var(--surface-3);
+    --bs-nav-link-color: var(--text-secondary);
+    --bs-nav-link-hover-color: var(--text-primary);
+    --bs-nav-tabs-link-active-bg: var(--surface-1);
+    --bs-nav-tabs-link-active-color: var(--accent);
+    --bs-nav-tabs-border-color: var(--border-color);
+    --bs-accordion-bg: var(--surface-1);
+    --bs-accordion-color: var(--text-primary);
+    --bs-accordion-border-color: var(--border-color);
+    --bs-accordion-btn-color: var(--text-primary);
+    --bs-accordion-active-bg: var(--accent-subtle);
+    --bs-accordion-active-color: var(--accent);
+}
+
+/* =========================================================================
+   4. Base elements & typography
+   ========================================================================= */
+
+*,
+*::before,
+*::after {
+    /* Consistent focus ring across every focusable element. */
+    outline-offset: 2px;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    background-color: var(--surface-0);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    font-feature-settings: 'cv11', 'ss01';
+}
+
+/* Theme switches should not animate every property on every element. */
+body,
+.card,
+.stat-card,
+.panel,
+.table,
+.navbar-glass,
+.form-control,
+.form-select,
+footer {
+    transition: background-color var(--duration) var(--ease),
+                border-color var(--duration) var(--ease),
+                color var(--duration) var(--ease);
+}
+
+h1, .h1 { font-size: clamp(1.5rem, 2.2vw, 1.875rem); font-weight: 700; letter-spacing: -0.021em; }
+h2, .h2 { font-size: clamp(1.3rem, 1.8vw, 1.5rem);   font-weight: 700; letter-spacing: -0.018em; }
+h3, .h3 { font-size: 1.25rem;  font-weight: 650; letter-spacing: -0.014em; }
+h4, .h4 { font-size: 1.0625rem; font-weight: 650; letter-spacing: -0.01em; }
+h5, .h5 { font-size: 0.9375rem; font-weight: 650; letter-spacing: -0.006em; }
+h6, .h6 { font-size: 0.875rem;  font-weight: 650; }
+
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+    color: var(--text-primary);
+    line-height: 1.3;
+}
+
+p { color: inherit; }
+
+a {
+    color: var(--accent);
+    text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    text-underline-offset: 0.15em;
+}
+
+a:hover { color: var(--accent-hover); }
+
+hr {
+    border-color: var(--border-color);
+    opacity: 1;
+}
+
+code, kbd, samp {
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+}
+
+/* Inline code reads as a quiet token, not as an error. */
+:not(pre) > code {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color-light);
+    border-radius: var(--radius-xs);
+    padding: 0.1em 0.35em;
+    color: var(--text-secondary);
+    overflow-wrap: anywhere;
+}
+
+pre {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.875rem;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    overflow-x: auto;
+}
+
+::selection {
+    background: var(--accent-subtle);
+    color: var(--text-primary);
+}
+
+:focus-visible {
+    outline: 2px solid var(--accent);
+}
+
+/* Eyebrow / section label */
+.section-label,
+.eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+/* Scrollbars follow the theme instead of flashing white in dark mode. */
+* {
+    scrollbar-color: var(--border-color-strong) transparent;
+}
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+    background: var(--border-color-strong);
+    border-radius: var(--radius-pill);
+    border: 2px solid transparent;
+    background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover { background-color: var(--text-subtle); background-clip: content-box; }
+
+/* =========================================================================
+   5. Layout & page chrome
+   ========================================================================= */
+
+main {
+    padding-block: 1.5rem 2.5rem;
+}
+
+main > .container,
+main > .container-fluid {
+    max-width: 1400px;
+}
+
+/* ---- Navbar ---------------------------------------------------------- */
+
+.navbar-glass {
+    background-color: color-mix(in srgb, var(--surface-1) 82%, transparent);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border-bottom: 1px solid var(--border-color);
+    position: sticky;
+    top: 0;
+    z-index: 1030;
+    padding-block: 0.5rem;
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+    .navbar-glass { background-color: var(--surface-1); }
+}
+
+.navbar-glass .navbar-brand {
+    font-weight: 700;
+    font-size: 1.0625rem;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    gap: 0.5rem;
+}
+
+.navbar-glass .navbar-brand:hover { color: var(--text-primary); }
+
+.navbar-brand-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.875rem;
+    height: 1.875rem;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(140deg, var(--brand-500), var(--brand-700));
+    color: #fff;
+    font-size: 1rem;
+    box-shadow: var(--shadow-xs);
+}
+
+[data-theme="dark"] .navbar-brand-mark {
+    background: linear-gradient(140deg, var(--brand-400), var(--brand-300));
+    color: #0b1220;
+}
+
+.navbar-glass .navbar-nav { gap: 0.125rem; }
+
+.navbar-glass .nav-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.7rem;
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    transition: background-color var(--duration-fast) var(--ease),
+                color var(--duration-fast) var(--ease);
+}
+
+.navbar-glass .nav-link:hover,
+.navbar-glass .nav-link:focus-visible {
+    background-color: var(--surface-2);
+    color: var(--text-primary);
+}
+
+.navbar-glass .nav-link.active {
+    background-color: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.navbar-glass .nav-link i { font-size: 1rem; opacity: 0.9; }
+
+.navbar-glass .dropdown-menu {
+    box-shadow: var(--shadow-md);
+    border-radius: var(--radius-md);
+    margin-top: 0.5rem;
+    padding: 0.375rem;
+    min-width: 12rem;
+}
+
+.dropdown-item {
+    border-radius: var(--radius-xs);
+    padding: 0.5rem 0.625rem;
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+}
+
+.navbar-toggler {
+    border-color: var(--border-color);
+    padding: 0.375rem 0.5rem;
+}
+
+.navbar-toggler:focus { box-shadow: var(--ring); }
+
+/* ---- Theme toggle ---------------------------------------------------- */
+
+.theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.125rem;
+    height: 2.125rem;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease),
+                color var(--duration-fast) var(--ease),
+                border-color var(--duration-fast) var(--ease);
+}
+
+.theme-toggle:hover {
+    background-color: var(--surface-2);
+    color: var(--text-primary);
+    border-color: var(--border-color-strong);
+}
+
+.theme-toggle:focus-visible { box-shadow: var(--ring); }
+
+/*
+ * Exactly one glyph is visible, keyed off the stored *preference* so that
+ * "follow system" is a visible third state rather than a hidden default.
+ */
+.theme-toggle .theme-icon { display: none; line-height: 1; }
+.theme-toggle[data-theme-preference="light"] .theme-icon-light { display: inline-flex; }
+.theme-toggle[data-theme-preference="dark"]  .theme-icon-dark  { display: inline-flex; }
+.theme-toggle[data-theme-preference="auto"]  .theme-icon-auto  { display: inline-flex; }
+.theme-toggle[data-theme-preference="auto"] { color: var(--accent); border-color: var(--accent-border); }
+
+/* Before JS runs, fall back to the resolved theme so the button is never blank. */
+.theme-toggle:not([data-theme-preference]) .theme-icon-auto { display: inline-flex; }
+
+/* ---- Page header ----------------------------------------------------- */
+
+.page-header-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem 1.375rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.page-header-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.875rem;
+    min-width: 0;
+}
+
+.page-header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: var(--radius-md);
+    background-color: var(--accent-subtle);
+    color: var(--accent);
+    font-size: 1.125rem;
+}
+
+.page-header-title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin: 0;
+    line-height: 1.25;
+}
+
+.page-header-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin: 0.125rem 0 0;
+}
+
+.page-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+/* Header actions stay compact so they never wrap mid-label. */
+.page-header-actions .btn {
+    padding: 0.4375rem 0.875rem;
+    font-size: 0.8125rem;
+    white-space: nowrap;
+}
+
+/* ---- Footer ---------------------------------------------------------- */
+
+footer {
+    background-color: var(--surface-1);
+    border-top: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    padding-block: 1.125rem;
+}
+
+footer a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+footer a:hover {
+    color: var(--text-primary);
+    text-decoration: underline;
+}
+
+.footer-sep { color: var(--border-color-strong); }
+
+/* =========================================================================
+   6. Components
+   ========================================================================= */
+
+/* ---- Cards ----------------------------------------------------------- */
+
+.card {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    margin-bottom: 1.25rem;
+}
+
+.card:last-child { margin-bottom: 0; }
+
+.card > .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    background-color: transparent;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0.875rem 1.25rem;
+    font-weight: 650;
+}
+
+.card > .card-header:first-child {
+    border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+}
+
+.card .card-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    letter-spacing: -0.008em;
+    margin: 0;
+}
+
+.card .card-title > i { color: var(--text-muted); font-size: 1rem; }
+
+.card-body { padding: 1.25rem; }
+
+.card-footer {
+    background-color: var(--surface-2);
+    border-top: 1px solid var(--border-color);
+    padding: 0.875rem 1.25rem;
+}
+
+/* Interactive cards only. Static content cards should not shift on hover. */
+.card-interactive {
+    transition: box-shadow var(--duration) var(--ease),
+                transform var(--duration) var(--ease),
+                border-color var(--duration) var(--ease);
+}
+
+.card-interactive:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color-strong);
+    transform: translateY(-2px);
+}
+
+/*
+ * Accent cards use a top hairline rather than a thick left border, which
+ * previously knocked the card's content out of alignment with its neighbour.
+ */
+.card-accent,
+.card-accent-evolution {
+    position: relative;
+    overflow: hidden;
+}
+
+.card-accent::before,
+.card-accent-evolution::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+}
+
+.card-accent::before           { background: var(--accent); }
+.card-accent-evolution::before { background: var(--positive); }
+
+/* ---- Panels (inset content regions) --------------------------------- */
+
+/*
+ * One shared look for every "grey box" in the app. `.filter-section`,
+ * `.summary-stats`, `.search-filter-container`, `.form-section`, `.info-card`
+ * and friends all resolve here instead of hardcoding their own hex values.
+ */
+.panel,
+.filter-section,
+.summary-stats,
+.search-filter-container,
+.info-card,
+.bulk-controls,
+.bulk-amount-section,
+.snapshot-date-section,
+.well,
+.content-area,
+.results-summary,
+.progress-content {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-xs);
+    color: var(--text-primary);
+}
+
+/* Leading icons in panel/card headings are supporting detail, not the message. */
+.panel > h5 > i:first-child,
+.panel > h6 > i:first-child,
+.info-card > h5 > i:first-child,
+.info-card > h6 > i:first-child,
+.settings-section > h5 > i:first-child,
+.settings-section > h6 > i:first-child,
+.card-title > i:first-child {
+    color: var(--text-muted);
+    font-weight: 400;
+}
+
+.info-card > h5,
+.info-card > h6 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+    margin-bottom: 1.125rem;
+}
+
+.panel-title,
+.filter-section > h5,
+.filter-section > h6,
+.summary-stats > h5,
+.summary-stats > h6 {
+    font-size: 0.8125rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 0.875rem;
+}
+
+/* Form sections are self-contained panels (they sit directly on the page). */
+.form-section {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-xs);
+}
+
+/* Use inside a card, where the card already provides the surface. */
+.form-section-flush {
+    background-color: transparent;
+    border: 0;
+    border-bottom: 1px solid var(--border-color);
+    border-radius: 0;
+    padding: 0 0 1.5rem;
+    box-shadow: none;
+    margin-bottom: 1.5rem;
+}
+
+.form-section-flush:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.form-section > h5,
+.form-section > h6 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    font-weight: 650;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.75rem;
+    margin-bottom: 1.125rem;
+}
+
+.form-section > h5 > i,
+.form-section > h6 > i { color: var(--text-muted); }
+
+/* ---- Stat cards / KPI tiles ----------------------------------------- */
+
+/*
+ * Left-aligned metrics: the eye scans a column of numbers far faster than a
+ * row of centred ones, and it keeps long currency strings from looking ragged.
+ */
+.stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    height: 100%;
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.125rem;
+    position: relative;
+    overflow: hidden;
+    box-shadow: var(--shadow-xs);
+    text-align: left;
+    transition: border-color var(--duration) var(--ease),
+                box-shadow var(--duration) var(--ease);
+}
+
+.stat-card:hover {
+    border-color: var(--border-color-strong);
+    box-shadow: var(--shadow-sm);
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 3px;
+    background: var(--border-color-strong);
+}
+
+.stat-card.accent-primary::before { background: var(--accent); }
+.stat-card.accent-success::before { background: var(--positive); }
+.stat-card.accent-info::before    { background: var(--neutral-info); }
+.stat-card.accent-warning::before { background: var(--caution); }
+.stat-card.accent-danger::before  { background: var(--negative); }
+
+.stat-card .stat-label {
+    order: 1;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.stat-card .stat-icon {
+    order: 0;
+    position: absolute;
+    top: 0.875rem;
+    right: 1rem;
+    font-size: 1rem;
+    color: var(--text-subtle);
+    opacity: 1;
+    margin: 0;
+}
+
+.stat-card .stat-number {
+    order: 2;
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+    margin: 0.25rem 0 0;
+    /* Long money strings shrink rather than overflow the tile. */
+    overflow-wrap: anywhere;
+}
+
+.stat-card .stat-number.stat-number-money { font-size: 1.3125rem; }
+
+.stat-card .stat-subtitle {
+    order: 3;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.1875rem;
+}
+
+/* Compact variant used by list-page summary strips. */
+.stat-card-sm {
+    padding: 0.75rem 0.875rem;
+}
+
+.stat-card-sm .stat-number { font-size: 1.125rem; }
+.stat-card-sm::before { width: 2px; }
+
+/* Legacy `.summary-card` markup maps onto the same tile. */
+.summary-card {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.875rem;
+    margin: 0;
+    text-align: left;
+    color: var(--text-primary);
+    box-shadow: none;
+}
+
+/* ---- Buttons --------------------------------------------------------- */
+
+/*
+ * Bootstrap's own sizing scale is preserved: the previous blanket override of
+ * padding and border-width on `.btn` was what broke `btn-sm`, button groups
+ * and input-group alignment throughout the app.
+ */
+.btn {
+    --bs-btn-font-weight: 550;
+    --bs-btn-border-radius: var(--radius-sm);
+    --bs-btn-padding-y: 0.5rem;
+    --bs-btn-padding-x: 0.9375rem;
+    --bs-btn-font-size: 0.875rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    line-height: 1.45;
+    transition: background-color var(--duration-fast) var(--ease),
+                border-color var(--duration-fast) var(--ease),
+                color var(--duration-fast) var(--ease),
+                box-shadow var(--duration-fast) var(--ease);
+}
+
+.btn-sm {
+    --bs-btn-padding-y: 0.3125rem;
+    --bs-btn-padding-x: 0.625rem;
+    --bs-btn-font-size: 0.8125rem;
+    --bs-btn-border-radius: var(--radius-xs);
+}
+
+.btn-lg {
+    --bs-btn-padding-y: 0.625rem;
+    --bs-btn-padding-x: 1.25rem;
+    --bs-btn-font-size: 0.9375rem;
+    --bs-btn-border-radius: var(--radius-md);
+}
+
+.btn:focus-visible { box-shadow: var(--ring); }
+
+.btn:disabled,
+.btn.disabled {
+    opacity: 0.55;
+    box-shadow: none;
+}
+
+/* Solid buttons: flat fills, no gradients, no hover lift. */
+.btn-primary {
+    --bs-btn-bg: var(--accent);
+    --bs-btn-border-color: var(--accent);
+    --bs-btn-color: var(--text-on-accent);
+    --bs-btn-hover-bg: var(--accent-hover);
+    --bs-btn-hover-border-color: var(--accent-hover);
+    --bs-btn-hover-color: var(--text-on-accent);
+    --bs-btn-active-bg: var(--accent-hover);
+    --bs-btn-active-border-color: var(--accent-hover);
+    --bs-btn-active-color: var(--text-on-accent);
+    --bs-btn-disabled-bg: var(--accent);
+    --bs-btn-disabled-border-color: var(--accent);
+    --bs-btn-disabled-color: var(--text-on-accent);
+}
+
+.btn-success {
+    --bs-btn-bg: var(--positive);
+    --bs-btn-border-color: var(--positive);
+    --bs-btn-color: var(--text-on-accent);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--positive) 85%, black);
+    --bs-btn-hover-border-color: color-mix(in srgb, var(--positive) 85%, black);
+    --bs-btn-hover-color: var(--text-on-accent);
+    --bs-btn-active-bg: color-mix(in srgb, var(--positive) 80%, black);
+    --bs-btn-active-color: var(--text-on-accent);
+    --bs-btn-disabled-bg: var(--positive);
+    --bs-btn-disabled-border-color: var(--positive);
+    --bs-btn-disabled-color: var(--text-on-accent);
+}
+
+.btn-danger {
+    --bs-btn-bg: var(--negative);
+    --bs-btn-border-color: var(--negative);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: color-mix(in srgb, var(--negative) 85%, black);
+    --bs-btn-hover-border-color: color-mix(in srgb, var(--negative) 85%, black);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-bg: color-mix(in srgb, var(--negative) 80%, black);
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--negative);
+    --bs-btn-disabled-border-color: var(--negative);
+    --bs-btn-disabled-color: #fff;
+}
+
+.btn-warning {
+    --bs-btn-bg: var(--caution);
+    --bs-btn-border-color: var(--caution);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: color-mix(in srgb, var(--caution) 85%, black);
+    --bs-btn-hover-border-color: color-mix(in srgb, var(--caution) 85%, black);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--caution);
+    --bs-btn-disabled-border-color: var(--caution);
+    --bs-btn-disabled-color: #fff;
+}
+
+[data-theme="dark"] .btn-warning { --bs-btn-color: #1a1204; --bs-btn-hover-color: #1a1204; --bs-btn-active-color: #1a1204; --bs-btn-disabled-color: #1a1204; }
+
+.btn-info {
+    --bs-btn-bg: var(--neutral-info);
+    --bs-btn-border-color: var(--neutral-info);
+    --bs-btn-color: #fff;
+    --bs-btn-hover-bg: color-mix(in srgb, var(--neutral-info) 85%, black);
+    --bs-btn-hover-border-color: color-mix(in srgb, var(--neutral-info) 85%, black);
+    --bs-btn-hover-color: #fff;
+    --bs-btn-active-color: #fff;
+    --bs-btn-disabled-bg: var(--neutral-info);
+    --bs-btn-disabled-border-color: var(--neutral-info);
+    --bs-btn-disabled-color: #fff;
+}
+
+[data-theme="dark"] .btn-info { --bs-btn-color: #04191d; --bs-btn-hover-color: #04191d; --bs-btn-active-color: #04191d; --bs-btn-disabled-color: #04191d; }
+
+/*
+ * `.btn-secondary` is the app's default non-primary action: a neutral,
+ * surface-coloured button rather than Bootstrap's slate grey block.
+ */
+.btn-secondary,
+.btn-outline-secondary {
+    --bs-btn-bg: var(--surface-1);
+    --bs-btn-border-color: var(--border-color-strong);
+    --bs-btn-color: var(--text-primary);
+    --bs-btn-hover-bg: var(--surface-2);
+    --bs-btn-hover-border-color: var(--border-color-strong);
+    --bs-btn-hover-color: var(--text-primary);
+    --bs-btn-active-bg: var(--surface-3);
+    --bs-btn-active-border-color: var(--border-color-strong);
+    --bs-btn-active-color: var(--text-primary);
+    --bs-btn-disabled-bg: var(--surface-1);
+    --bs-btn-disabled-border-color: var(--border-color);
+    --bs-btn-disabled-color: var(--text-muted);
+}
+
+.btn-outline-primary {
+    --bs-btn-color: var(--accent);
+    --bs-btn-border-color: var(--accent-border);
+    --bs-btn-bg: transparent;
+    --bs-btn-hover-bg: var(--accent-subtle);
+    --bs-btn-hover-border-color: var(--accent);
+    --bs-btn-hover-color: var(--accent);
+    --bs-btn-active-bg: var(--accent);
+    --bs-btn-active-border-color: var(--accent);
+    --bs-btn-active-color: var(--text-on-accent);
+}
+
+.btn-outline-success { --bs-btn-color: var(--positive); --bs-btn-border-color: var(--positive-border); --bs-btn-hover-bg: var(--positive-subtle); --bs-btn-hover-border-color: var(--positive); --bs-btn-hover-color: var(--positive); --bs-btn-active-bg: var(--positive); --bs-btn-active-color: #fff; }
+.btn-outline-danger  { --bs-btn-color: var(--negative); --bs-btn-border-color: var(--negative-border); --bs-btn-hover-bg: var(--negative-subtle); --bs-btn-hover-border-color: var(--negative); --bs-btn-hover-color: var(--negative); --bs-btn-active-bg: var(--negative); --bs-btn-active-color: #fff; }
+.btn-outline-warning { --bs-btn-color: var(--caution);  --bs-btn-border-color: var(--caution-border);  --bs-btn-hover-bg: var(--caution-subtle);  --bs-btn-hover-border-color: var(--caution);  --bs-btn-hover-color: var(--caution);  --bs-btn-active-bg: var(--caution);  --bs-btn-active-color: #fff; }
+.btn-outline-info    { --bs-btn-color: var(--neutral-info); --bs-btn-border-color: var(--neutral-info-border); --bs-btn-hover-bg: var(--neutral-info-subtle); --bs-btn-hover-border-color: var(--neutral-info); --bs-btn-hover-color: var(--neutral-info); --bs-btn-active-bg: var(--neutral-info); --bs-btn-active-color: #fff; }
+
+/* `.btn-light`/`.btn-dark` are absolute in Bootstrap; bind them to surfaces so
+   they don't render as a white slab in dark mode (or a black one in light).
+   The outline variants were worse still: white-on-white at 1.05:1. */
+.btn-light,
+.btn-dark,
+.btn-outline-light,
+.btn-outline-dark {
+    --bs-btn-bg: var(--surface-2);
+    --bs-btn-border-color: var(--border-color);
+    --bs-btn-color: var(--text-primary);
+    --bs-btn-hover-bg: var(--surface-3);
+    --bs-btn-hover-border-color: var(--border-color-strong);
+    --bs-btn-hover-color: var(--text-primary);
+    --bs-btn-active-bg: var(--surface-3);
+    --bs-btn-active-color: var(--text-primary);
+}
+
+.btn-link {
+    --bs-btn-color: var(--accent);
+    --bs-btn-hover-color: var(--accent-hover);
+    text-decoration: none;
+}
+
+/* Quiet icon-only action button, used for row actions in tables. */
+.btn-icon {
+    --bs-btn-padding-y: 0.3125rem;
+    --bs-btn-padding-x: 0.3125rem;
+    --bs-btn-font-size: 0.875rem;
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: transparent;
+    --bs-btn-color: var(--text-muted);
+    --bs-btn-hover-bg: var(--surface-2);
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-hover-color: var(--text-primary);
+    --bs-btn-active-bg: var(--surface-3);
+    --bs-btn-active-border-color: transparent;
+    --bs-btn-active-color: var(--text-primary);
+    /*
+     * Sized by padding rather than a fixed box, so an icon glyph yields a square
+     * button while a mislabelled one with text degrades gracefully instead of
+     * wrapping into an unreadable stack.
+     */
+    min-width: 1.875rem;
+    min-height: 1.875rem;
+    border-radius: var(--radius-xs);
+    line-height: 1;
+    white-space: nowrap;
+}
+
+.btn-icon.btn-icon-danger { --bs-btn-hover-bg: var(--negative-subtle); --bs-btn-hover-color: var(--negative); --bs-btn-active-color: var(--negative); }
+.btn-icon.btn-icon-accent { --bs-btn-hover-bg: var(--accent-subtle);   --bs-btn-hover-color: var(--accent);   --bs-btn-active-color: var(--accent); }
+
+/* Floating action button (mobile) */
+.fab {
+    width: 2.875rem;
+    height: 2.875rem;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 1.05rem;
+    box-shadow: var(--shadow-md);
+}
+
+.row-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    justify-content: flex-end;
+}
+
+/* Button groups / segmented controls */
+.btn-group > .btn { --bs-btn-border-radius: var(--radius-xs); }
+
+.segmented {
+    display: inline-flex;
+    padding: 0.1875rem;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    gap: 0.125rem;
+}
+
+.segmented .btn,
+.segmented > label.btn {
+    --bs-btn-bg: transparent;
+    --bs-btn-border-color: transparent;
+    --bs-btn-color: var(--text-secondary);
+    --bs-btn-hover-bg: transparent;
+    --bs-btn-hover-border-color: transparent;
+    --bs-btn-hover-color: var(--text-primary);
+    --bs-btn-padding-y: 0.25rem;
+    --bs-btn-padding-x: 0.625rem;
+    --bs-btn-font-size: 0.8125rem;
+    --bs-btn-border-radius: calc(var(--radius-sm) - 3px);
+    box-shadow: none;
+}
+
+.segmented .btn.active,
+.segmented .btn-check:checked + .btn {
+    background-color: var(--surface-1);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+    font-weight: 600;
+    box-shadow: var(--shadow-xs);
+}
+
+/* Quick-action row on the dashboard: one primary, the rest neutral. */
+.quick-actions .btn {
+    justify-content: flex-start;
+    padding: 0.625rem 0.9375rem;
+    font-size: 0.875rem;
+    font-weight: 550;
+}
+
+.quick-actions .btn i {
+    font-size: 1rem;
+    opacity: 0.85;
+}
+
+/* ---- Forms ----------------------------------------------------------- */
+
+.form-label {
+    font-weight: 550;
+    font-size: 0.8125rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.375rem;
+}
+
+.form-control,
+.form-select {
+    background-color: var(--surface-input);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color-strong);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    box-shadow: none;
+    transition: border-color var(--duration-fast) var(--ease),
+                box-shadow var(--duration-fast) var(--ease);
+}
+
+.form-control-sm,
+.form-select-sm { padding: 0.3125rem 0.5rem; font-size: 0.8125rem; }
+
+/* Leave room for the caret; the shared padding rule above would clip it. */
+.form-select { padding-right: 2.25rem; background-position: right 0.75rem center; }
+.form-select-sm { padding-right: 1.875rem; background-position: right 0.5rem center; }
+
+.form-control:hover:not(:focus),
+.form-select:hover:not(:focus) { border-color: var(--text-subtle); }
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--surface-input);
+    color: var(--text-primary);
+    border-color: var(--accent);
+    box-shadow: var(--ring);
+    /* No transform here: scaling inputs on focus shifted the whole form. */
+}
+
+.form-control::placeholder { color: var(--text-subtle); opacity: 1; }
+
+.form-control:disabled,
+.form-select:disabled {
+    background-color: var(--surface-2);
+    color: var(--text-muted);
+}
+
+textarea.form-control { min-height: 5.5rem; resize: vertical; }
+
+/* Native pickers and multi-selects need the dark scheme signal to render. */
+input[type="date"],
+input[type="datetime-local"],
+input[type="month"],
+input[type="time"],
+select,
+select[multiple],
+textarea {
+    color-scheme: inherit;
+}
+
+select[multiple].form-select,
+select[size].form-select {
+    min-height: 6.5rem;
+    padding: 0.25rem;
+    background-image: none;
+}
+
+select[multiple].form-select option {
+    padding: 0.3125rem 0.5rem;
+    border-radius: var(--radius-xs);
+    color: var(--text-primary);
+}
+
+.form-control.is-invalid,
+.form-select.is-invalid {
+    border-color: var(--negative);
+    box-shadow: none;
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+.form-control.is-invalid:focus,
+.form-select.is-invalid:focus {
+    box-shadow: 0 0 0 3px var(--negative-subtle);
+}
+
+.form-control.is-valid,
+.form-select.is-valid {
+    border-color: var(--positive);
+    background-image: none;
+    padding-right: 0.75rem;
+}
+
+.invalid-feedback,
+.valid-feedback {
+    display: block;
+    margin-top: 0.3125rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+}
+
+.invalid-feedback { color: var(--negative); }
+.valid-feedback   { color: var(--positive); }
+
+.form-text,
+.field-help {
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+    margin-top: 0.3125rem;
+}
+
+.required-field::after,
+.form-required {
+    content: ' *';
+    color: var(--negative);
+}
+
+.form-check-input {
+    width: 1.05em;
+    height: 1.05em;
+    margin-top: 0.22em;
+    background-color: var(--surface-input);
+    border: 1px solid var(--border-color-strong);
+}
+
+.form-check-input:checked {
+    background-color: var(--accent);
+    border-color: var(--accent);
+}
+
+.form-check-input:focus { border-color: var(--accent); box-shadow: var(--ring); }
+
+.form-check-label {
+    font-weight: 500;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    padding-left: 0.15rem;
+}
+
+.form-switch .form-check-input { width: 2rem; }
+
+/* Scrollable list of checkboxes (tags, bulk selections). */
+.check-list {
+    max-height: 9.5rem;
+    overflow-y: auto;
+    background-color: var(--surface-input);
+    border: 1px solid var(--border-color-strong);
+    border-radius: var(--radius-sm);
+    padding: 0.5rem 0.625rem;
+}
+
+.check-list:empty::after,
+.check-list .check-list-empty {
+    content: 'None available';
+    display: block;
+    /* `--text-subtle` fell just under 4.5:1 on the input surface. */
+    color: var(--text-muted);
+    font-size: 0.8125rem;
+}
+
+/* Input groups: let Bootstrap own the border geometry. */
+.input-group-text {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color-strong);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+    padding: 0.5rem 0.75rem;
+}
+
+.input-group-text.currency-eur { color: var(--currency-eur); }
+.input-group-text.currency-usd { color: var(--currency-usd); }
+.input-group-text.currency-chf { color: var(--currency-chf); }
+
+/* Sticky form action bar */
+.form-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    background-color: var(--surface-2);
+    border-top: 1px solid var(--border-color);
+    border-radius: 0 0 calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px);
+    padding: 0.875rem 1.25rem;
+    margin: 1.5rem -1.25rem -1.25rem;
+}
+
+.form-card { background-color: var(--surface-1); }
+.form-card .card-body { padding: 1.5rem; }
+
+.form-control[type="file"] { padding: 0.375rem 0.5rem; }
+
+.form-control[type="file"]::file-selector-button {
+    background-color: var(--surface-2);
+    color: var(--text-primary);
+    border: 0;
+    border-right: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    padding: 0.375rem 0.75rem;
+    margin-inline-end: 0.75rem;
+    font-weight: 550;
+    font-size: 0.8125rem;
+    cursor: pointer;
+}
+
+.form-control[type="file"]::file-selector-button:hover { background-color: var(--surface-3); }
+
+/* ---- Badges ---------------------------------------------------------- */
+
+.badge {
+    font-weight: 600;
+    font-size: 0.6875rem;
+    letter-spacing: 0.01em;
+    padding: 0.3em 0.55em;
+    border-radius: var(--radius-xs);
+}
+
+/* Soft, readable badge fills in both themes. */
+.badge.text-bg-primary   { background-color: var(--accent-subtle) !important;   color: var(--accent) !important; }
+.badge.text-bg-success   { background-color: var(--positive-subtle) !important; color: var(--positive) !important; }
+.badge.text-bg-danger    { background-color: var(--negative-subtle) !important; color: var(--negative) !important; }
+.badge.text-bg-warning   { background-color: var(--caution-subtle) !important;  color: var(--caution) !important; }
+.badge.text-bg-info      { background-color: var(--neutral-info-subtle) !important; color: var(--neutral-info) !important; }
+.badge.text-bg-secondary,
+.badge.text-bg-light,
+.badge.text-bg-dark      { background-color: var(--surface-2) !important; color: var(--text-secondary) !important; }
+
+.badge.bg-primary   { background-color: var(--accent-subtle) !important;   color: var(--accent) !important; }
+.badge.bg-success   { background-color: var(--positive-subtle) !important; color: var(--positive) !important; }
+.badge.bg-danger    { background-color: var(--negative-subtle) !important; color: var(--negative) !important; }
+.badge.bg-warning   { background-color: var(--caution-subtle) !important;  color: var(--caution) !important; }
+.badge.bg-info      { background-color: var(--neutral-info-subtle) !important; color: var(--neutral-info) !important; }
+.badge.bg-secondary { background-color: var(--surface-2) !important; color: var(--text-secondary) !important; }
+.badge.bg-light,
+.badge-light        { background-color: var(--surface-2) !important; color: var(--text-secondary) !important; }
+.badge.bg-dark      { background-color: var(--surface-3) !important; color: var(--text-primary) !important; }
+
+/* Neutral chip used for categories / tags in tables. */
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xs);
+    color: var(--text-secondary);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    padding: 0.2rem 0.45rem;
+    white-space: nowrap;
+}
+
+/*
+ * Legend colour dots. Two fixes over the previous version: the hardcoded white
+ * ring became invisible on dark surfaces, and Bootstrap's `.badge:empty
+ * { display: none }` was hiding these swatches entirely since they carry no text.
+ */
+.badge.rounded-circle,
+.legend-dot,
+.badge.rounded-circle:empty,
+.legend-dot:empty {
+    display: inline-block;
+    width: 0.625rem;
+    height: 0.625rem;
+    padding: 0;
+    border: 0;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--surface-1);
+    flex: 0 0 auto;
+}
+
+/* ---- Alerts ---------------------------------------------------------- */
+
+.alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    padding: 0.75rem 0.9375rem;
+    font-size: 0.875rem;
+    margin-bottom: 1rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.alert-primary { background-color: var(--accent-subtle);   border-color: var(--accent-border);   color: var(--accent); }
+.alert-success { background-color: var(--positive-subtle); border-color: var(--positive-border); color: var(--positive); }
+.alert-danger  { background-color: var(--negative-subtle); border-color: var(--negative-border); color: var(--negative); }
+.alert-warning { background-color: var(--caution-subtle);  border-color: var(--caution-border);  color: var(--caution); }
+.alert-info,
+.info-banner   { background-color: var(--neutral-info-subtle); border-color: var(--neutral-info-border); color: var(--neutral-info); }
+.alert-secondary,
+.alert-light   { background-color: var(--surface-2); border-color: var(--border-color); color: var(--text-secondary); }
+
+.alert .alert-link { color: inherit; font-weight: 650; text-decoration: underline; }
+
+.alert-container {
+    position: relative;
+    z-index: 1035;
+}
+
+/* ---- Breadcrumb ------------------------------------------------------ */
+
+.breadcrumb {
+    background-color: transparent;
+    border: 0;
+    padding: 0;
+    margin-bottom: 0.875rem;
+    font-size: 0.8125rem;
+}
+
+.breadcrumb-item a { color: var(--text-muted); text-decoration: none; }
+.breadcrumb-item a:hover { color: var(--accent); }
+.breadcrumb-item.active { color: var(--text-primary); font-weight: 550; }
+
+/* ---- Modals ---------------------------------------------------------- */
+
+.modal-content {
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-color);
+    box-shadow: var(--shadow-lg);
+}
+
+.modal-header,
+.modal-footer { padding: 1rem 1.25rem; }
+.modal-body { padding: 1.25rem; }
+.modal-title { font-size: 1rem; font-weight: 650; }
+
+.btn-close { --bs-btn-close-opacity: 0.6; }
+.btn-close:hover { --bs-btn-close-opacity: 1; }
+[data-theme="dark"] .btn-close { filter: invert(1) grayscale(1) brightness(1.8); }
+
+/* ---- Loading overlay ------------------------------------------------- */
+
+.loading-overlay,
+.table-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: color-mix(in srgb, var(--surface-1) 78%, transparent);
+    backdrop-filter: blur(2px);
+    z-index: 10;
+    border-radius: inherit;
+}
+
+/* ---- Empty state ----------------------------------------------------- */
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.empty-state .empty-state-icon {
+    font-size: 2rem;
+    color: var(--text-subtle);
+    margin-bottom: 0.25rem;
+}
+
+.empty-state-title {
+    font-size: 0.9375rem;
+    font-weight: 650;
+    color: var(--text-primary);
+}
+
+/* =========================================================================
+   7. Data display
+   ========================================================================= */
+
+/* ---- Table shell ----------------------------------------------------- */
+
+.table-container {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.table-container > .table-responsive { border-radius: 0; }
+
+.table-responsive {
+    border-radius: var(--radius-lg);
+    /* Wide tables scroll inside their own container, not the page. */
+    overflow-x: auto;
+}
+
+/* Toolbar above a table: count on the left, controls on the right. */
+.table-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.table-toolbar .table-count {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.table-toolbar .table-count strong {
+    color: var(--text-primary);
+    font-weight: 650;
+}
+
+/* ---- Table ----------------------------------------------------------- */
+
+.table {
+    --bs-table-bg: transparent;
+    margin-bottom: 0;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    border-color: var(--border-color-light);
+}
+
+.table > thead {
+    background-color: var(--surface-2);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.table > thead th {
+    background-color: transparent;
+    border-bottom: 0;
+    color: var(--text-muted);
+    font-weight: 650;
+    font-size: 0.6875rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 0.6875rem 0.875rem;
+    vertical-align: middle;
+    white-space: nowrap;
+}
+
+.table > tbody > tr > td {
+    padding: 0.6875rem 0.875rem;
+    vertical-align: middle;
+    border-top: 1px solid var(--border-color-light);
+    border-bottom: 0;
+    background-color: transparent;
+}
+
+.table > tbody > tr:first-child > td { border-top: 0; }
+
+.table > tbody > tr {
+    transition: background-color var(--duration-fast) var(--ease);
+}
+
+.table-hover > tbody > tr:hover > *,
+.table > tbody > tr:hover > * {
+    background-color: var(--surface-hover);
+    color: var(--text-primary);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    background-color: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+
+.table .table-primary-cell,
+.table .cell-title {
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.table .cell-sub {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 0.0625rem;
+}
+
+/* Sticky header for long tables */
+.table-sticky > thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: var(--surface-2);
+}
+
+/* Sortable headers */
+.table th.sortable,
+.sort-header {
+    cursor: pointer;
+    user-select: none;
+    transition: color var(--duration-fast) var(--ease),
+                background-color var(--duration-fast) var(--ease);
+}
+
+.table th.sortable:hover,
+.sort-header:hover {
+    background-color: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.table th.sortable .sort-icon,
+.sort-indicator {
+    margin-left: 0.3rem;
+    opacity: 0.45;
+    font-size: 0.75rem;
+}
+
+.table th.sortable:hover .sort-icon { opacity: 0.85; }
+
+.table th.sortable[data-sort="asc"] .sort-icon,
+.table th.sortable[data-sort="desc"] .sort-icon {
+    opacity: 1;
+    color: var(--accent);
+}
+
+/* Numeric columns line up on the decimal point. */
+.table .text-end,
+.table .num,
+.table th.num,
+.table td.num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.table td.num,
+.snapshot-amount,
+.amount-cell {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    text-align: right;
+    white-space: nowrap;
+}
+
+.asset-row.selected,
+.table tr.selected > * {
+    background-color: var(--accent-subtle) !important;
+}
+
+/* ---- Money & numbers ------------------------------------------------- */
+
+.currency-amount,
+.percentage,
+.money {
+    font-variant-numeric: tabular-nums;
+    font-weight: 550;
+    white-space: nowrap;
+}
+
+.money-lg {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+    font-variant-numeric: tabular-nums;
+}
+
+.amount-display {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.amount-positive, .text-positive { color: var(--positive); }
+.amount-negative, .text-negative { color: var(--negative); }
+.amount-zero { color: var(--text-muted); }
+
+.currency-code {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.04em;
+    color: var(--text-muted);
+}
+
+.currency-eur { color: var(--currency-eur); }
+.currency-usd { color: var(--currency-usd); }
+.currency-chf { color: var(--currency-chf); }
+
+.search-highlight {
+    background-color: var(--caution-subtle);
+    color: var(--text-primary);
+    border-radius: 2px;
+    padding: 0 2px;
+}
+
+/* ---- Pagination ------------------------------------------------------ */
+
+.pagination {
+    gap: 0.1875rem;
+    margin-bottom: 0;
+}
+
+.page-link {
+    border-radius: var(--radius-xs);
+    padding: 0.375rem 0.6875rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+.page-item.active .page-link { font-weight: 650; }
+
+/* ---- List groups (legend rows, detail lists) ------------------------- */
+
+.list-group-item {
+    background-color: transparent;
+    border-color: var(--border-color-light);
+    color: var(--text-primary);
+    padding: 0.5625rem 0;
+    font-size: 0.875rem;
+}
+
+.list-group-flush > .list-group-item:last-child { border-bottom: 0; }
+
+/* ---- Legend ---------------------------------------------------------- */
+
+.legend-amount,
+.legend-percent {
+    display: inline-block;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.legend-amount  { min-width: 8.25rem; }
+.legend-percent { min-width: 3.5rem; margin-left: 0.5rem; color: var(--text-muted); }
+
+.legend-sort-btn {
+    --bs-btn-padding-y: 0.1875rem;
+    --bs-btn-padding-x: 0.5rem;
+    --bs-btn-font-size: 0.75rem;
+}
+
+/* ---- Timeline -------------------------------------------------------- */
+
+.timeline-item {
+    position: relative;
+    padding-left: 1.5rem;
+    padding-bottom: 1rem;
+    border-left: 0;
+}
+
+.timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 0.3125rem;
+    top: 1.125rem;
+    bottom: 0;
+    width: 1px;
+    background: var(--border-color);
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.4375rem;
+    width: 0.6875rem;
+    height: 0.6875rem;
+    border-radius: 50%;
+    background: var(--surface-1);
+    border: 2px solid var(--border-color-strong);
+    box-sizing: border-box;
+}
+
+.timeline-item.current::before {
+    background: var(--accent);
+    border-color: var(--accent);
+    transform: none;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: 0;
+    top: 0.25rem;
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: 50%;
+    border: 2px solid var(--surface-1);
+    box-shadow: 0 0 0 1px var(--border-color-strong);
+}
+
+/* =========================================================================
+   7b. Page-level components
+   Previously these lived in per-template <style> blocks with hardcoded hex
+   values, which is why so many panels stayed light-coloured in dark mode.
+   ========================================================================= */
+
+/* ---- Callouts (asset info, original values, hints) ------------------- */
+
+.callout,
+.asset-info,
+.original-values,
+.original-amount {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 0.75rem 0.875rem;
+    margin-bottom: 1rem;
+    font-size: 0.875rem;
+}
+
+.callout-info    { border-left-color: var(--neutral-info); }
+.callout-success { border-left-color: var(--positive); }
+.callout-warning,
+.asset-info.callout-warning { border-left-color: var(--caution); }
+.callout-danger  { border-left-color: var(--negative); }
+
+.callout-title {
+    font-weight: 650;
+    font-size: 0.8125rem;
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.callout-list {
+    padding-left: 1.1rem;
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+}
+
+.callout-list li + li { margin-top: 0.3rem; }
+
+/* ---- Definition list (label / value rows in side panels) ------------- */
+
+.detail-list { margin: 0; }
+
+.detail-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color-light);
+}
+
+.detail-row:first-child { padding-top: 0; }
+
+.detail-row:last-child {
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.detail-row > dt {
+    font-weight: 500;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+    margin: 0;
+}
+
+.detail-row > dd {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: var(--text-primary);
+    margin: 0;
+    text-align: right;
+}
+
+/* ---- Sticky form actions (side-by-side form layouts) ----------------- */
+
+/*
+ * Keeps Save/Cancel reachable on a long form. Only sticks on wide screens,
+ * where the sidebar sits beside the fields rather than after them.
+ */
+@media (min-width: 992px) {
+    .form-actions-card {
+        position: sticky;
+        top: 5rem;
+        z-index: 5;
+    }
+}
+
+/* ---- Definition rows (detail pages) --------------------------------- */
+
+.asset-info-label,
+.detail-label {
+    font-weight: 550;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.asset-info-value,
+.detail-value {
+    font-weight: 550;
+    color: var(--text-primary);
+}
+
+.currency-display {
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.tag-display { margin: 0 0.25rem 0.25rem 0; }
+
+/* Accent-railed detail cards */
+.asset-detail-card,
+.bulk-edit-card {
+    position: relative;
+    overflow: hidden;
+}
+
+.asset-detail-card::before,
+.bulk-edit-card::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 3px;
+    background: var(--accent);
+}
+
+.bulk-edit-card::before { background: var(--caution); }
+
+/* ---- Amount inputs with a currency prefix --------------------------- */
+
+/*
+ * Prefer `.input-group` + `.input-group-text` for new markup; this supports the
+ * existing absolutely-positioned variant without hardcoded colours.
+ */
+.currency-symbol {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-weight: 550;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.currency-input { padding-left: 3rem; }
+
+.amount-input {
+    max-width: 9rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.select-checkbox { transform: scale(1.1); }
+
+/* ---- Repeated item rows (bulk edit) --------------------------------- */
+
+.snapshot-item {
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+/* ---- Page banners (detail / admin headers) -------------------------- */
+
+/*
+ * These were saturated purple/blue/green gradients with white text — three
+ * different identities in one app. They now match `.page-header-banner`.
+ */
+.snapshot-header,
+.admin-header,
+.asset-info-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    background-color: var(--surface-1);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem 1.375rem;
+    margin-bottom: 1.5rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.snapshot-header h1,
+.snapshot-header h2,
+.snapshot-header h3,
+.admin-header h1,
+.admin-header h2,
+.admin-header h3,
+.asset-info-header h1,
+.asset-info-header h2,
+.asset-info-header h3 {
+    color: var(--text-primary);
+    margin-bottom: 0.125rem;
+}
+
+.snapshot-header .text-white,
+.admin-header .text-white,
+.asset-info-header .text-white,
+.snapshot-header .text-white-50,
+.admin-header .text-white-50,
+.asset-info-header .text-white-50 {
+    color: var(--text-secondary) !important;
+}
+
+/* ---- Entity cards (admin grids) ------------------------------------- */
+
+.entity-card {
+    transition: transform var(--duration) var(--ease),
+                box-shadow var(--duration) var(--ease),
+                border-color var(--duration) var(--ease);
+}
+
+.entity-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-color-strong);
+}
+
+.stats-badge { font-size: 0.6875rem; }
+
+/* ---- Settings ------------------------------------------------------- */
+
+.settings-section {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.settings-section > h5,
+.settings-section > h6 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.625rem;
+    margin-bottom: 1rem;
+}
+
+.settings-nav {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.settings-nav .nav-link {
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    padding: 0.4375rem 0.625rem;
+}
+
+.settings-nav .nav-link:hover { background-color: var(--surface-2); color: var(--text-primary); }
+
+.settings-nav .nav-link.active {
+    color: var(--accent);
+    background-color: var(--accent-subtle);
+    font-weight: 600;
+}
+
+.unsaved-changes {
+    position: fixed;
+    bottom: 1.25rem;
+    right: 1.25rem;
+    z-index: 1050;
+    display: none;
+}
+
+/* ---- Auth pages ----------------------------------------------------- */
+
+/*
+ * The login screen used a hard brand gradient with a translucent white card,
+ * which stayed white-on-blue in dark mode. It is now a plain centred card on
+ * the page surface, with the brand panel carrying the only colour.
+ */
+.login-container,
+.auth-layout-container {
+    min-height: 100vh;
+    background: var(--surface-0);
+}
+
+.login-card,
+.auth-form-container {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: none;
+}
+
+/* Column flex, or the shared `.card-header` row rules push these side by side. */
+.login-header.card-header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.25rem;
+    background: transparent;
+    border-bottom: 1px solid var(--border-color);
+    text-align: center;
+    font-weight: 400;
+    padding: 1.75rem 1.75rem 1.25rem;
+}
+
+.login-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    font-size: 1.375rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.25rem;
+}
+
+.login-brand i { color: var(--accent); }
+
+.login-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    margin-bottom: 0;
+}
+
+.auth-brand-side {
+    background: linear-gradient(150deg, var(--brand-700) 0%, var(--brand-500) 100%);
+    color: #fff;
+}
+
+[data-theme="dark"] .auth-brand-side {
+    background: linear-gradient(150deg, #16233d 0%, #1e3a8a 100%);
+}
+
+.auth-form-side { background-color: var(--surface-0); }
+
+.auth-features .bi-check-circle { font-size: 1.1rem; }
+
+@media (max-width: 991.98px) {
+    .auth-form-container { box-shadow: none; border: 0; padding: 1.25rem; }
+}
+
+/* ---- Chat --------------------------------------------------------------
+   Full-height pane framed like every other page: a card on the page surface,
+   with the app's own surfaces, radii and type scale.
+   ---------------------------------------------------------------------- */
+
+/*
+ * The chat fills the space left by the navbar and footer instead of guessing at
+ * it: `body` is `min-vh-100` flex-column and `main` is `flex-grow-1`, so making
+ * both flex containers with `min-height: 0` lets the pane take the remainder.
+ * The old `height: calc(100vh - 60px)` hardcoded the navbar height and pushed
+ * the composer off-screen.
+ */
+/*
+ * Bounding the body to the viewport is what makes `main`'s flex-grow resolve to
+ * an exact remainder, so the message list scrolls inside the pane instead of the
+ * whole page scrolling and pushing the composer out of view.
+ */
+body.chat-page {
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body.chat-page main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-block: 1rem;
+}
+
+body.chat-page main > .container-fluid {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.chat-layout {
+    display: flex;
+    flex: 1;
+    min-height: 24rem;
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+}
+
+/* ---- Conversation sidebar ---- */
+
+.chat-sidebar {
+    display: flex;
+    flex-direction: column;
+    width: 16rem;
+    min-width: 16rem;
+    background-color: var(--surface-2);
+    border-right: 1px solid var(--border-color);
+}
+
+.chat-sidebar-header {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.chat-sidebar-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.chat-sidebar-label {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.25rem 0.5rem 0.375rem;
+}
+
+/* Matches the settings nav pills rather than a solid accent block. */
+.chat-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4375rem 0.5rem;
+    margin-bottom: 0.125rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background-color var(--duration-fast) var(--ease),
+                color var(--duration-fast) var(--ease);
+}
+
+.chat-sidebar-item:hover {
+    background-color: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.chat-sidebar-item.active {
+    background-color: var(--accent-subtle);
+    color: var(--accent);
+    font-weight: 600;
+}
+
+.chat-sidebar-item .item-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.chat-sidebar-item .item-title-edit {
+    flex: 1;
+    min-width: 0;
+    padding: 1px 4px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-xs);
+    background: var(--surface-1);
+    color: var(--text-primary);
+    font-size: inherit;
+    font-family: inherit;
+    line-height: 1.4;
+    outline: none;
+}
+
+.chat-sidebar-item .btn-delete-conv {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: inherit;
+    font-size: 0.75rem;
+    line-height: 1;
+    opacity: 0;
+}
+
+.chat-sidebar-item:hover .btn-delete-conv { opacity: 0.7; }
+
+.chat-sidebar-item .btn-delete-conv:hover,
+.chat-sidebar-item .btn-delete-conv:focus-visible {
+    opacity: 1;
+    background-color: var(--negative-subtle);
+    color: var(--negative);
+}
+
+/* ---- Main pane ---- */
+
+.chat-main {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+}
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--surface-1);
+}
+
+.chat-messages {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1.25rem;
+}
+
+.chat-input-area {
+    padding: 0.875rem 1rem;
+    border-top: 1px solid var(--border-color);
+    background-color: var(--surface-1);
+}
+
+/* Grows with its content up to a cap, then scrolls (height set by autoGrowInput) */
+#chatInput {
+    resize: none;
+    overflow-y: auto;
+    max-height: 30vh;
+    line-height: 1.55;
+}
+
+/* ---- Suggested-prompts rail ---- */
+
+.chat-prompts {
+    display: flex;
+    flex-direction: column;
+    width: 15rem;
+    min-width: 15rem;
+    background-color: var(--surface-2);
+    border-left: 1px solid var(--border-color);
+}
+
+.chat-prompts-label {
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.75rem 0.75rem 0.375rem;
+}
+
+.chat-prompts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding: 0 0.5rem 0.75rem;
+    overflow-y: auto;
+}
+
+.prompt-btn {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    text-align: left;
+    padding: 0.5rem 0.625rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background-color: transparent;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    cursor: pointer;
+    transition: background-color var(--duration) var(--ease),
+                border-color var(--duration) var(--ease),
+                color var(--duration) var(--ease);
+}
+
+.prompt-btn > i {
+    font-size: 0.9375rem;
+    color: var(--accent);
+    margin-top: 0.0625rem;
+}
+
+.prompt-btn:hover {
+    background-color: var(--surface-1);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.prompt-btn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.prompt-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.prompt-btn-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.0625rem;
+    min-width: 0;
+}
+
+.prompt-btn-label {
+    font-weight: 600;
+}
+
+.prompt-btn-hint {
+    font-size: 0.6875rem;
+    color: var(--text-muted);
+}
+
+/* ---- Message bubbles ---- */
+
+.msg-bubble {
+    max-width: min(46rem, 78%);
+    padding: 0.6875rem 0.9375rem;
+    border-radius: var(--radius-lg);
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    overflow-wrap: break-word;
+}
+
+.msg-user {
+    align-self: flex-end;
+    background-color: var(--accent);
+    color: var(--text-on-accent);
+    border-bottom-right-radius: var(--radius-xs);
+    position: relative;
+}
+
+/*
+ * User text is inserted verbatim (not markdown), so its own newlines must
+ * survive — but `pre-wrap` has to live on the text node, NOT on the bubble.
+ * On the bubble it also preserves the template's indentation and line breaks
+ * around any child markup (such as the delete button), which is what inflated
+ * the bubble into a large empty block.
+ */
+.msg-user .msg-text {
+    display: block;
+    white-space: pre-wrap;
+}
+
+/* Reserve room so long text never runs under the delete button. */
+.msg-user:has(.btn-delete-msg) { padding-right: 1.9rem; }
+
+.msg-user .btn-delete-msg {
+    all: unset;
+    position: absolute;
+    top: 2px;
+    right: 3px;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.15);
+    color: inherit;
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+.msg-user:hover .btn-delete-msg,
+.msg-user:focus-within .btn-delete-msg {
+    opacity: 1;
+}
+.msg-user .btn-delete-msg:hover {
+    background: rgba(0, 0, 0, 0.30);
+}
+
+/* Border + raised surface so the reply reads as a distinct block, which the
+   old near-page-coloured fill did not. */
+.msg-assistant {
+    align-self: flex-start;
+    background-color: var(--surface-2);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    border-bottom-left-radius: var(--radius-xs);
+}
+
+.msg-bubble > *:first-child { margin-top: 0 !important; }
+.msg-bubble > *:last-child  { margin-bottom: 0 !important; }
+.msg-bubble p { margin-bottom: 0.6rem; }
+.msg-bubble br { display: none; }
+.msg-bubble p br { display: inline; }
+
+.msg-bubble h1, .msg-bubble h2, .msg-bubble h3,
+.msg-bubble h4, .msg-bubble h5, .msg-bubble h6 {
+    margin: 0.9rem 0 0.4rem;
+    font-weight: 650;
+    line-height: 1.3;
+    color: inherit;
+}
+
+.msg-bubble h1 { font-size: 1.125rem; }
+.msg-bubble h2 { font-size: 1.0625rem; }
+.msg-bubble h3 { font-size: 1rem; }
+.msg-bubble h4, .msg-bubble h5, .msg-bubble h6 { font-size: 0.9375rem; }
+
+.msg-bubble ul, .msg-bubble ol { margin-bottom: 0.6rem; padding-left: 1.35rem; }
+.msg-bubble li { margin-bottom: 0.25rem; }
+.msg-bubble li > p { margin-bottom: 0.25rem; }
+.msg-bubble li > p:last-child { margin-bottom: 0; }
+.msg-bubble li > ul, .msg-bubble li > ol { margin: 0.25rem 0; }
+
+/*
+ * Code, tables and quotes inside bubbles used `rgba(0,0,0,0.08)`, which
+ * disappears on a dark bubble. They now tint relative to the bubble itself.
+ */
+.msg-bubble :not(pre) > code {
+    background-color: color-mix(in srgb, currentColor 12%, transparent);
+    border: 0;
+    color: inherit;
+    font-size: 0.85em;
+    padding: 0.1em 0.3em;
+    border-radius: var(--radius-xs);
+}
+
+.msg-bubble pre {
+    background-color: color-mix(in srgb, currentColor 10%, transparent);
+    border: 0;
+    color: inherit;
+    margin-bottom: 0.6rem;
+    padding: 0.625rem 0.75rem;
+    border-radius: var(--radius-sm);
+    overflow-x: auto;
+}
+
+.msg-bubble pre code { padding: 0; background: none; }
+
+.msg-bubble table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.6rem;
+    font-size: 0.85em;
+}
+
+.msg-bubble th,
+.msg-bubble td {
+    padding: 0.35rem 0.5rem;
+    border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+    text-align: left;
+}
+
+.msg-bubble th {
+    background-color: color-mix(in srgb, currentColor 8%, transparent);
+    font-weight: 650;
+}
+
+.msg-bubble blockquote {
+    margin-bottom: 0.6rem;
+    padding-left: 0.75rem;
+    border-left: 3px solid color-mix(in srgb, currentColor 28%, transparent);
+    color: inherit;
+    opacity: 0.85;
+}
+
+.msg-bubble hr {
+    margin: 0.75rem 0;
+    border: 0;
+    border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+}
+
+.msg-bubble a { color: inherit; text-decoration: underline; }
+
+/* ---- Pending action confirmation ---- */
+
+.confirm-card {
+    align-self: flex-start;
+    max-width: min(46rem, 78%);
+    background-color: var(--caution-subtle);
+    border: 1px solid var(--caution-border);
+    border-left: 3px solid var(--caution);
+    border-radius: var(--radius-md);
+    padding: 0.875rem 1rem;
+}
+
+.spinner-wrapper {
+    display: flex;
+    justify-content: center;
+    padding: 1.5rem;
+    color: var(--text-muted);
+}
+
+/* The chat pane's empty state centres in the remaining space. */
+.chat-messages .empty-state {
+    flex: 1;
+    justify-content: center;
+}
+
+/* ---- Responsive ---- */
+
+.chat-sidebar-toggle { display: none; }
+
+/* The right-hand prompt rail needs horizontal room; hide it on tablets and below. */
+@media (max-width: 991.98px) {
+    .chat-prompts { display: none; }
+}
+
+@media (max-width: 767.98px) {
+    .chat-layout { position: relative; }
+
+    .chat-sidebar {
+        position: absolute;
+        inset: 0 auto 0 0;
+        z-index: 20;
+        transform: translateX(-100%);
+        transition: transform var(--duration) var(--ease);
+        box-shadow: var(--shadow-lg);
+    }
+
+    .chat-sidebar.open { transform: translateX(0); }
+    .chat-sidebar-toggle { display: inline-flex; }
+    .chat-main { width: 100%; min-width: 0; }
+    .msg-bubble { max-width: 90%; }
+
+    /* The floating quick-add buttons would sit on top of the composer. */
+    body.chat-page .position-fixed.bottom-0.end-0 { display: none !important; }
+}
+
+/* ---- Misc list-page helpers ----------------------------------------- */
+
+.days-ago {
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}
+
+.snapshot-stats {
+    background-color: var(--surface-1);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    padding: 1.125rem;
+    box-shadow: var(--shadow-xs);
+}
+
+.btn-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 575.98px) {
+    .btn-actions { flex-direction: column; }
+    .btn-actions .btn { width: 100%; }
+}
+
+/* Legacy alias: `.btn-export` was a hardcoded green button. */
+.btn-export {
+    --bs-btn-bg: var(--surface-1);
+    --bs-btn-border-color: var(--border-color-strong);
+    --bs-btn-color: var(--text-primary);
+    --bs-btn-hover-bg: var(--surface-2);
+    --bs-btn-hover-border-color: var(--border-color-strong);
+    --bs-btn-hover-color: var(--text-primary);
+}
+
+/* =========================================================================
+   8. Charts, utilities, responsive
+   ========================================================================= */
+
+.chart-container {
+    position: relative;
+    width: 100%;
+    min-height: 260px;
+}
+
+/* Charts draw their own theme-aware colours; never filter the canvas. */
+.chart-container canvas { max-width: 100%; }
+
+.chart-loading,
+.chart-error {
+    position: absolute;
+    inset: 0;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 0.5rem;
+    color: var(--text-muted);
+    font-size: 0.875rem;
+}
+
+.chart-loading[style*="block"],
+.chart-error[style*="block"] { display: flex !important; }
+
+/* ---- Text utility corrections ---------------------------------------- */
+
+/*
+ * Bootstrap's muted/secondary utilities are opacity-based, which turns to mud
+ * on dark surfaces. Bind them to real tokens instead.
+ */
+.text-muted     { --bs-text-opacity: 1; color: var(--text-muted) !important; }
+.text-secondary { --bs-text-opacity: 1; color: var(--text-secondary) !important; }
+.text-body      { color: var(--text-primary) !important; }
+.text-dark,
+.text-black     { color: var(--text-primary) !important; }
+.text-primary   { --bs-text-opacity: 1; color: var(--accent) !important; }
+.text-success   { --bs-text-opacity: 1; color: var(--positive) !important; }
+.text-danger    { --bs-text-opacity: 1; color: var(--negative) !important; }
+.text-warning   { --bs-text-opacity: 1; color: var(--caution) !important; }
+.text-info      { --bs-text-opacity: 1; color: var(--neutral-info) !important; }
+
+.bg-white,
+.bg-body,
+.bg-body-tertiary { background-color: var(--surface-1) !important; }
+.bg-light         { background-color: var(--surface-2) !important; }
+.bg-body-secondary { background-color: var(--surface-2) !important; }
+
+.border,
+.border-top,
+.border-bottom,
+.border-start,
+.border-end   { border-color: var(--border-color) !important; }
+.border-light { border-color: var(--border-color-light) !important; }
+
+.shadow-sm { box-shadow: var(--shadow-sm) !important; }
+.shadow    { box-shadow: var(--shadow-md) !important; }
+.shadow-lg { box-shadow: var(--shadow-lg) !important; }
+
+.small, small { font-size: 0.8125rem; }
+
+/* ---- Icon utilities -------------------------------------------------- */
+
+/*
+ * Replacements for the Font Awesome sizing/animation utilities the markup
+ * used to rely on. Font Awesome itself was never loaded, so those icons
+ * rendered as blank space; the glyphs are Bootstrap Icons now.
+ */
+.icon-2x { font-size: 1.75rem; line-height: 1; }
+.icon-3x { font-size: 2.5rem;  line-height: 1; }
+
+.icon-spin { display: inline-block; animation: icon-spin 0.9s linear infinite; }
+
+@keyframes icon-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Bootstrap Icons sit slightly high next to text at these sizes. */
+.btn > i.bi,
+.nav-link > i.bi,
+.dropdown-item > i.bi { line-height: 1; }
+
+.divider {
+    height: 1px;
+    background-color: var(--border-color);
+    margin-block: 1.25rem;
+}
+
+/* ---- Entrance animation --------------------------------------------- */
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.dashboard-content > * {
+    animation: fadeInUp 0.35s var(--ease) both;
+}
+
+.dashboard-content > *:nth-child(1) { animation-delay: 0s; }
+.dashboard-content > *:nth-child(2) { animation-delay: 0.04s; }
+.dashboard-content > *:nth-child(3) { animation-delay: 0.08s; }
+.dashboard-content > *:nth-child(4) { animation-delay: 0.12s; }
+
+/* ---- Responsive ------------------------------------------------------ */
+
+@media (max-width: 991.98px) {
+    .navbar-glass .navbar-collapse {
+        margin-top: 0.625rem;
+        padding-top: 0.625rem;
+        border-top: 1px solid var(--border-color);
+    }
+
+    .navbar-glass .navbar-nav { gap: 0.125rem; }
+    .navbar-glass .nav-link { padding: 0.5rem 0.625rem; }
+}
+
+@media (max-width: 767.98px) {
+    main { padding-block: 1rem 2rem; }
+
+    .page-header-banner {
+        padding: 1rem;
+        align-items: flex-start;
+    }
+
+    .page-header-actions { width: 100%; }
+    .page-header-actions .btn { flex: 1 1 auto; }
+
+    .card-body,
+    .panel,
+    .filter-section,
+    .summary-stats,
+    .search-filter-container,
+    .info-card { padding: 1rem; }
+
+    .form-actions {
+        flex-direction: column-reverse;
+        align-items: stretch;
+        margin: 1.25rem -1rem -1rem;
+    }
+
+    .form-actions .btn { width: 100%; }
+
+    .table > thead th { font-size: 0.625rem; padding: 0.5625rem 0.625rem; }
+    .table > tbody > tr > td { padding: 0.5625rem 0.625rem; font-size: 0.8125rem; }
+
+    .stat-card { padding: 0.875rem 1rem; }
+    .stat-card .stat-number { font-size: 1.3125rem; }
+    .stat-card .stat-number.stat-number-money { font-size: 1.125rem; }
+
+    .quick-actions .btn { justify-content: center; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+@media print {
+    .navbar-glass,
+    footer,
+    .page-header-actions,
+    .quick-actions,
+    .row-actions,
+    .filter-section,
+    .search-filter-container { display: none !important; }
+
+    body { background: #fff; color: #000; }
+    .card, .table-container { box-shadow: none; border-color: #ccc; }
+}

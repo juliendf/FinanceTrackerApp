@@ -1,0 +1,144 @@
+/**
+ * Port of `app/utils/filters.py`. The Python filter is canonical; the web app's
+ * JS `FinanceTracker.formatCurrency` is not (`static/js/app.js`). Phase 0 ports
+ * `currency` only — the rest (`relative_date`, `days_since`, `format_date`,
+ * `percentage`) arrive in Phase 1 with their unit tests.
+ */
+
+import Decimal from "decimal.js";
+
+const SYMBOLS: Record<string, string> = {
+  USD: "$",
+  EUR: "€",
+  CHF: "CHF ",
+  GBP: "£",
+  JPY: "¥",
+  CAD: "C$",
+  AUD: "A$",
+};
+
+/** Currencies whose symbol is printed before the amount. */
+const SYMBOL_FIRST = new Set(["USD", "EUR", "GBP", "CAD", "AUD"]);
+
+/** `f"{value:,.2f}"` — comma thousands, dot decimals, always 2 dp. */
+function formatNumber(value: Decimal): string {
+  // Python's format spec keeps the sign of the original value, even when the
+  // rounded result is zero (-0.004 -> "-0.00"), so decide the sign first.
+  const sign = value.isNegative() ? "-" : "";
+  const fixed = value.abs().toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN).toFixed(2);
+  const [whole, fraction] = fixed.split(".");
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${sign}${grouped}.${fraction}`;
+}
+
+export type CurrencyInput = Decimal.Value | null | undefined;
+
+/**
+ * `currency` filter. `None` gives "N/A", exactly as the Python does.
+ *
+ * The Python also returns "N/A" for non-numeric input; that is preserved so
+ * the two implementations agree on every input, not just the happy path.
+ */
+export function formatCurrency(
+  value: CurrencyInput,
+  currencyCode = "USD",
+): string {
+  if (value === null || value === undefined) return "N/A";
+  if (typeof value === "string" && value.trim() === "") return "N/A";
+
+  let amount: Decimal;
+  try {
+    amount = new Decimal(value as Decimal.Value);
+  } catch {
+    return "N/A";
+  }
+  if (!amount.isFinite()) return "N/A";
+
+  const code = currencyCode.toUpperCase();
+  const symbol = SYMBOLS[code] ?? `${currencyCode} `;
+  const formatted = formatNumber(amount);
+
+  // Python prefixes the symbol to the formatted number, so the minus sign lands
+  // after the symbol for $-style currencies: `$-1,234.57`, not `-$1,234.57`.
+  return SYMBOL_FIRST.has(code) ? `${symbol}${formatted}` : `${formatted} ${symbol}`;
+}
+
+/** Convenience for the common case: minor units straight to a display string. */
+export function formatMinorAsCurrency(
+  minor: number | null | undefined,
+  currencyCode = "USD",
+): string {
+  if (minor === null || minor === undefined) return "N/A";
+  return formatCurrency(new Decimal(minor).dividedBy(100), currencyCode);
+}
+
+/** Parse an ISO `YYYY-MM-DD` date as UTC midnight. Null when unparseable. */
+function parseIsoDate(value: string): Date | null {
+  const parsed = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+/**
+ * `format_date` filter. Default format matches the source default `%Y-%m-%d`.
+ * Supports the strftime tokens the app actually uses: %Y %m %d %H %M %S.
+ */
+export function formatDate(
+  value: string | null | undefined,
+  formatString = "%Y-%m-%d",
+): string {
+  if (value === null || value === undefined) return "N/A";
+  const date = parseIsoDate(value);
+  if (!date) return "Invalid date";
+
+  const pad = (input: number) => String(input).padStart(2, "0");
+  return formatString
+    .replace(/%Y/g, String(date.getUTCFullYear()))
+    .replace(/%m/g, pad(date.getUTCMonth() + 1))
+    .replace(/%d/g, pad(date.getUTCDate()))
+    .replace(/%H/g, pad(date.getUTCHours()))
+    .replace(/%M/g, pad(date.getUTCMinutes()))
+    .replace(/%S/g, pad(date.getUTCSeconds()));
+}
+
+/** Whole days between an ISO date and today. Negative clamps to 0, as the source does. */
+export function daysSince(date: string | null, today = new Date()): number {
+  if (!date) return 0;
+  const then = new Date(`${date}T00:00:00Z`).getTime();
+  const now = Date.UTC(
+    today.getUTCFullYear(),
+    today.getUTCMonth(),
+    today.getUTCDate(),
+  );
+  const days = Math.floor((now - then) / 86_400_000);
+  return days < 0 ? 0 : days;
+}
+
+/**
+ * `relative_date` filter: 'Never', 'Today', 'Yesterday', 'N days ago',
+ * 'N week(s) ago', 'N month(s) ago', 'N year(s) ago'.
+ *
+ * The pluralisation rule is the source's: only weeks/months/years are
+ * pluralised, "days" is always plural for 2..6.
+ */
+export function relativeDate(
+  value: string | null | undefined,
+  today = new Date(),
+): string {
+  if (value === null || value === undefined) return "Never";
+  if (!parseIsoDate(value)) return "Invalid date";
+
+  const days = daysSince(value, today);
+  if (days === 0) return "Today";
+  if (days === 1) return "Yesterday";
+  if (days < 7) return `${days} days ago`;
+  if (days < 30) {
+    const weeks = Math.floor(days / 7);
+    return `${weeks} week${weeks > 1 ? "s" : ""} ago`;
+  }
+  if (days < 365) {
+    const months = Math.floor(days / 30);
+    return `${months} month${months > 1 ? "s" : ""} ago`;
+  }
+  const years = Math.floor(days / 365);
+  return `${years} year${years > 1 ? "s" : ""} ago`;
+}
