@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+src-tauri/target/
+src-tauri/gen/schemas/
+
+# macOS
+.DS_Store
+
+# Local runtime data and build artifacts
+*.db
+*.db-wal
+*.db-shm
+*.dmg
+
+# Golden fixtures stay tracked; only local scratch is ignored
+tests/golden/local/
+
+# Agent scratch (worktrees must never be tracked)
+.claude/worktrees/
+
+# Env / signing credentials — never commit these
+.env
+.env.*
+*.p12
+*.provisionprofile

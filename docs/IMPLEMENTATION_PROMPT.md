@@ -33,7 +33,11 @@ The source is a Flask SSR app built on Postgres (SQLite fallback), Jinja2, Boots
 
 ## Hard rules
 
-- **No git.** Do not run `git init`, commit or push. Do not create remotes or CI runs. Julien keeps this project local for now. Exception: phase 8 may *write* a GitHub Actions workflow file, but must not run it.
+- **Git: local history only.** The repo already exists on `main` with an `origin` remote (`git@github.com-personal:juliendf/FinanceTrackerApp.git`). Commit at the end of **every** phase so each phase has a revert point, and keep commits scoped to that phase.
+  - Do not `git push`, open PRs, or run CI. Publishing is Julien's call, per phase.
+  - Never commit runtime data or secrets: `*.db`, `*.dmg`, `.env`, signing material. `.gitignore` already covers these.
+  - `.claude/worktrees/` must stay untracked; a worktree lives inside the repo.
+  - Exception: phase 8 may *write* a GitHub Actions workflow file, but must not run it.
 - **Never modify the source repo.** It is your read-only reference and oracle.
 - **Stop at the end of every phase.**
   1. Run that phase's verification.
