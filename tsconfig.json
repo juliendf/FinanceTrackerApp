@@ -20,6 +20,8 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
+  // Unit tests run under vitest with node types; keep them out of the app build.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"],
   "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

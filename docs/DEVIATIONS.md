@@ -113,6 +113,47 @@ screens that hit them do not exist yet.
   which makes a partial run self-healing on the next launch. — revisit Phase 1b
   (the importer needs a hard guarantee).
 
+## Phase 1b (import from FinanceTracker)
+
+- **A real transaction primitive lives in Rust.** `tauri-plugin-sql` executes
+  one prepared statement per call on a pool of up to ten connections, so a
+  `BEGIN … COMMIT` split across calls can land on different connections, and a
+  single string holding several statements only runs the first one (sqlite3
+  prepares one statement and discards the tail). Both would have broken
+  "all or nothing". `src-tauri/src/commands/db.rs` therefore exposes
+  `run_transaction(statements)`, which runs a list inside one sqlx transaction
+  with foreign keys enforced. SQL is still generated in TypeScript; Rust only
+  executes it. This is the one place where Rust holds a storage concern, and it
+  is deliberate.
+- **Row ids from the file are preserved, not remapped.** The brief asked for the
+  remap logic from `data_export.py`. Preserving ids is simpler and safer here
+  because the import only runs on an empty database, so nothing can collide, and
+  `asset_tags` / `snapshots` foreign keys stay correct without an id map.
+- **The import replaces, it does not merge.** Only an empty database is
+  imported into; anything else requires "Reset and import" behind a typed
+  confirmation. Same rule as the brief, but stated here because it means the
+  wizard is destructive: it resets before writing.
+- **v2 carries a `profile` object**, contrary to the brief and to
+  `docs/ANALYSIS.md`, which both say v2 has no profile. A real export proves
+  otherwise, so profile fields are imported. `docs/IMPORT_FORMAT.md` records the
+  verified shape.
+- **Four profile fields are dropped:** `job_title`, `username`, `email` and the
+  free-text `financial_goals`. There is no account any more, no job-title
+  column, and goals are a table rather than a note. All four are listed in the
+  import report rather than silently lost.
+- **Provider API keys go to the Keychain during the import**, before any SQL
+  runs, so a plaintext secret never exists in the database. If the import then
+  fails, the Keychain items are deleted again.
+- **Category system roles are mapped after the import**, not during it: v2 has
+  no `system_role`, and the Résumé view needs it. The step can be skipped and
+  reopened later from Categories.
+- **Settings are imported verbatim**, including keys this app has no default
+  for (`default_chart_type`, `number_format`, `show_tooltips`, `auto_backup`,
+  `backup_frequency`, `default_date_range`). They are inert until a screen reads
+  them, which is also how the source behaves.
+- **The first-run screen exists only in the desktop app.** The source registered
+  a user and dropped them on an empty dashboard, so there was no decision point.
+
 ## Open issues (observed, not yet explained)
 
 These are not intentional differences. They are recorded so Phase 1 picks them

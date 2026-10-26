@@ -1,0 +1,101 @@
+{
+  "version": 2,
+  "exported_at": "2026-01-15T10:00:00.000000",
+  "data": {
+    "institutions": [
+      { "id": 26, "name": "Test Bank", "description": null, "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" },
+      { "id": 27, "name": "Test Broker", "description": "A broker", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" }
+    ],
+    "categories": [
+      { "id": 10, "name": "Assurance Vie", "description": null, "color": "#007bff", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" },
+      { "id": 11, "name": "Epargne", "description": "Savings", "color": "#28a745", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" }
+    ],
+    "tags": [
+      { "id": 5, "name": "Illiquide", "color": "#dc3545", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" }
+    ],
+    "assets": [
+      {
+        "id": 53,
+        "institution_id": 26,
+        "category_id": 10,
+        "currency": "EUR",
+        "product_name": "Assurance Vie A",
+        "name": null,
+        "description": null,
+        "notes": "Contract note",
+        "code_nin": "FR123",
+        "cost_charges": 0.85,
+        "interest_rate": null,
+        "institution_name": "Test Bank",
+        "category_name": "Assurance Vie",
+        "tag_names": ["Illiquide"],
+        "created_at": "2025-01-01T00:00:00",
+        "updated_at": "2025-01-01T00:00:00"
+      },
+      {
+        "id": 54,
+        "institution_id": 27,
+        "category_id": 11,
+        "currency": "CHF",
+        "product_name": "Compte épargne",
+        "name": "Épargne perso",
+        "description": null,
+        "notes": null,
+        "code_nin": null,
+        "cost_charges": null,
+        "interest_rate": 1.25,
+        "institution_name": "Test Broker",
+        "category_name": "Epargne",
+        "tag_names": [],
+        "created_at": "2025-01-01T00:00:00",
+        "updated_at": "2025-01-01T00:00:00"
+      }
+    ],
+    "snapshots": [
+      { "id": 900, "asset_id": 53, "date": "2025-04-23", "amount": 10000.5, "asset_category": "Assurance Vie", "asset_currency": "EUR", "asset_institution": "Test Bank", "asset_product": "Assurance Vie A", "created_at": "2025-04-23T00:00:00", "updated_at": "2025-04-23T00:00:00" },
+      { "id": 901, "asset_id": 53, "date": "2025-05-23", "amount": 10120.25, "asset_category": "Assurance Vie", "asset_currency": "EUR", "asset_institution": "Test Bank", "asset_product": "Assurance Vie A", "created_at": "2025-05-23T00:00:00", "updated_at": "2025-05-23T00:00:00" },
+      { "id": 902, "asset_id": 54, "date": "2025-05-23", "amount": 5000, "asset_category": "Epargne", "asset_currency": "CHF", "asset_institution": "Test Broker", "asset_product": "Compte épargne", "created_at": "2025-05-23T00:00:00", "updated_at": "2025-05-23T00:00:00" }
+    ],
+    "exchange_rates": [
+      { "id": 1, "from_currency": "EUR", "to_currency": "CHF", "rate": 0.9319, "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" },
+      { "id": 2, "from_currency": "CHF", "to_currency": "EUR", "rate": 1.0730765, "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" }
+    ],
+    "llm_providers": [
+      {
+        "id": 2,
+        "name": "Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/",
+        "model": "gemini-3.8-flash",
+        "provider_type": "gemini",
+        "is_default": true,
+        "is_active": true,
+        "api_key": "test-key-not-a-real-secret",
+        "created_at": "2025-01-01T00:00:00",
+        "updated_at": "2025-01-01T00:00:00"
+      }
+    ],
+    "settings": [
+      { "id": 1, "key": "base_currency", "value": "CHF", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" },
+      { "id": 2, "key": "date_format", "value": "%d.%m.%Y", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" },
+      { "id": 3, "key": "items_per_page", "value": "100", "created_at": "2025-01-01T00:00:00", "updated_at": "2025-01-01T00:00:00" }
+    ],
+    "profile": {
+      "default_currency": "CHF",
+      "timezone": "Europe/Zurich",
+      "date_format": "%d.%m.%Y",
+      "salary": 8500.5,
+      "salary_currency": "CHF",
+      "monthly_savings_target": 1500,
+      "risk_profile": "moderate",
+      "ai_tone": "direct",
+      "ai_verbosity": "concise",
+      "ai_expertise": "expert",
+      "first_name": "Test",
+      "last_name": "User",
+      "financial_goals": "Buy a house",
+      "job_title": "Engineer",
+      "username": "testuser",
+      "email": "test@example.com"
+    }
+  }
+}

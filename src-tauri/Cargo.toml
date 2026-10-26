@@ -29,6 +29,7 @@ futures-util = "0.3.34"
 thiserror = "2.0.21"
 keyring = { version = "3.6", features = ["apple-native"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["json", "stream", "rustls"] }
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

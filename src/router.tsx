@@ -3,6 +3,8 @@ import { AppShell } from "./ui/layout/AppShell";
 import { PlaceholderPage } from "./ui/components/PlaceholderPage";
 import { AssetListPage } from "./ui/pages/assets/AssetListPage";
 import { ChatSpikePage } from "./ui/pages/chat/ChatSpikePage";
+import { DataPage } from "./ui/pages/settings/DataPage";
+import { StartRoute } from "./ui/pages/start/StartRoute";
 
 /**
  * Hash router, mirroring the web app's URL structure.
@@ -16,12 +18,7 @@ export const router = createHashRouter([
     path: "/",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Dashboard"
-          phase="Phase 5"
-          icon="speedometer2"
-          description="KPI tiles with count-up, portfolio pie, evolution line with a range selector."
-        />
+        <StartRoute />
       </AppShell>
     ),
   },
@@ -71,12 +68,7 @@ export const router = createHashRouter([
     path: "/data",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Data"
-          phase="Phase 2"
-          icon="hdd-stack"
-          description="Institutions, categories and tags: list, create, edit, delete, quick-add modals."
-        />
+        <DataPage />
       </AppShell>
     ),
   },

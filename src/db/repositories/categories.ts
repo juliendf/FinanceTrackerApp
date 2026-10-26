@@ -41,3 +41,27 @@ export async function countCategories(): Promise<number> {
   );
   return rows[0]?.n ?? 0;
 }
+
+/** Set (or clear) a category's system role. Used by the import role-mapping step. */
+export async function updateCategoryRole(
+  id: number,
+  systemRole: string | null,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE categories SET system_role = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE id = ?`,
+    [systemRole, id],
+  );
+}
+
+/** Categories that still have no system role. */
+export async function listCategoriesMissingRole(): Promise<Category[]> {
+  const db = await getDb();
+  return db.select<Category[]>(
+    `SELECT id, name, description, color, system_role, created_at, updated_at
+       FROM categories
+      WHERE system_role IS NULL OR system_role = ''
+      ORDER BY name COLLATE NOCASE ASC`,
+  );
+}

@@ -52,7 +52,7 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Institution form | `admin/institution_form.html` | 2 | - | |
 | Categories list | `admin/categories.html` | 2 | - | |
 | Category form | `admin/category_form.html` | 2 | - | Includes `system_role` + colour |
-| Admin dashboard ("Data") | `admin/dashboard.html` | 2 | - | |
+| Admin dashboard ("Data") | `admin/dashboard.html` | 2 | wip | Data screen now hosts import + reset; reference-data CRUD lands in Phase 2 |
 | Tags list | `tags/list.html` | 2 | - | |
 | Tag form | `tags/form.html` | 2 | - | |
 | Quick-add modal | `components/quick_add_modal.html`, `static/js/admin.js` | 2 | - | Used from asset forms |
@@ -91,7 +91,7 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Settings export | `settings/export.html` | 6 | - | |
 | Settings import | `settings/import.html` | 6 | - | |
 | Reset | `settings/reset.html` | 6 | - | Typed confirmation |
-| Import from FinanceTracker (wizard) | `services/data_export.py` (v2/v3) | 1b | - | First-run screen + Settings > Data |
+| Import from FinanceTracker (wizard) | `services/data_export.py` (v2/v3) | 1b | done | Pick → preview → import → role mapping → report. Verified against a real 18-asset backup |
 
 ## Chat and profile
 
@@ -107,7 +107,7 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Login | `auth/login.html` | - | drop | Single user, no login |
 | Register | `auth/register.html` | - | drop | |
 | Error 403 | `errors/403.html` | - | drop | No permissions in a single-user app |
-| Error 404 | `errors/404.html` | 1 | wip | A catch-all route exists; styled page pending |
+| Error 404 | `errors/404.html` | 1 | done | Catch-all route with a placeholder page |
 | Error 500 | `errors/500.html` | - | drop | No server; errors surface as toasts |
 
 ## Dead templates — not ported
