@@ -72,6 +72,33 @@ export function formatMinorAsCurrency(
   return formatCurrency(new Decimal(minor).dividedBy(100), currencyCode);
 }
 
+/**
+ * `percentage` filter: multiplies by 100 and appends '%'.
+ *
+ * Note this differs from the `percentage` column type in `table.html`, which
+ * formats the raw value without scaling — the two are intentionally separate.
+ */
+export function formatPercentage(
+  value: Decimal.Value | null | undefined,
+  decimalPlaces = 2,
+): string {
+  if (value === null || value === undefined) return "N/A";
+  if (typeof value === "string" && value.trim() === "") return "N/A";
+
+  let amount: Decimal;
+  try {
+    amount = new Decimal(value as Decimal.Value);
+  } catch {
+    return "N/A";
+  }
+  if (!amount.isFinite()) return "N/A";
+
+  const percentage = amount
+    .times(100)
+    .toDecimalPlaces(decimalPlaces, Decimal.ROUND_HALF_EVEN);
+  return `${percentage.toFixed(decimalPlaces)}%`;
+}
+
 /** Parse an ISO `YYYY-MM-DD` date as UTC midnight. Null when unparseable. */
 function parseIsoDate(value: string): Date | null {
   const parsed = new Date(`${value}T00:00:00Z`);

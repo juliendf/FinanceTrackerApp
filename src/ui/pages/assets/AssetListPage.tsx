@@ -18,6 +18,7 @@ import { formatDate, relativeDate } from "../../../domain/format";
 import {
   buildPortfolioSeries,
   freshness,
+  snapshotDateRange,
   summariseAssets,
   type FreshnessStatus,
 } from "../../../domain/portfolio";
@@ -78,6 +79,10 @@ export function AssetListPage() {
     () => buildPortfolioSeries(pointsQuery.data ?? []),
     [pointsQuery.data],
   );
+  const dateRange = useMemo(
+    () => snapshotDateRange(pointsQuery.data ?? []),
+    [pointsQuery.data],
+  );
 
   const invalidate = () => {
     void queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -130,8 +135,8 @@ export function AssetListPage() {
             icon="bi-wallet2"
             accent="primary"
             subtitle={
-              summary.dateRange.start && summary.dateRange.end
-                ? `${formatDate(summary.dateRange.start)} – ${formatDate(summary.dateRange.end)}`
+              dateRange.start && dateRange.end
+                ? `${formatDate(dateRange.start)} – ${formatDate(dateRange.end)}`
                 : "No snapshots yet"
             }          />
         </div>

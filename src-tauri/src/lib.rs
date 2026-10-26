@@ -2,15 +2,22 @@ pub mod commands;
 
 use tauri_plugin_sql::{Migration, MigrationKind};
 
-/// Schema migrations, applied by the SQL plugin at startup. Phase 0 ships a
-/// single migration covering the four spike tables.
+/// Schema migrations, applied by the SQL plugin at startup.
 fn migrations() -> Vec<Migration> {
-    vec![Migration {
-        version: 1,
-        description: "phase0_init",
-        sql: include_str!("../migrations/0001_init.sql"),
-        kind: MigrationKind::Up,
-    }]
+    vec![
+        Migration {
+            version: 1,
+            description: "phase0_init",
+            sql: include_str!("../migrations/0001_init.sql"),
+            kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 2,
+            description: "full_schema",
+            sql: include_str!("../migrations/0002_full_schema.sql"),
+            kind: MigrationKind::Up,
+        },
+    ]
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

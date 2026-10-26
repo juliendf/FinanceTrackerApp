@@ -15,7 +15,13 @@
 
 import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
-import { formatCurrency, formatDate, formatMinorAsCurrency, relativeDate } from "./format";
+import {
+  formatCurrency,
+  formatDate,
+  formatMinorAsCurrency,
+  formatPercentage,
+  relativeDate,
+} from "./format";
 
 describe("formatCurrency — Python oracle parity", () => {
   const cases: Array<[Decimal.Value | null, string, string]> = [
@@ -91,6 +97,31 @@ describe("formatMinorAsCurrency", () => {
   it("returns N/A for a missing value", () => {
     expect(formatMinorAsCurrency(null, "EUR")).toBe("N/A");
     expect(formatMinorAsCurrency(undefined, "EUR")).toBe("N/A");
+  });
+});
+
+describe("formatPercentage — percentage filter", () => {
+  // Oracle: percentage_filter from app/utils/filters.py
+  it("scales by 100 and appends %", () => {
+    expect(formatPercentage(0)).toBe("0.00%");
+    expect(formatPercentage(12.3456)).toBe("1234.56%");
+    expect(formatPercentage(-5.5)).toBe("-550.00%");
+    expect(formatPercentage(100)).toBe("10000.00%");
+    expect(formatPercentage("3.14159")).toBe("314.16%");
+    expect(formatPercentage(0.005)).toBe("0.50%");
+    expect(formatPercentage(1e-7)).toBe("0.00%");
+  });
+
+  it("returns N/A for a missing or unparseable value", () => {
+    expect(formatPercentage(null)).toBe("N/A");
+    expect(formatPercentage(undefined)).toBe("N/A");
+    expect(formatPercentage("")).toBe("N/A");
+    expect(formatPercentage("abc")).toBe("N/A");
+  });
+
+  it("honours the decimal-place argument", () => {
+    expect(formatPercentage(0.12345, 4)).toBe("12.3450%");
+    expect(formatPercentage(0.12345, 0)).toBe("12%");
   });
 });
 

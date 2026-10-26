@@ -95,21 +95,23 @@ export interface AssetSummaryInput {
 export interface AssetSummary {
   totalAssets: number;
   byCurrency: CurrencyTotal[];
-  dateRange: { start: string | null; end: string | null };
   assetsWithoutSnapshots: number;
 }
 
 /**
  * KPI tiles for the asset list, mirroring `list_assets()` in
  * `app/routes/assets.py` minus the cross-currency conversion.
+ *
+ * Note: no date range here. The source derived one from the min/max of each
+ * asset's *latest* snapshot date (`assets.py:137`), which prints the same day
+ * twice whenever every asset was updated together. We show the real snapshot
+ * range instead — see `snapshotDateRange` and docs/DEVIATIONS.md.
  */
 export function summariseAssets(
   rows: readonly AssetSummaryInput[],
 ): AssetSummary {
   const buckets = new Map<string, CurrencyTotal>();
   let withoutSnapshots = 0;
-  let start: string | null = null;
-  let end: string | null = null;
 
   for (const row of rows) {
     if (row.latest_amount_minor === null) {
@@ -129,11 +131,6 @@ export function summariseAssets(
     bucket.assetCount += 1;
     bucket.snapshotCount += 1;
     buckets.set(row.currency, bucket);
-
-    if (row.latest_date) {
-      if (!start || row.latest_date < start) start = row.latest_date;
-      if (!end || row.latest_date > end) end = row.latest_date;
-    }
   }
 
   return {
@@ -141,9 +138,31 @@ export function summariseAssets(
     byCurrency: [...buckets.values()].sort((a, b) =>
       a.currency.localeCompare(b.currency),
     ),
-    dateRange: { start, end },
     assetsWithoutSnapshots: withoutSnapshots,
   };
+}
+
+export interface DateRange {
+  start: string | null;
+  end: string | null;
+}
+
+/**
+ * First and last snapshot date across the whole portfolio. This is what the
+ * source *looked* like it meant, and what the KPI tile claims to show.
+ */
+export function snapshotDateRange(
+  points: readonly { date: string }[],
+): DateRange {
+  if (points.length === 0) return { start: null, end: null };
+
+  let start = points[0].date;
+  let end = points[0].date;
+  for (const point of points) {
+    if (point.date < start) start = point.date;
+    if (point.date > end) end = point.date;
+  }
+  return { start, end };
 }
 
 /** Whole days between a date and today. Negative clamps to 0, as `filters.py` does. */

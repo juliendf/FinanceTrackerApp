@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 import type { SnapshotPoint } from "./portfolio";
-import { buildPortfolioSeries, daysSince, freshness, summariseAssets } from "./portfolio";
+import {
+  buildPortfolioSeries,
+  daysSince,
+  freshness,
+  snapshotDateRange,
+  summariseAssets,
+} from "./portfolio";
 
 const point = (
   asset_id: number,
@@ -88,10 +94,6 @@ describe("summariseAssets", () => {
       { currency: "CHF", totalMinor: 70_00, assetCount: 1, snapshotCount: 1 },
       { currency: "EUR", totalMinor: 150_00, assetCount: 2, snapshotCount: 2 },
     ]);
-    expect(summary.dateRange).toEqual({
-      start: "2025-01-15",
-      end: "2025-03-01",
-    });
   });
 
   it("counts assets with no snapshots", () => {
@@ -103,6 +105,33 @@ describe("summariseAssets", () => {
     expect(summary.totalAssets).toBe(2);
     expect(summary.assetsWithoutSnapshots).toBe(1);
     expect(summary.byCurrency[0].assetCount).toBe(1);
+  });
+});
+
+describe("snapshotDateRange", () => {
+  it("returns the first and last snapshot date", () => {
+    expect(
+      snapshotDateRange([
+        { date: "2025-03-01" },
+        { date: "2025-01-15" },
+        { date: "2025-02-01" },
+      ]),
+    ).toEqual({ start: "2025-01-15", end: "2025-03-01" });
+  });
+
+  it("returns nulls when there are no snapshots", () => {
+    expect(snapshotDateRange([])).toEqual({ start: null, end: null });
+  });
+
+  it("shows the real range even when every asset shares one latest date", () => {
+    // The bug this replaced: source-derived range collapsed to a single day.
+    expect(
+      snapshotDateRange([
+        { date: "2025-01-01" },
+        { date: "2025-06-01" },
+        { date: "2025-06-01" },
+      ]),
+    ).toEqual({ start: "2025-01-01", end: "2025-06-01" });
   });
 });
 

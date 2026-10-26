@@ -3,6 +3,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { router } from "./router";
 import { watchSystemTheme } from "./lib/theme";
+import { SeedGate } from "./ui/layout/SeedGate";
+import { ToastProvider } from "./ui/layout/Toasts";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -21,7 +23,11 @@ export default function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
+      <ToastProvider>
+        <SeedGate>
+          <RouterProvider router={router} />
+        </SeedGate>
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

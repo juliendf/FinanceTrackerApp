@@ -1,56 +1,67 @@
 /**
- * Application shell: navbar, main region, footer.
+ * Application shell — navbar, content region, footer.
  *
- * Phase 0 keeps this deliberately thin — the full shell (sidebar with saved
- * collapse state, breadcrumbs, toast system) is Phase 1. The structure and
- * classes follow `templates/base.html` so custom.css lands on the same hooks.
+ * Structure and classes follow `templates/base.html` and
+ * `templates/components/navbar.html` so custom.css lands on the same hooks.
  */
 
 import type { ReactNode } from "react";
-import { NavLink } from "react-router-dom";
-import { ThemeToggle } from "./ThemeToggle";
-
-const NAV_ITEMS = [
-  { to: "/assets", label: "Assets", icon: "bi-wallet2" },
-  { to: "/ai", label: "AI chat", icon: "bi-chat-dots" },
-];
+import { Navbar } from "./Navbar";
+import { Sidebar, useSidebarCollapsed } from "./Sidebar";
+import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 
 export function AppShell({ children }: { children: ReactNode }) {
   return (
     <>
-      <nav className="navbar navbar-expand-lg">
-        <div className="container-fluid px-4">
-          <NavLink className="navbar-brand d-flex align-items-center gap-2" to="/assets">
-            <i className="bi bi-piggy-bank" aria-hidden="true" />
-            <span>FinanceTracker</span>
-          </NavLink>
-
-          <div className="d-flex align-items-center gap-2">
-            {NAV_ITEMS.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `btn btn-sm ${isActive ? "btn-primary" : "btn-outline-secondary"}`
-                }
-              >
-                <i className={`bi ${item.icon} me-1`} aria-hidden="true" />
-                {item.label}
-              </NavLink>
-            ))}
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
-
+      <Navbar />
       <main className="flex-grow-1">
-        <div className="container-fluid px-4 py-4">{children}</div>
+        <div className="container py-4">{children}</div>
       </main>
-
       <footer className="mt-auto">
         <div className="container d-flex flex-wrap justify-content-between align-items-center gap-2">
-          <span>&copy; 2025 FinanceTracker</span>
-          <span className="text-muted">Desktop edition</span>
+          <span>&copy; 2025 Finance Tracker</span>
+          <span className="d-flex align-items-center gap-2 text-muted small">
+            Desktop edition
+          </span>
+        </div>
+      </footer>
+    </>
+  );
+}
+
+/**
+ * Shell with the ported sidebar. The source only reaches its sidebar through
+ * `layouts/main.html`, which no live page extends, so this layout is available
+ * but not the default.
+ */
+export function AppShellWithSidebar({
+  children,
+  breadcrumbs = [],
+  counts,
+}: {
+  children: ReactNode;
+  breadcrumbs?: Crumb[];
+  counts?: Record<string, number>;
+}) {
+  const [collapsed, toggle] = useSidebarCollapsed();
+
+  return (
+    <>
+      <Navbar />
+      <div className="main-layout-container d-flex flex-grow-1">
+        <div className={`sidebar-wrapper${collapsed ? " collapsed" : ""}`}>
+          <Sidebar collapsed={collapsed} onToggle={toggle} counts={counts} />
+        </div>
+        <div className="main-content-wrapper flex-grow-1">
+          <div className="content-header bg-white border-bottom px-4 py-3">
+            <Breadcrumbs items={breadcrumbs} />
+          </div>
+          <div className="content-body p-4">{children}</div>
+        </div>
+      </div>
+      <footer className="mt-auto">
+        <div className="container d-flex flex-wrap justify-content-between align-items-center gap-2">
+          <span>&copy; 2025 Finance Tracker</span>
         </div>
       </footer>
     </>

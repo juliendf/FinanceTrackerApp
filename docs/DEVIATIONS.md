@@ -41,6 +41,12 @@ Format: **what** — **why** — **revisit in**.
   `journal_mode=WAL` is persistent in the file header, so it does stick.
   Cascading deletes therefore depend on the connection that runs the DELETE. —
   revisit Phase 1.
+- **The asset tiles show the real snapshot range, not the source's derived
+  one.** `app/routes/assets.py:137` takes `min`/`max` over each asset's *latest*
+  snapshot date, so every asset updated on the same day collapses the tile to
+  "2026-10-01 – 2026-10-01". We show the first and last snapshot date across the
+  portfolio (`snapshotDateRange`) instead, which is what the tile claims to
+  show. Deliberate fix, agreed with Julien.
 - **Chart re-theming goes through React state, not a live mutation.** The source
   keeps a `Set` of chart instances and mutates them in `retheme()`. Here the
   chart config is rebuilt on a `themechange` event and the Chart.js instance is
@@ -78,6 +84,35 @@ Nothing yet. The source bugs listed in `docs/ANALYSIS.md` section 1 (dead
 templates, stub performance dashboard) have not been ported, because the
 screens that hit them do not exist yet.
 
+## Phase 1 (foundation)
+
+- **Flash messages become a toast queue.** The web app flashes a message and
+  redirects, so it survives exactly one request. There is no request boundary
+  here, so `ToastProvider` keeps the same alert markup and the source's 5 s
+  auto-dismiss. Call sites that used `flash()` now push a toast.
+- **The sidebar is built but not the default layout.** In the source,
+  `components/sidebar.html` is included only by `layouts/main.html`, which no
+  live page extends, and its links are `#` anchors. The component is ported
+  (with collapse persisted in localStorage) and exposed as
+  `AppShellWithSidebar`, but screens use the navbar-only shell that the app
+  actually renders.
+- **The `theme` setting is stored but does not drive the UI.** The source keeps
+  `theme` in `DEFAULT_SETTINGS` *and* in localStorage, and only localStorage is
+  read (`ThemeManager`). We seed the setting for parity and keep the UI on
+  localStorage, so the two cannot disagree at runtime.
+- **`percentage` and the table's `percentage` column differ, as in the source.**
+  `filters.py:percentage_filter` multiplies by 100 and appends `%`; the
+  `percentage` column type in `table.html` formats the raw value without
+  scaling. Both are ported separately rather than unified.
+- **Screens that are not built yet render a placeholder.** Every navbar route
+  exists from Phase 1 so navigation never dead-ends; `PlaceholderPage` names the
+  phase that replaces it. Rows live in `docs/PARITY_CHECKLIST.md`.
+- **No real transaction boundary for multi-statement writes yet.** Same caveat
+  as Phase 0: `tauri-plugin-sql` exposes no transaction handle, so the first-run
+  seed and `setAssetTags` issue statements one by one. The seed is idempotent,
+  which makes a partial run self-healing on the next launch. — revisit Phase 1b
+  (the importer needs a hard guarantee).
+
 ## Open issues (observed, not yet explained)
 
 These are not intentional differences. They are recorded so Phase 1 picks them
@@ -89,9 +124,4 @@ up rather than rediscovering them.
   writer is unidentified. Clearing the localStorage row and relaunching restored
   correct auto behaviour. Symptoms: app ignores the system appearance until the
   user cycles the toggle. — investigate in Phase 1 with devtools attached.
-- **`date_range` on the asset tiles shows the same date twice** when every asset
-  was updated on the same day. This matches `app/routes/assets.py:137`, which
-  takes `min`/`max` of each asset's *latest* snapshot date, so it is faithful —
-  but it reads like a bug. Decide whether to keep parity or show the real
-  snapshot range. — decide in Phase 3.
 

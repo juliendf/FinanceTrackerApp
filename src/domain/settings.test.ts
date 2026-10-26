@@ -1,0 +1,115 @@
+/**
+ * Settings parity tests.
+ *
+ * DEFAULT_SETTINGS and the parse/serialize rules are transcribed from
+ * `app/utils/settings.py`; the expectations below were produced by running
+ * `_parse_setting_value` / `_serialize_setting_value` from that file.
+ */
+
+import { describe, expect, it } from "vitest";
+import { ratePairs } from "../db/seed";
+import {
+  DEFAULT_SETTINGS,
+  mergeSettings,
+  parseSettingValue,
+  serializeSettingValue,
+  settingValue,
+} from "./settings";
+
+describe("DEFAULT_SETTINGS", () => {
+  it("matches the source dictionary exactly", () => {
+    expect(DEFAULT_SETTINGS).toEqual({
+      base_currency: "EUR",
+      show_converted_amounts: true,
+      items_per_page: "20",
+      date_format: "%Y-%m-%d",
+      llm_timeout: "120",
+      theme: "light",
+      enable_animations: true,
+    });
+  });
+});
+
+describe("parseSettingValue", () => {
+  it("parses the booleans the source writes", () => {
+    expect(parseSettingValue("true")).toBe(true);
+    expect(parseSettingValue("false")).toBe(false);
+    // The source compares `value_str.lower()`, so any casing parses.
+    expect(parseSettingValue("True")).toBe(true);
+    expect(parseSettingValue("TRUE")).toBe(true);
+    expect(parseSettingValue("False")).toBe(false);
+  });
+
+  it("parses all-digit strings as integers", () => {
+    expect(parseSettingValue("20")).toBe(20);
+    expect(parseSettingValue("120")).toBe(120);
+    expect(parseSettingValue("0")).toBe(0);
+  });
+
+  it("parses floats when they are not all digits", () => {
+    expect(parseSettingValue("1.5")).toBe(1.5);
+    expect(parseSettingValue("-3")).toBe(-3);
+  });
+
+  it("leaves everything else as a string", () => {
+    expect(parseSettingValue("EUR")).toBe("EUR");
+    expect(parseSettingValue("%Y-%m-%d")).toBe("%Y-%m-%d");
+    expect(parseSettingValue("")).toBe("");
+  });
+});
+
+describe("serializeSettingValue", () => {
+  it("lowercases booleans, as the source does", () => {
+    expect(serializeSettingValue(true)).toBe("true");
+    expect(serializeSettingValue(false)).toBe("false");
+  });
+
+  it("stringifies everything else unchanged", () => {
+    expect(serializeSettingValue(20)).toBe("20");
+    expect(serializeSettingValue("EUR")).toBe("EUR");
+  });
+
+  it("round-trips through parse", () => {
+    for (const value of [true, false, 20, "EUR", "%Y-%m-%d"]) {
+      expect(parseSettingValue(serializeSettingValue(value))).toBe(value);
+    }
+  });
+});
+
+describe("mergeSettings", () => {
+  it("lets stored rows override the defaults", () => {
+    const merged = mergeSettings([
+      { key: "base_currency", value: "CHF" },
+      { key: "items_per_page", value: "50" },
+    ]);
+    expect(merged.base_currency).toBe("CHF");
+    expect(merged.items_per_page).toBe(50);
+    // Untouched keys keep their default.
+    expect(merged.date_format).toBe("%Y-%m-%d");
+  });
+
+  it("returns pure defaults for no rows", () => {
+    expect(mergeSettings([])).toEqual(DEFAULT_SETTINGS);
+  });
+});
+
+describe("settingValue", () => {
+  it("falls back to the default when a key is missing", () => {
+    expect(settingValue({}, "base_currency")).toBe("EUR");
+    expect(settingValue({ base_currency: "USD" }, "base_currency")).toBe("USD");
+  });
+});
+
+describe("ratePairs", () => {
+  it("seeds six directional pairs from three one-way rates", () => {
+    // Port of DEFAULT_RATES + _rate_pairs() in user_defaults.py
+    expect(ratePairs()).toEqual([
+      ["EUR", "USD", "1.1"],
+      ["USD", "EUR", "0.9091"],
+      ["EUR", "CHF", "0.95"],
+      ["CHF", "EUR", "1.0526"],
+      ["USD", "CHF", "0.86"],
+      ["CHF", "USD", "1.1628"],
+    ]);
+  });
+});

@@ -5,8 +5,9 @@
  */
 
 import { listAssets } from "../db/repositories/assets";
+import { listAllSnapshotPoints } from "../db/repositories/snapshots";
 import { formatMinorAsCurrency } from "../domain/format";
-import { summariseAssets } from "../domain/portfolio";
+import { snapshotDateRange, summariseAssets } from "../domain/portfolio";
 
 export interface ToolDefinition {
   type: "function";
@@ -51,6 +52,8 @@ export async function executeTool(
     case "get_portfolio_summary": {
       const assets = await listAssets();
       const summary = summariseAssets(assets);
+      const points = await listAllSnapshotPoints();
+      const range = snapshotDateRange(points);
 
       const byCurrency = summary.byCurrency.map((bucket) => ({
         currency: bucket.currency,
@@ -62,7 +65,7 @@ export async function executeTool(
         result: {
           total_assets: summary.totalAssets,
           assets_without_snapshots: summary.assetsWithoutSnapshots,
-          last_update: summary.dateRange.end,
+          last_update: range.end,
           by_currency: byCurrency,
           note:
             summary.byCurrency.length > 1
