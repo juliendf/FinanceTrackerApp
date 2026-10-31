@@ -19,6 +19,7 @@ import {
   updateProvider,
   PROVIDER_TYPES,
 } from "../../../db/repositories/llmProviders";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../layout/Toasts";
 import { SettingsLayout } from "./SettingsLayout";
 
@@ -59,6 +60,7 @@ export function LlmProviderFormPage() {
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -158,7 +160,7 @@ export function LlmProviderFormPage() {
 
   const remove = async () => {
     if (id === null) return;
-    if (!confirm("Delete this provider? Its API key is removed from the Keychain too.")) return;
+    setConfirmDelete(false);
     try {
       await deleteProvider(id);
       refresh();
@@ -319,13 +321,21 @@ export function LlmProviderFormPage() {
           </button>
           <Link to="/settings/llm-providers" className="btn btn-secondary">Cancel</Link>
           {id !== null ? (
-            <button type="button" className="btn btn-outline-danger ms-auto" onClick={() => void remove()}>
+            <button type="button" className="btn btn-outline-danger ms-auto" onClick={() => setConfirmDelete(true)}>
               <i className="bi bi-trash me-2" aria-hidden="true" />
               Delete
             </button>
           ) : null}
         </div>
       </form>
+
+      <DeleteConfirmModal
+        show={confirmDelete}
+        title="Delete provider"
+        message="Delete this provider? Its API key is removed from the Keychain too."
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={() => void remove()}
+      />
     </SettingsLayout>
   );
 }

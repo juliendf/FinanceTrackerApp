@@ -17,6 +17,7 @@ import {
   setDefaultProvider,
 } from "../../../db/repositories/llmProviders";
 import { setSetting } from "../../../db/repositories/settings";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../layout/Toasts";
 import { SettingsLayout } from "./SettingsLayout";
 
@@ -25,6 +26,7 @@ export function LlmProvidersPage() {
   const queryClient = useQueryClient();
   const providers = useQuery({ queryKey: ["llm-providers"], queryFn: listProviders });
   const [testing, setTesting] = useState<number | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const [timeoutValue, setTimeoutValue] = useState<string>("");
 
   const refresh = () => {
@@ -167,11 +169,7 @@ export function LlmProvidersPage() {
                           className="btn btn-icon btn-icon-danger"
                           title="Delete"
                           aria-label={`Delete ${provider.name}`}
-                          onClick={() => {
-                            if (confirm(`Delete "${provider.name}"? Its API key is removed from the Keychain too.`)) {
-                              remove.mutate(provider.id);
-                            }
-                          }}
+                          onClick={() => setPendingDelete({ id: provider.id, name: provider.name })}
                         >
                           <i className="bi bi-trash" aria-hidden="true" />
                         </button>
@@ -184,6 +182,22 @@ export function LlmProvidersPage() {
           </div>
         </div>
       )}
+
+      <DeleteConfirmModal
+        show={pendingDelete !== null}
+        title="Delete provider"
+        message={
+          pendingDelete
+            ? `Delete "${pendingDelete.name}"? Its API key is removed from the Keychain too.`
+            : ""
+        }
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          remove.mutate(pendingDelete.id);
+          setPendingDelete(null);
+        }}
+      />
 
       <div className="card card-finance">
         <div className="card-body">

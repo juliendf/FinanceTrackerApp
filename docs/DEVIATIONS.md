@@ -383,6 +383,10 @@ and changeable there.
   current month only: on the 31st, "90 days of history" means "since the 1st".
   `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
   real days instead.
+- **No `window.confirm` / `alert`.** Tauri routes them through the dialog plugin,
+  whose permission this app does not grant, so they reject silently and the
+  delete never runs. Every confirmation is an in-app modal
+  (`DeleteConfirmModal`), and `src/ui/no-browser-confirm.test.ts` enforces it.
 - **Markdown is sanitised.** The source trusted its own converter; here
   `react-markdown` + `rehype-sanitize` strip anything executable.
 - **The profile has no account fields.** Email, phone and password are gone;

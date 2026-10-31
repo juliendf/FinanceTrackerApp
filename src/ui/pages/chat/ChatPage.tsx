@@ -42,6 +42,7 @@ import {
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
 import { useRememberedModel } from "../../../llm/modelChoice";
+import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
 
@@ -85,6 +86,9 @@ export function ChatPage() {
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [models, setModels] = useState<string[]>([]);
+  const [pendingDelete, setPendingDelete] = useState<
+    { kind: "conversation"; id: number; title: string } | { kind: "message"; id: number } | null
+  >(null);
   const [model, setModel] = useRememberedModel(conversation.data?.provider_id ?? null);
   const requestIdRef = useRef<string>("");
   const abortRef = useRef<((requestId: string) => Promise<void>) | null>(null);
@@ -138,7 +142,7 @@ export function ChatPage() {
   };
 
   const removeConversation = async (convId: number) => {
-    if (!confirm("Delete this conversation? Its messages go with it.")) return;
+    setPendingDelete(null);
     await deleteConversation(convId);
     refreshList();
     if (id === convId) navigate("/chat");
@@ -277,7 +281,7 @@ export function ChatPage() {
   };
 
   const deleteMessage = async (messageId: number) => {
-    if (!confirm("Delete this message and everything after it?")) return;
+    setPendingDelete(null);
     await deleteMessageFrom(messageId);
     refreshList();
   };
@@ -343,7 +347,13 @@ export function ChatPage() {
                     {conv.title}
                   </button>
                 )}
-                <button type="button" className="btn-delete-conv" title="Delete conversation" aria-label={`Delete ${conv.title}`} onClick={() => void removeConversation(conv.id)}>
+                <button
+                  type="button"
+                  className="btn-delete-conv"
+                  title="Delete conversation"
+                  aria-label={`Delete ${conv.title}`}
+                  onClick={() => setPendingDelete({ kind: "conversation", id: conv.id, title: conv.title })}
+                >
                   <i className="bi bi-x" aria-hidden="true" />
                 </button>
               </div>
@@ -408,7 +418,12 @@ export function ChatPage() {
                   if (message.role === "user") {
                     return (
                       <div className="msg-bubble msg-user" key={message.id}>
-                        <button type="button" className="btn-delete-msg" title="Delete this message and rewind conversation" onClick={() => void deleteMessage(message.id)}>
+                        <button
+                          type="button"
+                          className="btn-delete-msg"
+                          title="Delete this message and rewind conversation"
+                          onClick={() => setPendingDelete({ kind: "message", id: message.id })}
+                        >
                           <i className="bi bi-x" aria-hidden="true" />
                         </button>
                         <span className="msg-text">{message.content}</span>
@@ -527,6 +542,24 @@ export function ChatPage() {
           </aside>
         ) : null}
       </div>
+
+      <DeleteConfirmModal
+        show={pendingDelete !== null}
+        title={pendingDelete?.kind === "message" ? "Delete message" : "Delete conversation"}
+        message={
+          pendingDelete?.kind === "message"
+            ? "Delete this message and everything after it? The assistant will lose that context."
+            : pendingDelete
+              ? `Delete "${pendingDelete.title}"? Its messages go with it.`
+              : ""
+        }
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={() => {
+          if (!pendingDelete) return;
+          if (pendingDelete.kind === "message") void deleteMessage(pendingDelete.id);
+          else void removeConversation(pendingDelete.id);
+        }}
+      />
     </>
   );
 }
