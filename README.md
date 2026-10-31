@@ -21,6 +21,20 @@ npm install
 npm run tauri dev        # app with hot reload
 ```
 
+`tauri dev` is the way to try a change without building or installing anything: it
+compiles a debug binary once, serves the UI from Vite and reloads the frontend on
+save. Rust changes restart the app.
+
+Two things to know:
+
+- **It uses the same database as the installed app** (same bundle identifier,
+  same `~/Library/Application Support/ch.julien.financetrackerapp/`). Testing
+  writes to your real data; take a backup from the Data page first if that
+  matters.
+- **Running the UI alone with `npm run dev` in a browser only works for static
+  screens.** SQLite, dialogs, the Keychain and the updater are Tauri commands and
+  are absent outside the webview.
+
 ## Build
 
 ```sh
