@@ -7,14 +7,19 @@
  * rate, plus an optional initial snapshot.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button, Col, Form, Modal, Row } from "react-bootstrap";
+import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import type { Category } from "../../../db/repositories/categories";
 import type { Institution } from "../../../db/repositories/institutions";
 import { createAsset } from "../../../db/repositories/assets";
+import {
+  QuickAddCategoryModal,
+  QuickAddInstitutionModal,
+} from "../../components/QuickAddModal";
 
 const decimalInRange = (label: string, min: number, max: number) =>
   z
@@ -81,11 +86,15 @@ export function AssetFormModal({ show, institutions, categories, onHide, onCreat
     [],
   );
 
+  const queryClient = useQueryClient();
+  const [quickAdd, setQuickAdd] = useState<"institution" | "category" | null>(null);
+
   const {
     register,
     handleSubmit,
     reset,
     setError,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -147,17 +156,28 @@ export function AssetFormModal({ show, institutions, categories, onHide, onCreat
             <Col md={6}>
               <Form.Group controlId="institution_id">
                 <Form.Label>Institution</Form.Label>
-                <Form.Select
-                  {...register("institution_id")}
-                  isInvalid={!!errors.institution_id}
-                >
-                  <option value="">Select an institution…</option>
-                  {institutions.map((institution) => (
-                    <option key={institution.id} value={institution.id}>
-                      {institution.name}
-                    </option>
-                  ))}
-                </Form.Select>
+                <div className="d-flex gap-2">
+                  <Form.Select
+                    {...register("institution_id")}
+                    isInvalid={!!errors.institution_id}
+                  >
+                    <option value="">Select an institution…</option>
+                    {institutions.map((institution) => (
+                      <option key={institution.id} value={institution.id}>
+                        {institution.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Button
+                    type="button"
+                    variant="outline-secondary"
+                    title="Quick add institution"
+                    aria-label="Quick add institution"
+                    onClick={() => setQuickAdd("institution")}
+                  >
+                    <i className="bi bi-plus-lg" aria-hidden="true" />
+                  </Button>
+                </div>
                 <Form.Control.Feedback type="invalid">
                   {errors.institution_id?.message}
                 </Form.Control.Feedback>
@@ -167,17 +187,28 @@ export function AssetFormModal({ show, institutions, categories, onHide, onCreat
             <Col md={6}>
               <Form.Group controlId="category_id">
                 <Form.Label>Category</Form.Label>
-                <Form.Select
-                  {...register("category_id")}
-                  isInvalid={!!errors.category_id}
-                >
-                  <option value="">Select a category…</option>
-                  {categories.map((category) => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </Form.Select>
+                <div className="d-flex gap-2">
+                  <Form.Select
+                    {...register("category_id")}
+                    isInvalid={!!errors.category_id}
+                  >
+                    <option value="">Select a category…</option>
+                    {categories.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </Form.Select>
+                  <Button
+                    type="button"
+                    variant="outline-secondary"
+                    title="Quick add category"
+                    aria-label="Quick add category"
+                    onClick={() => setQuickAdd("category")}
+                  >
+                    <i className="bi bi-plus-lg" aria-hidden="true" />
+                  </Button>
+                </div>
                 <Form.Control.Feedback type="invalid">
                   {errors.category_id?.message}
                 </Form.Control.Feedback>
@@ -321,6 +352,23 @@ export function AssetFormModal({ show, institutions, categories, onHide, onCreat
           </Button>
         </Modal.Footer>
       </Form>
+
+      <QuickAddInstitutionModal
+        show={quickAdd === "institution"}
+        onClose={() => setQuickAdd(null)}
+        onCreated={async (created) => {
+          await queryClient.invalidateQueries({ queryKey: ["institutions"] });
+          setValue("institution_id", String(created.id), { shouldValidate: true });
+        }}
+      />
+      <QuickAddCategoryModal
+        show={quickAdd === "category"}
+        onClose={() => setQuickAdd(null)}
+        onCreated={async (created) => {
+          await queryClient.invalidateQueries({ queryKey: ["categories"] });
+          setValue("category_id", String(created.id), { shouldValidate: true });
+        }}
+      />
     </Modal>
   );
 }

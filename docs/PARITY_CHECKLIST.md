@@ -48,14 +48,14 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Institutions list | `admin/institutions.html` | 2 | - | |
-| Institution form | `admin/institution_form.html` | 2 | - | |
-| Categories list | `admin/categories.html` | 2 | - | |
-| Category form | `admin/category_form.html` | 2 | - | Includes `system_role` + colour |
+| Institutions list | `admin/institutions.html` | 2 | dev | List + create/edit/delete; forms are modals (see DEVIATIONS) |
+| Institution form | `admin/institution_form.html` | 2 | dev | Fields and validators ported; rendered in a modal |
+| Categories list | `admin/categories.html` | 2 | dev | Includes colour swatch and French system-role label |
+| Category form | `admin/category_form.html` | 2 | dev | Includes `system_role` + colour; rendered in a modal |
 | Admin dashboard ("Data") | `admin/dashboard.html` | 2 | wip | Data screen now hosts import + reset; reference-data CRUD lands in Phase 2 |
-| Tags list | `tags/list.html` | 2 | - | |
-| Tag form | `tags/form.html` | 2 | - | |
-| Quick-add modal | `components/quick_add_modal.html`, `static/js/admin.js` | 2 | - | Used from asset forms |
+| Tags list | `tags/list.html` | 2 | dev | Badge rendering and usage counts |
+| Tag form | `tags/form.html` | 2 | dev | Rendered in a modal |
+| Quick-add modal | `components/quick_add_modal.html`, `static/js/admin.js` | 2 | done | Wired into the asset create form |
 
 ## Assets
 

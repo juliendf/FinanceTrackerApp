@@ -25,7 +25,7 @@ export interface Column<T> {
   className?: string;
 }
 
-interface Props<T extends Record<string, unknown>> {
+interface Props<T extends object> {
   rows: readonly T[];
   columns: ReadonlyArray<Column<T>>;
   rowKey: (row: T) => string | number;
@@ -36,15 +36,17 @@ interface Props<T extends Record<string, unknown>> {
   tableId?: string;
 }
 
-function renderCell<T extends Record<string, unknown>>(column: Column<T>, row: T): ReactNode {
+function renderCell<T extends object>(column: Column<T>, row: T): ReactNode {
   if (column.render) return column.render(row);
 
-  const raw = row[column.key];
+  const raw = (row as Record<string, unknown>)[column.key];
   if (raw === null || raw === undefined || raw === "") return "-";
 
   switch (column.type) {
     case "currency": {
-      const code = column.currencyKey ? String(row[column.currencyKey] ?? "EUR") : "EUR";
+      const code = column.currencyKey
+        ? String((row as Record<string, unknown>)[column.currencyKey] ?? "EUR")
+        : "EUR";
       return (
         <span className="currency-amount" data-currency={code}>
           {formatCurrency(raw as string | number, code)}
@@ -62,7 +64,7 @@ function renderCell<T extends Record<string, unknown>>(column: Column<T>, row: T
   }
 }
 
-export function DataTable<T extends Record<string, unknown>>({
+export function DataTable<T extends object>({
   rows,
   columns,
   rowKey,

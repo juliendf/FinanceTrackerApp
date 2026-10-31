@@ -154,6 +154,32 @@ screens that hit them do not exist yet.
 - **The first-run screen exists only in the desktop app.** The source registered
   a user and dropped them on an empty dashboard, so there was no decision point.
 
+## Phase 2 (reference data)
+
+- **Create and edit use modals rather than full pages.** The source has
+  dedicated routes for the forms (`/admin/institutions/new`,
+  `/admin/categories/<id>/edit`, `/tags/<id>/edit`) because a browser needs a
+  URL per form. The desktop app has no such need, so the same fields, validators
+  and markup live in a modal owned by the list screen. Field-level errors behave
+  identically. Say the word if you would rather have the pages.
+- **Deleting a referenced institution or category is refused, deleting a tag is
+  allowed.** This matches the source exactly (`delete_institution` and
+  `delete_category` check the asset count and flash an error, `tag_delete`
+  removes the associations and deletes). The database's `ON DELETE RESTRICT` /
+  cascade is the backstop.
+- **The quick-add category uses `#6c757d`, not `#007bff`.** The AJAX endpoint in
+  `routes/admin.py` calls `Category(name=...)`, so the colour comes from the
+  *model* default (`core.py:96`), not from `CategoryForm`, whose default is
+  `#007bff`. Both defaults are kept, in `DEFAULT_CATEGORY_COLOR` and
+  `QUICK_ADD_CATEGORY_COLOR`.
+- **Uniqueness stays case-sensitive.** The source validates with
+  `filter_by(name=...)`, an exact match on a case-sensitive column, so "ubs" and
+  "UBS" are both allowed. Kept for parity even though a case-insensitive check
+  would be friendlier.
+- **Colour validation differs per entity, as in the source.** Categories require
+  exactly six hex digits (`^#[0-9A-Fa-f]{6}$`); tags accept three or six
+  (`^#(?:[0-9a-fA-F]{3}){1,2}$`).
+
 ## Open issues (observed, not yet explained)
 
 These are not intentional differences. They are recorded so Phase 1 picks them

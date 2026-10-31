@@ -104,14 +104,19 @@ function compare(a: unknown, b: unknown): number {
 }
 
 /** Stable sort by one key. `key === null` returns the input order. */
-export function sortRows<T extends Record<string, unknown>>(
+export function sortRows<T extends object>(
   rows: readonly T[],
   state: SortState,
 ): T[] {
   if (!state.key) return [...rows];
   const key = state.key;
   const factor = state.direction === "asc" ? 1 : -1;
-  return [...rows].sort((a, b) => factor * compare(a[key], b[key]));
+  return [...rows].sort((a, b) =>
+    factor * compare(
+      (a as Record<string, unknown>)[key],
+      (b as Record<string, unknown>)[key],
+    ),
+  );
 }
 
 /** First/last visible row numbers for the "Showing X to Y of Z" label. */

@@ -10,12 +10,29 @@ export interface Tag {
   updated_at: string;
 }
 
+export interface TagWithCount extends Tag {
+  asset_count: number;
+}
+
 export async function listTags(): Promise<Tag[]> {
   const db = await getDb();
   return db.select<Tag[]>(
     `SELECT id, name, color, created_at, updated_at
        FROM tags
       ORDER BY name COLLATE NOCASE ASC`,
+  );
+}
+
+/** Tags plus how many assets carry each one. */
+export async function listTagsWithCounts(): Promise<TagWithCount[]> {
+  const db = await getDb();
+  return db.select<TagWithCount[]>(
+    `SELECT t.id, t.name, t.color, t.created_at, t.updated_at,
+            COUNT(at.asset_id) AS asset_count
+       FROM tags t
+       LEFT JOIN asset_tags at ON at.tag_id = t.id
+      GROUP BY t.id
+      ORDER BY t.name COLLATE NOCASE ASC`,
   );
 }
 
@@ -26,6 +43,44 @@ export async function createTag(name: string, color: string | null): Promise<num
     [name.trim(), color],
   );
   return Number(result.lastInsertId);
+}
+
+export async function updateTag(
+  id: number,
+  name: string,
+  color: string | null,
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE tags SET name = ?, color = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE id = ?`,
+    [name.trim(), color, id],
+  );
+}
+
+/**
+ * Delete a tag. Unlike institutions and categories this is allowed while in use:
+ * `asset_tags` rows cascade, which is what `tags.py:tag_delete` does by removing
+ * the association from every asset first.
+ */
+export async function deleteTag(id: number): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM tags WHERE id = ?`, [id]);
+}
+
+export async function countTags(): Promise<number> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM tags`);
+  return rows[0]?.n ?? 0;
+}
+
+export async function tagNameExists(name: string, excludeId?: number): Promise<boolean> {
+  const db = await getDb();
+  const rows = await db.select<{ n: number }[]>(
+    `SELECT COUNT(*) AS n FROM tags WHERE name = ? AND id <> ?`,
+    [name.trim(), excludeId ?? -1],
+  );
+  return (rows[0]?.n ?? 0) > 0;
 }
 
 /** Tag ids attached to an asset. */
@@ -58,10 +113,4 @@ export async function listAllAssetTags(): Promise<
   return db.select<Array<{ asset_id: number; tag_id: number }>>(
     `SELECT asset_id, tag_id FROM asset_tags`,
   );
-}
-
-export async function countTags(): Promise<number> {
-  const db = await getDb();
-  const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM tags`);
-  return rows[0]?.n ?? 0;
 }

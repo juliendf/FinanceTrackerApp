@@ -4,6 +4,9 @@ import { PlaceholderPage } from "./ui/components/PlaceholderPage";
 import { AssetListPage } from "./ui/pages/assets/AssetListPage";
 import { ChatSpikePage } from "./ui/pages/chat/ChatSpikePage";
 import { DataPage } from "./ui/pages/settings/DataPage";
+import { CategoriesPage } from "./ui/pages/reference/CategoriesPage";
+import { InstitutionsPage } from "./ui/pages/reference/InstitutionsPage";
+import { TagsPage } from "./ui/pages/reference/TagsPage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
 
 /**
@@ -102,12 +105,7 @@ export const router = createHashRouter([
     path: "/institutions",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Institutions"
-          phase="Phase 2"
-          icon="building"
-          description="Reference data for the banks and brokers your assets belong to."
-        />
+        <InstitutionsPage />
       </AppShell>
     ),
   },
@@ -115,12 +113,7 @@ export const router = createHashRouter([
     path: "/categories",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Categories"
-          phase="Phase 2"
-          icon="tags"
-          description="Categories carry a colour and a system role, which the Résumé view needs."
-        />
+        <CategoriesPage />
       </AppShell>
     ),
   },
@@ -128,12 +121,7 @@ export const router = createHashRouter([
     path: "/tags",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Tags"
-          phase="Phase 2"
-          icon="bookmark"
-          description="Free-form labels attached to assets."
-        />
+        <TagsPage />
       </AppShell>
     ),
   },
