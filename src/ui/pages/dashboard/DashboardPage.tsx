@@ -57,8 +57,8 @@ export function DashboardPage() {
         icon="speedometer2"
       />
 
-      <div className="row g-3 mb-4">
-        <div className="col-xl-3 col-md-6">
+      <div className="stat-grid">
+        <div>
           <div className="stat-card accent-primary">
             <div className="stat-label">Total Assets</div>
             <div className="stat-icon"><i className="bi bi-wallet2" aria-hidden="true" /></div>
@@ -66,7 +66,7 @@ export function DashboardPage() {
             <div className="stat-subtitle">Across all institutions</div>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
+        <div>
           <div className="stat-card accent-success">
             <div className="stat-label">Portfolio Value</div>
             <div className="stat-icon"><i className="bi bi-cash-stack" aria-hidden="true" /></div>
@@ -79,7 +79,7 @@ export function DashboardPage() {
             </div>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
+        <div>
           <div className="stat-card accent-info">
             <div className="stat-label">Currencies</div>
             <div className="stat-icon"><i className="bi bi-globe2" aria-hidden="true" /></div>
@@ -87,7 +87,7 @@ export function DashboardPage() {
             <div className="stat-subtitle">{summary.currencies.join(", ") || "None yet"}</div>
           </div>
         </div>
-        <div className="col-xl-3 col-md-6">
+        <div>
           <div className={`stat-card ${summary.daysSinceUpdate > 30 ? "accent-warning" : "accent-primary"}`}>
             <div className="stat-label">Days Since Update</div>
             <div className="stat-icon"><i className="bi bi-clock-history" aria-hidden="true" /></div>
@@ -120,8 +120,8 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="row">
-        <div className="col-lg-7 mb-4">
+      <div className="dashboard-charts">
+        <div className="mb-0">
           <div className="card h-100 card-accent">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="card-title mb-0">
@@ -148,7 +148,7 @@ export function DashboardPage() {
           </div>
         </div>
 
-        <div className="col-lg-5 mb-4">
+        <div>
           <div className="card h-100 card-accent">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h5 className="card-title mb-0">

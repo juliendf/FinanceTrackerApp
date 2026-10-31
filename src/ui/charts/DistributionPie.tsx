@@ -1,7 +1,8 @@
 /** Distribution pie plus the legend list beside it (home dashboard and charts page). */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArcElement, Chart as ChartJS, Legend, Tooltip, type ChartConfiguration } from "chart.js";
+import type { Chart as ChartInstance } from "chart.js";
 import { Pie } from "react-chartjs-2";
 import type { DistributionSlice } from "../../domain/dashboard";
 import { formatCurrency } from "../../domain/format";
@@ -25,6 +26,16 @@ const money = (amount: number, currency: string, label: string) =>
 export function DistributionPie({ slices, currency, height = 260, showLegendList = true }: Props) {
   const theme = useThemeName();
   const [sort, setSort] = useState<"amount-desc" | "name-asc">("amount-desc");
+  const chartRef = useRef<ChartInstance<"pie"> | null>(null);
+  const chartBox = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const element = chartBox.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => chartRef.current?.resize());
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const config = useMemo<ChartConfiguration<"pie">>(() => {
     const base = mergeConfig(
@@ -62,16 +73,16 @@ export function DistributionPie({ slices, currency, height = 260, showLegendList
   }
 
   const chart = (
-    <div style={{ height }}>
-      <Pie data={config.data} options={config.options} key={theme} />
+    <div ref={chartBox} style={{ height }}>
+      <Pie ref={chartRef} data={config.data} options={config.options} key={theme} />
     </div>
   );
   if (!showLegendList) return chart;
 
   return (
-    <div className="row">
-      <div className="col-md-6">{chart}</div>
-      <div className="col-md-6">
+    <div className="distribution-split">
+      <div>{chart}</div>
+      <div>
         <div className="d-flex justify-content-between align-items-center gap-2 mb-2">
           <h6 className="mb-0">Breakdown</h6>
           <div className="segmented" role="group" aria-label="Sort breakdown">

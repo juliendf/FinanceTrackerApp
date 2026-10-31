@@ -1,6 +1,6 @@
 /** A value-over-time line, themed like the web app's charts. */
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import {
   CategoryScale,
   Chart as ChartJS,
@@ -12,6 +12,7 @@ import {
   Tooltip,
   type ChartConfiguration,
 } from "chart.js";
+import type { Chart as ChartInstance } from "chart.js";
 import { Line } from "react-chartjs-2";
 import { formatCurrency } from "../../domain/format";
 import { useThemeName } from "../../lib/useTheme";
@@ -42,6 +43,18 @@ export function EvolutionLineChart({
   emptyMessage = "No snapshots in this period.",
 }: Props) {
   const theme = useThemeName();
+  const chartRef = useRef<ChartInstance<"line"> | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
+  // Chart.js only listens to window resizes. A card can change width without
+  // one (a sibling wrapping, the sidebar collapsing), so observe the box.
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(() => chartRef.current?.resize());
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
 
   const config = useMemo<ChartConfiguration<"line">>(() => {
     const base = mergeConfig(
@@ -69,8 +82,8 @@ export function EvolutionLineChart({
   }
 
   return (
-    <div style={{ height }}>
-      <Line data={config.data} options={config.options} key={theme} />
+    <div ref={containerRef} style={{ height }}>
+      <Line ref={chartRef} data={config.data} options={config.options} key={theme} />
     </div>
   );
 }

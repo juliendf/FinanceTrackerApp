@@ -397,6 +397,14 @@ and changeable there.
 
 ## Phase 8: packaging
 
+- **The shell is a sidebar app, not a web page.** Navigation moved from the top
+  navbar into a collapsible sidebar, the footer is gone, the window is full
+  height and only the content scrolls. The window uses an overlay title bar, so
+  the toolbar and the sidebar top strip are drag regions
+  (`core:window:allow-start-dragging`). Bootstrap's `col-xl-*` breakpoints were
+  replaced with CSS grids (`auto-fit`) because they snapped at exactly 1200px
+  inside a resizable window, and the charts observe their container with a
+  `ResizeObserver` so a card changing width does not leave a stale canvas.
 - **The icon is drawn from code.** `scripts/make-icon.py` renders a 1024 px
   master with signed-distance shapes (no image library, no binary blob to
   review), and `npx tauri icon` derives every size plus `.icns`/`.ico`. The
