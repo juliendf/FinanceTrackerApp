@@ -29,7 +29,6 @@ vi.mock("../../../db/repositories/institutions", () => ({
 vi.mock("../../../db/repositories/categories", () => ({
   listCategories: async () => [{ id: 1, name: "Cash" }],
 }));
-vi.mock("@tauri-apps/plugin-dialog", () => ({ save: vi.fn() }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
 
 import { BulkEntryPage } from "./BulkEntryPage";

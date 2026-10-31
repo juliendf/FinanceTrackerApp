@@ -9,7 +9,6 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
-import { save } from "@tauri-apps/plugin-dialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Decimal from "decimal.js";
 import { listInstitutions } from "../../../db/repositories/institutions";
@@ -134,12 +133,13 @@ export function SnapshotListPage() {
   const exportCsv = async () => {
     const rows = sortSnapshots(filterSnapshots(allRows, filters), { sort_by: "date", sort_order: "desc" });
     try {
-      const path = await save({
-        defaultPath: csvFileName(todayIso()),
-        filters: [{ name: "CSV", extensions: ["csv"] }],
+      const path = await invoke<string | null>("save_text_file", {
+        defaultName: csvFileName(todayIso()),
+        filterName: "CSV",
+        extensions: ["csv"],
+        contents: generateSnapshotsCsv(rows),
       });
       if (!path) return;
-      await invoke("write_text_file", { path, contents: generateSnapshotsCsv(rows) });
       toast.success(`Exported ${rows.length} snapshot${rows.length === 1 ? "" : "s"} to ${path}`);
     } catch (error) {
       toast.error(`Export failed: ${errText(error)}`);

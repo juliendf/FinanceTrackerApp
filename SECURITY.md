@@ -23,24 +23,28 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 ## Webview and IPC
 
 - All assets are bundled (Bootstrap, icons and fonts from npm); there are no CDN or remote scripts.
-- Capabilities (`src-tauri/capabilities/default.json`) grant the main window: `core:default`, SQL (load/select/execute/close), `dialog:default`, `fs:default`.
-- Custom commands: `run_transaction`, `database_path`, `read_text_file`, `write_text_file`, `secret_set/get/delete`, `chat_completion`, `cancel_chat`, `list_models`, `test_connection`.
+- **Content Security Policy** (`tauri.conf.json`): `default-src 'self'`, `script-src 'self'`, `connect-src ipc: http://ipc.localhost`, `object-src 'none'`, `frame-ancestors 'none'`. `style-src` allows `'unsafe-inline'` because React, Bootstrap and Chart.js set inline styles. A separate `devCsp` adds the Vite dev server and its websocket, and applies only to `tauri dev`.
+- Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default` and the SQL plugin's load/select/execute/close. The `fs` and `dialog` plugin permissions are not granted; the `fs` plugin is not installed.
+- Custom commands: `run_transaction`, `database_path`, `pick_and_read_text_file`, `save_text_file`, `secret_set/get/delete`, `chat_completion`, `cancel_chat`, `list_models`, `test_connection`.
+
+## File access
+
+The webview never passes a path. `pick_and_read_text_file` and `save_text_file` open the native dialog in Rust and only touch the file the user chose there. Reads are capped at 50 MB.
 
 ## SQL safety
 
 - Single-statement queries use bind parameters.
 - Multi-statement transactions must inline values (the plugin offers no transaction handle). Every value goes through `src/db/literals.ts`: text is escaped by doubling quotes, integers are validated, and the builders are unit-tested against quotes, newlines, semicolons and an injection attempt. New code must not concatenate raw strings into SQL.
-- `run_transaction` executes whatever statements the webview sends. This is acceptable only because the webview is trusted, which is why the open issues below matter.
+- `run_transaction` guards every statement in Rust (`check_statement`): it must start with `INSERT`, `UPDATE` or `DELETE`, contain no second statement and no SQL comment outside a quoted literal. `DROP`, `ATTACH`, `PRAGMA`, `CREATE` and `SELECT` are refused. The guard is tested, including against all 196 statements generated from a real backup. It does not restrict *which tables* may be modified.
 
 ## Open issues (to fix before shipping, Phase 8)
 
-1. **No Content Security Policy.** `tauri.conf.json` has `"csp": null`. Add a restrictive CSP (`default-src 'self'`, inline styles only if needed, `connect-src` limited to IPC) so injected markup cannot run script.
-2. **`read_text_file` / `write_text_file` accept any path.** They exist so a dialog-picked file outside the fs plugin scope can be read, but nothing in Rust checks that the path came from a dialog. A compromised webview could read or overwrite any file the user can. Restrict to paths returned by the dialog (track them in Rust) or move the dialog into Rust.
-3. **`run_transaction` accepts arbitrary SQL** from the webview. Replace with named, parameterised operations as the write set stabilises, or at minimum reject statements outside an allow-list of verbs and tables.
-4. **`fs:default` and the sql permissions** are broader than the app needs once (2) is fixed; trim them.
-5. **Real backups are not git-ignored.** `.gitignore` covers build output and credentials but not `*.json` backups. Keep backups outside the repo (the real one lives in `~/Downloads`), and add an ignore rule for `finance_tracker_data_*.json`.
-6. **Keys pass through JS** (see Secrets).
-7. **Unsigned build.** Phase 8 covers code signing and notarisation; until then Gatekeeper warns and there is no tamper evidence.
+1. **`run_transaction` has no table allow-list.** The verb guard stops schema changes and stacked statements, but a compromised webview could still delete or rewrite rows. Replace with named, parameterised operations as the write set stabilises.
+2. **Keys pass through JS.** `secret_get` hands the key to the webview, which passes it to `chat_completion`. Have Rust read the Keychain from the provider id (Phase 7).
+3. **Unsigned build.** Phase 8 covers code signing and notarisation; until then Gatekeeper warns and there is no tamper evidence.
+4. **Database is unencrypted** (see Data at rest).
+
+Personal data is git-ignored: `finance_tracker_data_*.json`, `snapshots_export_*.csv`, `*.db`, `*.db-wal`, `*.db-shm`.
 
 ## Reporting
 

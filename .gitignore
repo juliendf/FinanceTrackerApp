@@ -26,3 +26,10 @@ tests/golden/local/
 .env.*
 *.p12
 *.provisionprofile
+
+# Personal data: real backups and exports must never be committed
+finance_tracker_data_*.json
+snapshots_export_*.csv
+*.db
+*.db-wal
+*.db-shm

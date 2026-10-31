@@ -969,7 +969,6 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tauri-plugin-dialog",
- "tauri-plugin-fs",
  "tauri-plugin-sql",
  "thiserror 2.0.21",
  "tokio",

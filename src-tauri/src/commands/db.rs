@@ -16,7 +16,7 @@
 //! SQL is still generated in TypeScript; Rust only executes the list.
 
 use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::{Connection, Executor, SqliteConnection};
+use sqlx::{Connection, SqliteConnection};
 use std::str::FromStr;
 use tauri::{AppHandle, Manager};
 
@@ -76,9 +76,63 @@ pub async fn execute_statements(db_url: &str, statements: &[String]) -> Result<u
     Ok(statements.len())
 }
 
+/// Reject anything that is not one plain data-modifying statement.
+///
+/// `run_transaction` receives SQL text from the webview. Every legitimate caller
+/// sends `INSERT`, `UPDATE` or `DELETE`, so anything else (`DROP`, `ATTACH`,
+/// `PRAGMA`, `CREATE`, ...) is refused, as is a second statement smuggled in
+/// after a `;` and any SQL comment. Text inside single-quoted literals is
+/// skipped, with `''` as the escaped quote, so values may contain `;` and `--`.
+pub fn check_statement(statement: &str) -> Result<(), String> {
+    let trimmed = statement.trim_start();
+    let verb: String = trimmed
+        .chars()
+        .take_while(|c| c.is_ascii_alphabetic())
+        .collect::<String>()
+        .to_ascii_uppercase();
+    if !matches!(verb.as_str(), "INSERT" | "UPDATE" | "DELETE") {
+        return Err(format!("only INSERT, UPDATE and DELETE are allowed, got `{verb}`"));
+    }
+
+    let mut in_string = false;
+    let mut chars = statement.trim_end().chars().peekable();
+    while let Some(c) = chars.next() {
+        if in_string {
+            if c == '\'' {
+                if chars.peek() == Some(&'\'') {
+                    chars.next();
+                } else {
+                    in_string = false;
+                }
+            }
+            continue;
+        }
+        match c {
+            '\'' => in_string = true,
+            ';' => {
+                // A single trailing semicolon is harmless; anything after it is not.
+                if chars.peek().is_some() {
+                    return Err("multiple statements are not allowed".to_string());
+                }
+            }
+            '-' if chars.peek() == Some(&'-') => return Err("SQL comments are not allowed".to_string()),
+            '/' if chars.peek() == Some(&'*') => return Err("SQL comments are not allowed".to_string()),
+            _ => {}
+        }
+    }
+    if in_string {
+        return Err("unterminated string literal".to_string());
+    }
+    Ok(())
+}
+
 /// Run a list of statements atomically against the app database.
 #[tauri::command]
 pub async fn run_transaction(app: AppHandle, statements: Vec<String>) -> Result<usize, String> {
+    for (index, statement) in statements.iter().enumerate() {
+        check_statement(statement)
+            .map_err(|e| format!("statement {} of {} rejected: {e}", index + 1, statements.len()))?;
+    }
     let file = database_file(&app)?;
     if !file.exists() {
         return Err(format!("database not found at {}", file.display()));

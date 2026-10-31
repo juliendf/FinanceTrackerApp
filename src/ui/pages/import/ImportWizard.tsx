@@ -11,7 +11,6 @@
 
 import { useState } from "react";
 import { Modal } from "react-bootstrap";
-import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { useQueryClient } from "@tanstack/react-query";
 import { parseBackup, type ParsedBackup } from "../../../import/schema";
@@ -73,18 +72,17 @@ export function ImportWizard({ show, onClose, onImported }: Props) {
   const pickFile = async () => {
     setError(null);
     try {
-      const selected = await open({
-        multiple: false,
-        directory: false,
-        filters: [{ name: "FinanceTracker backup", extensions: ["json"] }],
-      });
-      if (!selected || typeof selected !== "string") return;
-
-      const raw = await invoke<string>("read_text_file", { path: selected });
+      // The native dialog is opened by Rust, which reads only what was picked.
+      const picked = await invoke<{ name: string; contents: string } | null>(
+        "pick_and_read_text_file",
+        { filterName: "FinanceTracker backup", extensions: ["json"] },
+      );
+      if (!picked) return;
+      const raw = picked.contents;
       const parsed = parseBackup(raw);
       const nextPlan = buildImportPlan(parsed);
 
-      setFileName(selected.split("/").pop() ?? selected);
+      setFileName(picked.name);
       setBackup(parsed);
       setPlan(nextPlan);
       setStep("preview");

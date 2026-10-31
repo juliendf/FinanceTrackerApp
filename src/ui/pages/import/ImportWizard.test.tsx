@@ -2,8 +2,8 @@
 /**
  * Import wizard state machine.
  *
- * Tauri is mocked at the two boundaries the wizard touches — the native dialog
- * and `invoke` — plus the repository layer. What is under test is the wizard's
+ * Tauri is mocked at the two boundaries the wizard touches — `invoke` (the native dialog is opened by Rust)
+ * — plus the repository layer. What is under test is the wizard's
  * own logic: it must show blocking errors instead of importing, must move to the
  * category-role step when the imported categories have no role, and must reach
  * the report when everything worked.
@@ -15,12 +15,7 @@ import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const openDialog = vi.fn();
 const invoke = vi.fn();
-
-vi.mock("@tauri-apps/plugin-dialog", () => ({
-  open: (...args: unknown[]) => openDialog(...args),
-}));
 
 vi.mock("@tauri-apps/api/core", () => ({
   invoke: (...args: unknown[]) => invoke(...args),
@@ -65,8 +60,7 @@ function renderWizard(onImported = vi.fn()) {
 }
 
 async function pickFile() {
-  openDialog.mockResolvedValue("/Users/test/backup.json");
-  invoke.mockResolvedValue(fixtureRaw);
+  invoke.mockResolvedValue({ name: "backup.json", contents: fixtureRaw });
   await userEvent.click(screen.getByRole("button", { name: /choose a backup file/i }));
 }
 
@@ -116,8 +110,7 @@ describe("ImportWizard", () => {
   it("refuses to import a file with blocking errors", async () => {
     const broken = JSON.parse(fixtureRaw);
     broken.data.assets[0].institution_id = 999;
-    openDialog.mockResolvedValue("/Users/test/broken.json");
-    invoke.mockResolvedValue(JSON.stringify(broken));
+    invoke.mockResolvedValue({ name: "broken.json", contents: JSON.stringify(broken) });
 
     renderWizard();
     await userEvent.click(screen.getByRole("button", { name: /choose a backup file/i }));
@@ -129,8 +122,7 @@ describe("ImportWizard", () => {
   });
 
   it("shows the error when the file is not a backup", async () => {
-    openDialog.mockResolvedValue("/Users/test/notes.json");
-    invoke.mockResolvedValue("{}");
+    invoke.mockResolvedValue({ name: "notes.json", contents: "{}" });
 
     renderWizard();
     await userEvent.click(screen.getByRole("button", { name: /choose a backup file/i }));

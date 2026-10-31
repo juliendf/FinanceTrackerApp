@@ -15,7 +15,7 @@
 
 use std::path::PathBuf;
 
-use financetrackerapp_lib::commands::db::execute_statements;
+use financetrackerapp_lib::commands::db::{check_statement, execute_statements};
 use sqlx::{Connection, SqliteConnection};
 
 /// Fresh database with the real migrations applied.
@@ -139,6 +139,11 @@ async fn imports_the_generated_statement_list() {
         Ok(url) => (PathBuf::new(), url),
         Err(_) => fresh_database("import").await,
     };
+    // Every statement the importer emits must pass the run_transaction guard.
+    for (i, statement) in statements.iter().enumerate() {
+        check_statement(statement)
+            .unwrap_or_else(|e| panic!("guard rejected import statement {}: {e}", i + 1));
+    }
     let count = execute_statements(&url, &statements).await.unwrap();
     println!("committed {count} statements");
 
@@ -415,5 +420,43 @@ async fn a_bulk_amount_update_rolls_back_on_an_invalid_amount() {
     // Whether or not the schema rejects a negative amount, the batch is atomic.
     if result.is_err() {
         assert_eq!(scalar(&url, "SELECT amount_minor FROM snapshots WHERE id = 1").await, 100);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// run_transaction statement guard
+// ---------------------------------------------------------------------------
+
+
+#[test]
+fn the_guard_accepts_the_statements_the_app_sends() {
+    for sql in [
+        "INSERT INTO institutions (id, name) VALUES (1, 'UBS')",
+        "  update snapshots SET amount_minor = 5 WHERE id = 1",
+        "DELETE FROM snapshots WHERE id = 1;",
+        // Semicolons, comments and doubled quotes are fine inside a literal.
+        "INSERT INTO tags (id, name) VALUES (1, 'a; DROP TABLE x; -- /* it''s */')",
+        "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES ((SELECT seq FROM sqlite_sequence WHERE name = 'assets'), '2026-01-01', 1)",
+    ] {
+        assert!(check_statement(sql).is_ok(), "should accept: {sql}");
+    }
+}
+
+#[test]
+fn the_guard_refuses_everything_else() {
+    for sql in [
+        "DROP TABLE assets",
+        "PRAGMA writable_schema = 1",
+        "ATTACH DATABASE '/tmp/x.db' AS x",
+        "CREATE TABLE t (a)",
+        "SELECT * FROM assets",
+        "",
+        "DELETE FROM snapshots; DROP TABLE assets",
+        "DELETE FROM snapshots WHERE id = 1; -- trailing",
+        "DELETE FROM snapshots /* c */ WHERE id = 1",
+        "DELETE FROM snapshots -- c",
+        "INSERT INTO tags (id, name) VALUES (1, 'unterminated)",
+    ] {
+        assert!(check_statement(sql).is_err(), "should refuse: {sql}");
     }
 }

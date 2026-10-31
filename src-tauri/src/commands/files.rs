@@ -1,21 +1,83 @@
 //! File dialogs and IO.
 //!
-//! The fs plugin is scoped to app directories, so reading a user-picked backup
-//! from ~/Downloads or ~/Documents goes through these commands instead of
-//! widening the plugin's scope.
+//! The webview never supplies a path. Each command opens the native dialog
+//! itself and only reads or writes what the user picked there, so a compromised
+//! webview cannot read or overwrite arbitrary files.
 
-use std::path::Path;
+use serde::Serialize;
+use tauri::AppHandle;
+use tauri_plugin_dialog::DialogExt;
 
-/// Read a UTF-8 text file the user picked in a native dialog.
-#[tauri::command]
-pub fn read_text_file(path: String) -> Result<String, String> {
-    let path = Path::new(&path);
-    std::fs::read_to_string(path).map_err(|e| format!("cannot read {}: {e}", path.display()))
+/// A file the user picked in the open dialog.
+#[derive(Serialize)]
+pub struct PickedFile {
+    /// File name only, for display.
+    pub name: String,
+    pub contents: String,
 }
 
-/// Write a UTF-8 text file (backup export, CSV export).
+/// Upper bound on a file read through the dialog. A backup is a few hundred KB;
+/// this stops a mistaken pick of a huge file from being loaded into the webview.
+const MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
+
+/// Show an open dialog and read the chosen UTF-8 file. `None` when cancelled.
 #[tauri::command]
-pub fn write_text_file(path: String, contents: String) -> Result<(), String> {
-    let path = Path::new(&path);
-    std::fs::write(path, contents).map_err(|e| format!("cannot write {}: {e}", path.display()))
+pub async fn pick_and_read_text_file(
+    app: AppHandle,
+    filter_name: String,
+    extensions: Vec<String>,
+) -> Result<Option<PickedFile>, String> {
+    let exts: Vec<&str> = extensions.iter().map(String::as_str).collect();
+    let Some(picked) = app
+        .dialog()
+        .file()
+        .add_filter(&filter_name, &exts)
+        .blocking_pick_file()
+    else {
+        return Ok(None);
+    };
+    let path = picked
+        .into_path()
+        .map_err(|e| format!("unsupported path: {e}"))?;
+
+    let size = std::fs::metadata(&path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?
+        .len();
+    if size > MAX_READ_BYTES {
+        return Err(format!("{} is too large ({size} bytes)", path.display()));
+    }
+    let contents = std::fs::read_to_string(&path)
+        .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
+    let name = path
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    Ok(Some(PickedFile { name, contents }))
+}
+
+/// Show a save dialog and write `contents` where the user chose. Returns the
+/// chosen path, or `None` when cancelled.
+#[tauri::command]
+pub async fn save_text_file(
+    app: AppHandle,
+    default_name: String,
+    filter_name: String,
+    extensions: Vec<String>,
+    contents: String,
+) -> Result<Option<String>, String> {
+    let exts: Vec<&str> = extensions.iter().map(String::as_str).collect();
+    let Some(picked) = app
+        .dialog()
+        .file()
+        .set_file_name(&default_name)
+        .add_filter(&filter_name, &exts)
+        .blocking_save_file()
+    else {
+        return Ok(None);
+    };
+    let path = picked
+        .into_path()
+        .map_err(|e| format!("unsupported path: {e}"))?;
+    std::fs::write(&path, contents).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    Ok(Some(path.display().to_string()))
 }
