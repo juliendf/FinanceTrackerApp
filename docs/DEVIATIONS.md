@@ -239,10 +239,35 @@ screens that hit them do not exist yet.
 - **"Load sample data" moved to the Data screen and only exists in development
   builds**, as `docs/ANALYSIS.md` intended (a dev command for screenshots). It
   no longer appears on the empty asset list.
-- **Snapshot links point at Phase 4 placeholders.** The detail page's
-  "Add Snapshot" and per-row "Edit" link to `/snapshots/new` and
-  `/snapshots/:id/edit`, which render a placeholder until Phase 4. The per-row
-  *delete* button is not shown yet.
+## Phase 4: snapshots
+
+- **Snapshot links on the asset detail page are live.** The Phase 3 placeholder
+  note no longer applies; the history table now has a per-row delete (modal).
+- **List pager uses Flask-SQLAlchemy `iter_pages`** (page-2 to page+4 window), as
+  the source does. An out-of-range `page` is clamped; the source returns an
+  empty page.
+- **Edit validates the duplicate date up front**, excluding the snapshot itself.
+  The source surfaces a raw IntegrityError naming a misleading date.
+- **Bulk edit is all-or-nothing.** The source commits the valid rows and flashes
+  the rest.
+- **Bulk entry flags a zero or negative amount on its row.** The source silently
+  drops it. The 1e9 cap applies to bulk too.
+- **"Apply same amount" and "Copy previous" are wired.** The source has the
+  `/bulk/apply-amount` and `/bulk/copy-previous` endpoints but its template never
+  calls them; the brief requires them. Copy previous uses the latest snapshot
+  strictly before the chosen date.
+- **Amount 0 reads "Amount must be greater than 0"**, not the source's "Please
+  enter an amount" (a falsy-Decimal quirk of `DataRequired`).
+- **"Save & Back to Asset" shows whenever an asset is selected.**
+- **CSV tie order is defined**: date descending, then id ascending. The source
+  leaves it to the database. Output is byte-identical to Python's `csv.writer`
+  on the real backup (`tests/oracle/snapshots_csv.py`).
+- **Sort by asset follows PostgreSQL NULL ordering** on the custom-name column
+  (last ascending, first descending), with a deterministic tie-break.
+- **Detail "View All Snapshots" filters the list by the asset's product name.**
+  The source passes `asset_id`, which the list route ignores, so it shows every
+  snapshot.
+- **Export CSV opens a native save dialog** instead of a browser download.
 
 ## Open issues (observed, not yet explained)
 

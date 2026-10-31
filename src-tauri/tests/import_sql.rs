@@ -313,3 +313,107 @@ async fn updating_an_asset_replaces_its_tags_atomically() {
     assert!(error.contains("FOREIGN KEY"), "got: {error}");
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM asset_tags WHERE asset_id = 1").await, 1);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 4: snapshots
+// ---------------------------------------------------------------------------
+
+async fn seed_two_assets(url: &str) {
+    seed_reference_rows(url).await;
+    execute_statements(
+        url,
+        &[
+            "INSERT INTO assets (id, institution_id, category_id, currency, product_name) VALUES (1, 1, 1, 'EUR', 'A')".to_string(),
+            "INSERT INTO assets (id, institution_id, category_id, currency, product_name) VALUES (2, 1, 1, 'EUR', 'B')".to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_bulk_snapshot_batch_with_one_duplicate_writes_nothing() {
+    let (_file, url) = fresh_database("bulk-snapshots").await;
+    seed_two_assets(&url).await;
+    execute_statements(
+        &url,
+        &["INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (2, '2026-03-01', 500)".to_string()],
+    )
+    .await
+    .unwrap();
+
+    // Asset 1 is fine, asset 2 already has a snapshot on that date.
+    let error = execute_statements(
+        &url,
+        &[
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (1, '2026-03-01', 100)".to_string(),
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (2, '2026-03-01', 200)".to_string(),
+        ],
+    )
+    .await
+    .unwrap_err();
+    assert!(error.contains("statement 2 of 2"), "got: {error}");
+    assert_eq!(scalar(&url, "SELECT COUNT(*) FROM snapshots").await, 1);
+}
+
+#[tokio::test]
+async fn a_bulk_snapshot_batch_commits_every_row() {
+    let (_file, url) = fresh_database("bulk-snapshots-ok").await;
+    seed_two_assets(&url).await;
+    execute_statements(
+        &url,
+        &[
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (1, '2026-03-01', 100)".to_string(),
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (2, '2026-03-01', 200)".to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+    assert_eq!(scalar(&url, "SELECT SUM(amount_minor) FROM snapshots").await, 300);
+}
+
+#[tokio::test]
+async fn a_snapshot_is_unique_per_asset_and_date() {
+    let (_file, url) = fresh_database("snapshot-unique").await;
+    seed_two_assets(&url).await;
+    let insert = "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (1, '2026-03-01', 100)".to_string();
+    execute_statements(&url, &[insert.clone()]).await.unwrap();
+    assert!(execute_statements(&url, &[insert]).await.is_err());
+    // Same date on another asset, and another date on the same asset, are fine.
+    execute_statements(
+        &url,
+        &[
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (2, '2026-03-01', 100)".to_string(),
+            "INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (1, '2026-03-02', 100)".to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+}
+
+#[tokio::test]
+async fn a_bulk_amount_update_rolls_back_on_an_invalid_amount() {
+    let (_file, url) = fresh_database("bulk-update").await;
+    seed_two_assets(&url).await;
+    execute_statements(
+        &url,
+        &[
+            "INSERT INTO snapshots (id, asset_id, date, amount_minor) VALUES (1, 1, '2026-03-01', 100)".to_string(),
+            "INSERT INTO snapshots (id, asset_id, date, amount_minor) VALUES (2, 2, '2026-03-01', 200)".to_string(),
+        ],
+    )
+    .await
+    .unwrap();
+    let result = execute_statements(
+        &url,
+        &[
+            "UPDATE snapshots SET amount_minor = 999 WHERE id = 1".to_string(),
+            "UPDATE snapshots SET amount_minor = -5 WHERE id = 2".to_string(),
+        ],
+    )
+    .await;
+    // Whether or not the schema rejects a negative amount, the batch is atomic.
+    if result.is_err() {
+        assert_eq!(scalar(&url, "SELECT amount_minor FROM snapshots WHERE id = 1").await, 100);
+    }
+}

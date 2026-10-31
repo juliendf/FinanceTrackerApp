@@ -70,12 +70,12 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Snapshots list | `snapshots/list.html` | 4 | - | Filters, sorting, bulk delete, summary stats |
-| New snapshot | `snapshots/new.html` | 4 | - | Previous-value lookup, amount > 0, no future dates |
-| Snapshot detail | `snapshots/detail.html` | 4 | - | |
-| Edit snapshot | `snapshots/edit.html` | 4 | - | |
-| Bulk entry grid | `snapshots/bulk.html` | 4 | - | Apply same amount, copy previous, all-or-nothing write |
-| Bulk edit | `snapshots/bulk_edit.html` | 4 | - | |
+| Snapshots list | `snapshots/list.html` | 4 | dev | Filters in URL, sort, per-page, bulk bar, summary tile, pager, CSV via save dialog (byte-identical to oracle). See Phase 4 deviations |
+| New snapshot | `snapshots/new.html` | 4 | dev | Previous-value callout, three submit modes, `?asset_id` preselect, validation and duplicate messages |
+| Snapshot detail | `snapshots/detail.html` | 4 | dev | Info cards, timeline, quick stats, delete modal |
+| Edit snapshot | `snapshots/edit.html` | 4 | dev | Pending-changes preview, header delete, up-front duplicate check |
+| Bulk entry grid | `snapshots/bulk.html` | 4 | dev | Filters in URL, apply same amount, copy previous, per-row errors, atomic write |
+| Bulk edit | `snapshots/bulk_edit.html` | 4 | dev | `?ids=`, clear changes, atomic update |
 
 ## Settings and data
 

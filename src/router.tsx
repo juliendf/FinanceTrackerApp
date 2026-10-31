@@ -9,6 +9,11 @@ import { DataPage } from "./ui/pages/settings/DataPage";
 import { CategoriesPage } from "./ui/pages/reference/CategoriesPage";
 import { InstitutionsPage } from "./ui/pages/reference/InstitutionsPage";
 import { TagsPage } from "./ui/pages/reference/TagsPage";
+import { BulkEditPage } from "./ui/pages/snapshots/BulkEditPage";
+import { BulkEntryPage } from "./ui/pages/snapshots/BulkEntryPage";
+import { SnapshotDetailPage } from "./ui/pages/snapshots/SnapshotDetailPage";
+import { SnapshotFormPage } from "./ui/pages/snapshots/SnapshotFormPage";
+import { SnapshotListPage } from "./ui/pages/snapshots/SnapshotListPage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
 
 /**
@@ -73,15 +78,42 @@ export const router = createHashRouter([
     ),
   },
   {
+    path: "/snapshots",
+    element: (
+      <AppShell>
+        <SnapshotListPage />
+      </AppShell>
+    ),
+  },
+  {
     path: "/snapshots/new",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Record Snapshot"
-          phase="Phase 4"
-          icon="camera"
-          description="Single entry with the previous-value lookup. Asset pages already link here."
-        />
+        <SnapshotFormPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/snapshots/bulk",
+    element: (
+      <AppShell>
+        <BulkEntryPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/snapshots/bulk-edit",
+    element: (
+      <AppShell>
+        <BulkEditPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/snapshots/:snapshotId",
+    element: (
+      <AppShell>
+        <SnapshotDetailPage />
       </AppShell>
     ),
   },
@@ -89,25 +121,7 @@ export const router = createHashRouter([
     path: "/snapshots/:snapshotId/edit",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Edit Snapshot"
-          phase="Phase 4"
-          icon="camera"
-          description="Edit a single snapshot."
-        />
-      </AppShell>
-    ),
-  },
-  {
-    path: "/snapshots",
-    element: (
-      <AppShell>
-        <PlaceholderPage
-          title="Snapshots"
-          phase="Phase 4"
-          icon="camera"
-          description="Filters, sorting, bulk delete, CSV export, single entry and the bulk entry grid."
-        />
+        <SnapshotFormPage />
       </AppShell>
     ),
   },

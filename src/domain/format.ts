@@ -21,7 +21,7 @@ const SYMBOLS: Record<string, string> = {
 const SYMBOL_FIRST = new Set(["USD", "EUR", "GBP", "CAD", "AUD"]);
 
 /** `f"{value:,.2f}"` — comma thousands, dot decimals, always 2 dp. */
-function formatNumber(value: Decimal): string {
+export function formatNumber(value: Decimal): string {
   // Python's format spec keeps the sign of the original value, even when the
   // rounded result is zero (-0.004 -> "-0.00"), so decide the sign first.
   const sign = value.isNegative() ? "-" : "";
@@ -199,4 +199,14 @@ export function formatPercentValue(value: Decimal.Value | null | undefined): str
   const four = amount.toDecimalPlaces(4, Decimal.ROUND_HALF_EVEN);
   const text = four.decimalPlaces() <= 2 ? four.toFixed(2) : four.toString();
   return `${text}%`;
+}
+
+/**
+ * `"{symbol} {amount:,.2f}"` as the snapshot flash messages and detail page
+ * build it: the symbol from `Asset.formatted_currency`, a space, then the
+ * grouped amount. Note this is *not* the `currency` filter — CHF stays a prefix
+ * here, so it prints "CHF 1,234.50" rather than "1,234.50 CHF".
+ */
+export function formatSymbolAmount(symbol: string, major: Decimal.Value): string {
+  return `${symbol} ${formatNumber(new Decimal(major))}`;
 }

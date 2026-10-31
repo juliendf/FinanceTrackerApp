@@ -34,6 +34,7 @@ import {
   normaliseDecimal,
   type AssetCreateValues,
 } from "../../../domain/assets";
+import { todayIso } from "../../../domain/dates";
 import { formatDate, formatMinorAsCurrency, relativeDate } from "../../../domain/format";
 import { AssetDeleteModal } from "../../components/AssetDeleteModal";
 import { PageHeader } from "../../components/FormCard";
@@ -43,13 +44,6 @@ import {
   QuickAddTagModal,
 } from "../../components/QuickAddModal";
 import { useToast } from "../../layout/Toasts";
-
-/** Local calendar date as YYYY-MM-DD, the form's `default=date.today`. */
-function todayLocal(): string {
-  const now = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
-}
 
 function FieldError({ message }: { message?: string }) {
   return message ? <div className="invalid-feedback d-block">{message}</div> : null;
@@ -133,7 +127,7 @@ function AssetForm({ editing }: { editing?: EditingState }) {
       tags: editing ? editing.tagIds.map(String) : [],
       create_initial_snapshot: true,
       initial_amount: "",
-      initial_date: todayLocal(),
+      initial_date: todayIso(),
     }),
     [editing],
   );
@@ -199,7 +193,7 @@ function AssetForm({ editing }: { editing?: EditingState }) {
       const id = await createAsset({
         ...toInput(values),
         initial_amount: wantsSnapshot ? values.initial_amount : null,
-        initial_date: wantsSnapshot ? values.initial_date || todayLocal() : null,
+        initial_date: wantsSnapshot ? values.initial_date || todayIso() : null,
       });
       invalidateAssets();
 
