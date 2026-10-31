@@ -355,6 +355,16 @@ and changeable there.
   with the message so a replayed history still has it.
   `tests/live.rs::gemini_keeps_the_thought_signature_across_a_tool_round`
   asserts both the failure without it and the success with it.
+- **Streamed tool calls are keyed by id when there is no index.** OpenAI puts an
+  `index` on every tool-call fragment; Gemini does not, and sends one delta per
+  call with only an `id`. Keying on index alone merged all calls into the first
+  slot, producing names like `get_allocationget_allocationlist_assets`, which the
+  tool executor rejected and the provider then refused on the next request.
+  `tests/live.rs::gemini_streams_two_tool_calls_kept_apart` covers it.
+- **Corrupt tool rows are dropped from the history window.** Rows written by
+  those merged calls carry names no longer in `tools.json`; replaying them makes
+  every later turn fail, so `buildHistoryMessages` drops them (and their
+  orphaned results) instead of sending an invalid turn.
 - **Reasoning models get `max_tokens` 4096**, computed in Rust from the model
   name (`qwen3*`, `deepseek-r1`, `deepseek-v3`), as `llm_client.py` does.
 - **No `ChatJob` table.** Streaming is a Tauri channel and cancellation an

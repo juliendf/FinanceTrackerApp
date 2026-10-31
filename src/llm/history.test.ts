@@ -47,8 +47,8 @@ describe("buildHistoryMessages", () => {
 
   it("drops an assistant call whose results were cut off", () => {
     const twoCalls = JSON.stringify([
-      { id: "c1", type: "function", function: { name: "a", arguments: "{}" } },
-      { id: "c2", type: "function", function: { name: "b", arguments: "{}" } },
+      { id: "c1", type: "function", function: { name: "list_assets", arguments: "{}" } },
+      { id: "c2", type: "function", function: { name: "get_allocation", arguments: "{}" } },
     ]);
     const messages = buildHistoryMessages([
       row(1, { role: "user", content: "x" }),
@@ -58,6 +58,18 @@ describe("buildHistoryMessages", () => {
       row(5, { role: "assistant", content: "done" }),
     ]);
     expect(messages.map((m) => m.role)).toEqual(["user", "assistant", "tool", "tool", "assistant"]);
+    // Only the first result survives when its pair was cut off... here both do.
+    expect(messages.filter((m) => m.role === "tool")).toHaveLength(2);
+
+    // Now cut the second result: the assistant turn loses a response, so the
+    // whole exchange goes, and the surviving result with it.
+    const cut = buildHistoryMessages([
+      row(1, { role: "user", content: "x" }),
+      row(2, { role: "assistant", content: "", tool_calls: twoCalls }),
+      row(3, { role: "tool", content: "{}", tool_call_id: "c1" }),
+      row(5, { role: "assistant", content: "done" }),
+    ]);
+    expect(cut.map((m) => m.role)).toEqual(["user", "assistant"]);
   });
 
   it("drops an orphaned result and an empty assistant turn", () => {
@@ -70,6 +82,22 @@ describe("buildHistoryMessages", () => {
     expect(messages).toEqual([
       { role: "user", content: "x" },
       { role: "assistant", content: "fine" },
+    ]);
+  });
+
+  it("drops a corrupt tool-call row so an old broken turn cannot poison the request", () => {
+    const corrupt = JSON.stringify([
+      { id: "c1", type: "function", function: { name: "get_allocationget_allocationlist_assets", arguments: "{}" } },
+    ]);
+    const messages = buildHistoryMessages([
+      row(1, { role: "user", content: "analyse" }),
+      row(2, { role: "assistant", content: "", tool_calls: corrupt }),
+      row(3, { role: "tool", content: '{"error":"Unknown tool"}', tool_call_id: "c1" }),
+      row(4, { role: "assistant", content: "Sorry, let me retry." }),
+    ]);
+    expect(messages).toEqual([
+      { role: "user", content: "analyse" },
+      { role: "assistant", content: "Sorry, let me retry." },
     ]);
   });
 

@@ -151,15 +151,45 @@ fn status_error(status: reqwest::StatusCode, body: &str) -> String {
     )
 }
 
-/// Merge one streaming `tool_calls` delta into the accumulator, keyed by index.
-/// The provider fragments `arguments` across chunks, so this concatenates.
+/// Merge one streaming `tool_calls` delta into the accumulator.
+///
+/// OpenAI puts an `index` on every fragment, so that is the natural key.
+/// Gemini does not: each call arrives in its own delta carrying an `id`, with no
+/// index at all, so keying on index alone merged every call into slot 0 and
+/// produced names like `get_allocationget_allocationlist_assets`.
+///
+/// The rule, in order: use `index` when present; otherwise start a new slot for
+/// an unseen `id` and continue the matching one; with neither, continue the last
+/// slot (a fragment of the call being streamed).
 fn merge_tool_delta(acc: &mut Vec<ToolCall>, delta: &Value) {
-    let index = delta["index"].as_u64().unwrap_or(0) as usize;
-    while acc.len() <= index {
-        acc.push(ToolCall::default());
-    }
-    let slot = &mut acc[index];
+    let slot = match delta["index"].as_u64() {
+        Some(index) => {
+            let index = index as usize;
+            while acc.len() <= index {
+                acc.push(ToolCall::default());
+            }
+            index
+        }
+        None => {
+            let id = delta["id"].as_str().unwrap_or("");
+            if id.is_empty() {
+                if acc.is_empty() {
+                    acc.push(ToolCall::default());
+                }
+                acc.len() - 1
+            } else {
+                match acc.iter().position(|call| call.id == id) {
+                    Some(index) => index,
+                    None => {
+                        acc.push(ToolCall::default());
+                        acc.len() - 1
+                    }
+                }
+            }
+        }
+    };
 
+    let slot = &mut acc[slot];
     if let Some(id) = delta["id"].as_str() {
         if !id.is_empty() {
             slot.id = id.to_string();
@@ -485,6 +515,35 @@ mod tests {
         assert_eq!(acc[0].id, "call_1");
         assert_eq!(acc[0].name, "get_portfolio_summary");
         assert_eq!(acc[0].arguments, "{\"a\":1}");
+    }
+
+    #[test]
+    fn tool_deltas_without_an_index_are_keyed_by_id() {
+        // Gemini sends one delta per call, with an id and no index at all.
+        let mut acc: Vec<ToolCall> = Vec::new();
+        merge_tool_delta(
+            &mut acc,
+            &json!({"id": "call_a", "function": {"name": "get_portfolio_summary", "arguments": "{}"}}),
+        );
+        merge_tool_delta(
+            &mut acc,
+            &json!({"id": "call_b", "function": {"name": "get_allocation", "arguments": "{\"dimension\":"}}),
+        );
+        merge_tool_delta(&mut acc, &json!({"function": {"arguments": "\"category\"}"}}));
+
+        assert_eq!(acc.len(), 2, "two calls must not merge: {acc:?}");
+        assert_eq!(acc[0].name, "get_portfolio_summary");
+        assert_eq!(acc[1].name, "get_allocation");
+        assert_eq!(acc[1].arguments, "{\"dimension\":\"category\"}");
+    }
+
+    #[test]
+    fn tool_deltas_with_an_index_still_accumulate_fragments() {
+        let mut acc: Vec<ToolCall> = Vec::new();
+        merge_tool_delta(&mut acc, &json!({"index": 0, "id": "x", "function": {"name": "a"}}));
+        merge_tool_delta(&mut acc, &json!({"index": 0, "function": {"name": "b"}}));
+        assert_eq!(acc.len(), 1);
+        assert_eq!(acc[0].name, "ab");
     }
 
     #[test]

@@ -353,3 +353,73 @@ async fn gemini_keeps_the_thought_signature_across_a_tool_round() {
     println!("answer: {}", with.content);
     assert!(!with.content.is_empty() || !with.tool_calls.is_empty());
 }
+
+/// Gemini streams tool calls without an `index`, one delta per call.
+///
+/// Keying the accumulator on `index` alone merged every call into the first
+/// slot, so names came out as `get_allocationget_allocationlist_assets` and the
+/// app answered its own model with "Unknown tool", which then made the next
+/// request invalid.
+///
+///   GEMINI_API_KEY=... cargo test --test live gemini_streams_two -- --ignored --nocapture
+#[tokio::test]
+#[ignore = "needs GEMINI_API_KEY"]
+async fn gemini_streams_two_tool_calls_kept_apart() {
+    let Ok(api_key) = std::env::var("GEMINI_API_KEY") else {
+        eprintln!("set GEMINI_API_KEY to run this test");
+        return;
+    };
+    let base_url = std::env::var("GEMINI_BASE_URL")
+        .unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta/openai".into());
+    let model = std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-3-flash-preview".into());
+    let tools = json!([
+        {
+            "type": "function",
+            "function": {
+                "name": "get_portfolio_summary",
+                "description": "Get the portfolio summary",
+                "parameters": {"type": "object", "properties": {}, "required": []}
+            }
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "get_allocation",
+                "description": "Portfolio allocation by dimension",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"dimension": {"type": "string", "enum": ["category", "institution", "currency"]}},
+                    "required": ["dimension"]
+                }
+            }
+        }
+    ]);
+    let messages = json!([{
+        "role": "user",
+        "content": "Call BOTH get_portfolio_summary and get_allocation with dimension category in the same turn, now, without asking."
+    }]);
+
+    let outcome = stream_completion(
+        CompletionRequest {
+            base_url: &base_url,
+            api_key: Some(&api_key),
+            model: &model,
+            messages: &messages,
+            tools: Some(&tools),
+        },
+        Arc::new(AtomicBool::new(false)),
+        collector().1,
+    )
+    .await
+    .expect("stream should succeed");
+
+    let names: Vec<&str> = outcome.tool_calls.iter().map(|c| c.name.as_str()).collect();
+    println!("tool calls: {names:?}");
+    assert_eq!(names.len(), 2, "expected two separate calls, got {names:?}");
+    for name in &names {
+        assert!(
+            ["get_portfolio_summary", "get_allocation"].contains(name),
+            "merged or unknown name: {name}"
+        );
+    }
+}

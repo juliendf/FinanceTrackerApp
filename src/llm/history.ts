@@ -14,6 +14,10 @@
 
 import type { ChatMessage } from "./client";
 import type { Message } from "../db/repositories/chat";
+import { TOOL_DEFINITIONS } from "./tools";
+
+/** Function names the model may call. Anything else in a stored row is corrupt. */
+const KNOWN_TOOLS = new Set(TOOL_DEFINITIONS.map((tool) => tool.function.name));
 
 /** `tool_call_id -> function name` from a stored `tool_calls` blob. */
 export function toolCallNames(raw: string | null): Record<string, string> {
@@ -60,7 +64,11 @@ export function buildHistoryMessages(rows: readonly Message[]): ChatMessage[] {
       const names = row.tool_calls ? toolCallNames(row.tool_calls) : {};
       if (row.tool_calls) {
         const ids = Object.keys(names);
-        if (ids.length === 0 || !ids.every((id) => resolved.has(id))) continue;
+        // A name we no longer know means the row is corrupt — older builds
+        // merged two streamed calls into one name ("list_assetsget_allocation"),
+        // and the provider rejects the whole turn with 400 INVALID_ARGUMENT.
+        const unknown = Object.values(names).some((name) => !KNOWN_TOOLS.has(name));
+        if (ids.length === 0 || unknown || !ids.every((id) => resolved.has(id))) continue;
         Object.assign(namesById, names);
       } else if (!(row.content ?? "").trim()) {
         continue;
