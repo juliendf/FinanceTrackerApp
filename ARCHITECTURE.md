@@ -65,7 +65,7 @@ New asset ids are allocated inside the transaction (`nextId` / `justInserted` ag
 ## Money and parity
 
 - All displayed numbers go through `src/domain/format.ts`, a port of the Python template filters.
-- Behaviour is verified against the source, not assumed: independent Python oracles in `tests/oracle/` recompute results from a real backup file and the tests compare (asset filters; snapshot CSV byte-for-byte).
+- Behaviour is verified against the source, not assumed: independent Python oracles in `tests/oracle/` recompute results from a real backup file and the tests compare (asset filters; snapshot CSV byte-for-byte). The dashboards go further: `tests/oracle/dashboard.py` runs the *source's own code* with the clock frozen and the TypeScript is compared with the JSON its endpoints return.
 - Oracle-backed tests are opt-in via environment variables and skip otherwise, so the default suite needs no private data.
 
 ## Build and layout
@@ -81,4 +81,4 @@ Stack: Tauri 2, React 19, TypeScript, Vite, react-router (hash), TanStack Query,
 
 ## Phases
 
-0 spike, 1 schema/shell/components, 1b importer, 2 reference data, 3 assets, 4 snapshots (done); 5 dashboards and portfolio logic, 6 settings and data, 7 AI chat, 8 ship, 9 optional MCP. Status per screen: `docs/PARITY_CHECKLIST.md`.
+0 spike, 1 schema/shell/components, 1b importer, 2 reference data, 3 assets, 4 snapshots, 5 dashboards (done); 6 settings and data, 7 AI chat, 8 ship, 9 optional MCP. Status per screen: `docs/PARITY_CHECKLIST.md`.

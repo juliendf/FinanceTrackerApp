@@ -9,7 +9,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { isEmptyDatabase } from "../../../db/seed";
 import { FirstRunPage } from "./FirstRunPage";
-import { PlaceholderPage } from "../../components/PlaceholderPage";
+import { DashboardPage } from "../dashboard/DashboardPage";
 
 export function StartRoute() {
   const empty = useQuery({ queryKey: ["database-empty"], queryFn: isEmptyDatabase });
@@ -26,12 +26,5 @@ export function StartRoute() {
 
   if (empty.data) return <FirstRunPage />;
 
-  return (
-    <PlaceholderPage
-      title="Dashboard"
-      phase="Phase 5"
-      icon="speedometer2"
-      description="KPI tiles with count-up, portfolio pie, evolution line with a range selector."
-    />
-  );
+  return <DashboardPage />;
 }

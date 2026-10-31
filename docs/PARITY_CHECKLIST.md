@@ -35,13 +35,13 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Home dashboard | `dashboard.html`, `static/js/dashboard.js` | 5 | - | KPI count-up, pie, evolution line, range selector |
-| Dashboard → Assets | `dashboard/assets.html` | 5 | - | |
-| Dashboard → Performance | `dashboard/performance.html` | 5 | - | A stub in the source; port as a stub |
-| Résumé (French UI) | `dashboard/resume.html` | 5 | - | Requires `Category.system_role` |
+| Home dashboard | `dashboard.html`, `static/js/dashboard.js` | 5 | dev | KPI tiles (count-up), pie with group selector and sortable legend, evolution line with range buttons and percent badge. Verified against the source's own output at four pinned dates. Carry-in fix, see DEVIATIONS |
+| Dashboard → Assets | `dashboard/assets.html` | 5 | dev | Source is an empty shell; this draws the breakdown |
+| Dashboard → Performance | `dashboard/performance.html` | 5 | dev | Honest stub |
+| Résumé (French UI) | `dashboard/resume.html` | 5 | dev | All six periods, tooltips, breakdown; matches the source on every range |
 | Dashboard → Main | `dashboard/main.html` | - | drop | Dead template (not routed) |
-| Asset evolution chart | `charts/asset_evolution.html` | 5 | - | |
-| Distribution chart | `charts/distribution.html` | 5 | - | |
+| Asset evolution chart | `charts/asset_evolution.html` | 5 | dev | Total portfolio or one asset; currency labelled correctly |
+| Distribution chart | `charts/distribution.html` | 5 | dev | Four groupings |
 | `GET /charts/portfolio-evolution` | `routes/charts.py` | - | drop | Renders a template that does not exist |
 
 ## Reference data

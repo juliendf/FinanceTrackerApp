@@ -14,6 +14,10 @@ import { BulkEntryPage } from "./ui/pages/snapshots/BulkEntryPage";
 import { SnapshotDetailPage } from "./ui/pages/snapshots/SnapshotDetailPage";
 import { SnapshotFormPage } from "./ui/pages/snapshots/SnapshotFormPage";
 import { SnapshotListPage } from "./ui/pages/snapshots/SnapshotListPage";
+import { AssetsDashboardPage } from "./ui/pages/dashboard/AssetsDashboardPage";
+import { AssetEvolutionPage, DistributionChartPage } from "./ui/pages/dashboard/ChartsPages";
+import { PerformancePage } from "./ui/pages/dashboard/PerformancePage";
+import { ResumePage } from "./ui/pages/dashboard/ResumePage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
 
 /**
@@ -36,12 +40,55 @@ export const router = createHashRouter([
     path: "/resume",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Résumé"
-          phase="Phase 5"
-          icon="file-text"
-          description="French-language performance summary: invested capital, absolute and annualised performance, breakdown by system role."
-        />
+        <ResumePage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/dashboard/resume",
+    element: (
+      <AppShell>
+        <ResumePage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/dashboard/assets",
+    element: (
+      <AppShell>
+        <AssetsDashboardPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/dashboard/performance",
+    element: (
+      <AppShell>
+        <PerformancePage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/charts/performance",
+    element: (
+      <AppShell>
+        <PerformancePage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/charts/distribution",
+    element: (
+      <AppShell>
+        <DistributionChartPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/charts/asset-evolution",
+    element: (
+      <AppShell>
+        <AssetEvolutionPage />
       </AppShell>
     ),
   },
@@ -188,32 +235,6 @@ export const router = createHashRouter([
     element: (
       <AppShell>
         <TagsPage />
-      </AppShell>
-    ),
-  },
-  {
-    path: "/charts/performance",
-    element: (
-      <AppShell>
-        <PlaceholderPage
-          title="Performance"
-          phase="Phase 5"
-          icon="graph-up"
-          description="A stub in the source app. Ported as a stub, per the brief."
-        />
-      </AppShell>
-    ),
-  },
-  {
-    path: "/charts/distribution",
-    element: (
-      <AppShell>
-        <PlaceholderPage
-          title="Allocations"
-          phase="Phase 5"
-          icon="pie-chart"
-          description="Distribution by institution, category, currency and product."
-        />
       </AppShell>
     ),
   },

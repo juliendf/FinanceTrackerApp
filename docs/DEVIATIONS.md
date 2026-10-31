@@ -282,6 +282,41 @@ up rather than rediscovering them.
   user cycles the toggle. — investigate in Phase 1 with devtools attached.
 
 
+## Phase 5: dashboards
+
+- **Portfolio evolution carries assets in from before the cut-off.** The source
+  reads only snapshots on or after the range cut-off, so an asset last updated
+  before it disappears from the whole series and short ranges start absurdly
+  low. On the real data its 1Y chart reads +736.9%. The endpoint's own docstring
+  says it carries each asset's latest snapshot forward, so each asset now starts
+  from its last value before the cut-off. `portfolioEvolution(..., { carryIn:
+  false })` reproduces the source exactly and is what the golden test uses, so
+  parity is proven and the fix is explicit. `ALL` is unaffected.
+- **Unconverted amounts are badged.** With no direct, inverse or EUR/USD/CHF
+  bridge rate the source silently uses the amount as is. Same fallback here,
+  plus an "unconverted" badge naming the pair.
+- **Currencies tile shows the real list.** The source template falls back to a
+  hard-coded "EUR, CHF, USD" because the service never supplies the list.
+- **KPI count-up runs.** The source's script targets `.stat-number span`, which
+  the template never renders, so it never animated. It runs here only when the
+  `enable_animations` setting is on and the OS does not ask for reduced motion.
+- **Asset Breakdown page draws its chart.** The source page is an empty shell
+  (its script is a comment).
+- **Performance Analytics is an honest stub.** The source charts three
+  hard-coded numbers unrelated to your data. The stub points to the Résumé.
+- **Asset Evolution titles the real currency.** The source says "in {base
+  currency}" but the per-asset endpoint returns the asset's own currency.
+- **Category evolution is not ported.** Nothing in the UI uses
+  `/api/charts/category-evolution/<id>`, and it sums native amounts across
+  currencies without converting.
+- **Distribution slice order is by first appearance**, not the SQL's arbitrary
+  order; the legend sorts by amount or name. Colours cycle through the theme
+  palette instead of the source's five fixed ones.
+- **The Résumé is `/resume`** (the source serves `/dashboard/resume`, kept as
+  an alias). "Invested capital" is still the portfolio value at the start
+  date, not money paid in, so deposits during the period count as performance.
+  This is the source's definition, kept on purpose.
+
 ## Security hardening (after Phase 4)
 
 - **File dialogs live in Rust.** The brief lists `tauri-plugin-fs`; it is removed. The webview never passes a path, so a compromised webview cannot read or write arbitrary files. The dialog plugin stays, Rust-side only.
