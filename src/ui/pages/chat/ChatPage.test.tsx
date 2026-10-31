@@ -126,6 +126,35 @@ describe("ChatPage", () => {
     expect(repo.confirmAction).not.toHaveBeenCalled();
   });
 
+  it("never shows tool calls or a thinking placeholder", async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      options.onEvent({ type: "toolCall", id: "c1", name: "get_portfolio_summary", arguments: "{}" });
+      options.onEvent({ type: "delta", content: "Your portfolio is " });
+      options.onEvent({ type: "delta", content: "406,860.98 CHF." });
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Your portfolio is 406,860.98 CHF.", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    const { container } = renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    // The box stays disabled until the provider list has loaded.
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(container.textContent).toContain("406,860.98 CHF"));
+    expect(container.textContent).not.toMatch(/using/i);
+    expect(container.textContent).not.toMatch(/thinking/i);
+    expect(container.textContent).not.toContain("get_portfolio_summary");
+
+    release();
+    await waitFor(() => expect(screen.getByRole("button", { name: "Send" })).toBeTruthy());
+  });
+
   it("offers the suggested prompts", async () => {
     renderChat();
     expect(await screen.findByText("Portfolio review")).toBeTruthy();

@@ -176,48 +176,50 @@ export function ChatPage() {
       toast.error("Start a new chat first.");
       return;
     }
-    if (!activeProvider) {
+    // The conversation query may not have resolved yet on a fresh page load, so
+    // fall back to the default provider instead of refusing to send.
+    const selected = activeProvider ?? (await getDefaultProvider());
+    if (!selected) {
       toast.error("Choose a provider first.");
       return;
     }
 
     setInput("");
     setStreaming(true);
-    const userBubble: PendingBubble = { id: `user-${Date.now()}`, role: "user", content };
-    const assistantBubble: PendingBubble = { id: `assistant-${Date.now()}`, role: "assistant", content: "", streaming: true };
-    setBubbles([userBubble, assistantBubble]);
+    // Only the user's own line shows until the model produces text. No
+    // "Thinking…" placeholder and no tool-call chatter: those are plumbing, and
+    // they used to flash in and out of the transcript on every turn.
+    setBubbles([{ id: `user-${Date.now()}`, role: "user", content }]);
 
     const requestId = `chat-${Date.now()}`;
     requestIdRef.current = requestId;
 
     try {
-      const key = await providerApiKey(activeProvider);
-      const transport = rustTransport({ base_url: activeProvider.base_url, api_key: key, model: activeProvider.model }, model || null);
+      const key = await providerApiKey(selected);
+      const transport = rustTransport({ base_url: selected.base_url, api_key: key, model: selected.model }, model || null);
       abortRef.current = transport.cancel;
 
       const result = await sendMessage({
         conversationId: id,
         text: content,
         transport,
-        provider: activeProvider,
+        provider: selected,
         modelOverride: model || null,
         requestId,
         onEvent: (event) => {
-          if (event.type === "delta") {
-            setBubbles((current) => {
-              const next = [...current];
-              const last = next[next.length - 1];
-              if (last?.role === "assistant") next[next.length - 1] = { ...last, content: last.content + event.content };
-              return next;
-            });
-          }
-          if (event.type === "toolCall") {
-            setBubbles((current) => [
-              ...current,
-              { id: `tool-${event.id}`, role: "assistant", content: `_using \`${event.name}\`…_` },
-              { id: `assistant-${Date.now()}-${event.id}`, role: "assistant", content: "", streaming: true },
-            ]);
-          }
+          // Text is the only thing that belongs in the transcript. Tool calls
+          // arrive as events too, and are deliberately ignored here.
+          if (event.type !== "delta") return;
+          setBubbles((current) => {
+            const next = [...current];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") {
+              next[next.length - 1] = { ...last, content: last.content + event.content };
+            } else {
+              next.push({ id: `assistant-${Date.now()}`, role: "assistant", content: event.content });
+            }
+            return next;
+          });
         },
       });
 
@@ -227,9 +229,15 @@ export function ChatPage() {
     } finally {
       setStreaming(false);
       abortRef.current = null;
-      setBubbles([]);
-      refreshList();
     }
+
+    // Refetch the transcript first, then drop the local bubbles, so the text
+    // never disappears between "streamed" and "loaded".
+    await queryClient.invalidateQueries({ queryKey: ["messages", id] });
+    await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    await queryClient.invalidateQueries({ queryKey: ["conversation", id] });
+    await queryClient.invalidateQueries({ queryKey: ["pending-actions", id] });
+    setBubbles([]);
   };
 
   const stop = async () => {
@@ -260,10 +268,12 @@ export function ChatPage() {
   };
 
   const runExtraction = async () => {
-    if (id === null || !activeProvider) return;
+    if (id === null) return;
+    const selected = activeProvider ?? (await getDefaultProvider());
+    if (!selected) return;
     try {
-      const key = await providerApiKey(activeProvider);
-      const transport = rustTransport({ base_url: activeProvider.base_url, api_key: key, model: activeProvider.model }, model || null);
+      const key = await providerApiKey(selected);
+      const transport = rustTransport({ base_url: selected.base_url, api_key: key, model: selected.model }, model || null);
       const proposals = await extractMemories(id, transport, `extract-${Date.now()}`);
       if (proposals.length === 0) {
         toast.info("No new facts found.");
@@ -444,8 +454,6 @@ export function ChatPage() {
                   <div className={`msg-bubble ${bubble.role === "user" ? "msg-user" : "msg-assistant"}`} key={bubble.id}>
                     {bubble.role === "user" ? (
                       <span className="msg-text">{bubble.content}</span>
-                    ) : bubble.streaming && !bubble.content ? (
-                      <span className="text-muted">Thinking…</span>
                     ) : (
                       <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{bubble.content}</ReactMarkdown>
                     )}
@@ -504,11 +512,16 @@ export function ChatPage() {
                     }}
                   />
                   {streaming ? (
-                    <button type="button" className="btn btn-danger" onClick={() => void stop()} title="Stop">
+                    <button type="button" className="btn btn-danger" onClick={() => void stop()} title="Stop" aria-label="Stop">
                       <i className="bi bi-stop-circle" aria-hidden="true" />
                     </button>
                   ) : (
-                    <button type="submit" className="btn btn-primary" disabled={!canChat || input.trim() === ""}>
+                    <button
+                      type="submit"
+                      className="btn btn-primary"
+                      aria-label="Send"
+                      disabled={!canChat || input.trim() === ""}
+                    >
                       <i className="bi bi-send" aria-hidden="true" />
                     </button>
                   )}
