@@ -10,6 +10,7 @@ import { Navbar } from "./Navbar";
 import { Sidebar, useSidebarCollapsed } from "./Sidebar";
 import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
 import { useStoredTheme } from "../../lib/useStoredTheme";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 
 export function AppShell({ children }: { children: ReactNode }) {
   useStoredTheme();
@@ -18,7 +19,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     <>
       <Navbar />
       <main className="flex-grow-1">
-        <div className="container py-4">{children}</div>
+        <div className="container py-4">
+          <ErrorBoundary>{children}</ErrorBoundary>
+        </div>
       </main>
       <footer className="mt-auto">
         <div className="container d-flex flex-wrap justify-content-between align-items-center gap-2">

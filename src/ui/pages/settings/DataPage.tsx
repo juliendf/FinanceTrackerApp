@@ -27,7 +27,9 @@ export function DataPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const assets = useQuery({ queryKey: ["assets"], queryFn: countAssets });
+  // Deliberately not ["assets"]: that key holds AssetRow[] everywhere else, and
+  // React Query would hand this count tile a list of objects.
+  const assets = useQuery({ queryKey: ["asset-count"], queryFn: countAssets });
   const snapshots = useQuery({ queryKey: ["snapshot-count"], queryFn: countSnapshots });
 
   const sample = useMutation({
