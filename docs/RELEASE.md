@@ -14,7 +14,8 @@ Artifacts:
 
 The bundle identifier is `ch.julien.financetrackerapp` and the version comes from
 `src-tauri/tauri.conf.json` (`version`). Bump it there for a release; the tag and
-the About window both read from it.
+the About window both read from it. Keep it in step with `package.json` and
+`src-tauri/Cargo.toml`, which carry the same number for the toolchain.
 
 ## Signing
 
