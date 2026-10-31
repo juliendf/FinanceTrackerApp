@@ -61,10 +61,10 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Assets list | `assets/list.html` | 3 | wip | Phase 0 spike covers KPI tiles, table, delete; filters, chips, pagination and the Tags column still missing |
-| Asset detail | `assets/detail.html` | 3 | - | Info, line chart, snapshot history |
-| New asset | `assets/new.html` | 3 | wip | Form fields ported; product suggestions by institution and tag multi-select missing |
-| Edit asset | `assets/edit.html` | 3 | - | |
+| Assets list | `assets/list.html` | 3 | dev | KPI tiles (combined total, per-currency), 5 filters in the URL, chips, tags column, pager, page size, delete modal. Filter results verified against an independent oracle on the real backup. Deviations: pager ellipsis, real snapshot range |
+| Asset detail | `assets/detail.html` | 3 | dev | Info, current value, statistics, themed chart, history. Three source display bugs fixed (see DEVIATIONS); row delete arrives with Phase 4 |
+| New asset | `assets/new.html` | 3 | dev | Full form incl. tags, three quick-adds, initial snapshot; atomic. Product suggestions do not exist in the source |
+| Edit asset | `assets/edit.html` | 3 | dev | Pre-filled, current-values card, currency-change confirmation (modal), delete |
 
 ## Snapshots
 

@@ -30,12 +30,12 @@ Format: **what** — **why** — **revisit in**.
 
 ### Behavioural differences
 
-- **Asset creation is not transactional.** `tauri-plugin-sql` exposes no
+- **(Resolved in Phase 3.) Asset creation is not transactional.** `tauri-plugin-sql` exposes no
   transaction handle, so `createAsset()` inserts the asset, then the initial
   snapshot, and deletes the asset again if the snapshot insert fails. The source
   commits both or neither. A half-written asset is possible only if the process
-  dies between the two statements. — revisit Phase 1 (single connection or an
-  explicit transaction helper).
+  dies between the two statements. — **Resolved in Phase 3:** `createAsset` now
+  runs asset, tags and first snapshot through `run_transaction`.
 - **`PRAGMA foreign_keys` is per connection.** The plugin pools connections, so
   the pragma set in `db/client.ts` applies to one connection in the pool.
   `journal_mode=WAL` is persistent in the file header, so it does stick.
@@ -179,6 +179,70 @@ screens that hit them do not exist yet.
 - **Colour validation differs per entity, as in the source.** Categories require
   exactly six hex digits (`^#[0-9A-Fa-f]{6}$`); tags accept three or six
   (`^#(?:[0-9a-fA-F]{3}){1,2}$`).
+
+## Phase 3 (assets)
+
+- **Product suggestions by institution are not built, because they do not
+  exist.** The brief asks for "dependent product suggestions by institution
+  (`/assets/api/products/<inst>`)". No such route exists in `routes/*.py`, and
+  `static/js/admin.js` only references a `product_id` select that the form does
+  not have: the `Product` entity was removed on purpose (`AGENTS.md`), and
+  `product_name` is a free-text field. Nothing was ported, nothing invented.
+- **Three display bugs in `detail.html` are fixed, not ported.**
+  1. *Cost/Charges* is a percentage on the form but was rendered through the
+     `currency` filter, so 0.85 % printed as a money amount. It now prints
+     `0.85%`.
+  2. *Interest Rate* went through the `percentage` filter, which multiplies by
+     100, so a stored 1.25 printed as `125.00%`. It now prints `1.25%`
+     (`formatPercentValue`, distinct from the scaling `formatPercentage`).
+  3. The snapshot *% Change* column computed `(Δ / previous) * 100` and then
+     applied the same scaling filter, so +5 % showed as `+500.0%`. The fraction
+     is now handed to the filter once.
+- **Filtering, sorting and pagination run in memory, not in SQL.** The source
+  builds a SQL query; the desktop dataset is a few hundred rows at most, so the
+  whole set is loaded and `filterAssets` / `paginate` are pure functions. That
+  keeps them unit-testable and independent of the database. Semantics are the
+  source's: `ilike` over institution, product, category and code/NIN; exact
+  match on currency, category *name*, institution *name* and tag *name*.
+- **The pager marks gaps with an ellipsis.** `PaginationHelper.iter_pages` only
+  yields page numbers, so the source's pager prints `1 2 8 9 10 11 12 19 20`
+  with nothing showing the jumps, although its template already has an
+  ellipsis branch (`{% else %}…`) that never fires. `assetPageNumbers` returns
+  `null` for a gap so it does. The window itself is identical (verified against
+  the real helper).
+- **Currency conversion was pulled forward from Phase 5.** The list's combined
+  "Total Value" tile needs it. `domain/currency.ts` ports `convert_amount` (direct
+  or inverse, otherwise an error, which hides the tile) and
+  `CurrencyConverter` (direct, then a hop through EUR/USD/CHF, then the
+  unconverted amount with a recorded warning). The dashboards still arrive in
+  Phase 5; the golden parity tests for them do too.
+- **The "Total Assets" tile shows the real snapshot range for the filtered
+  assets.** Same fix as Phase 0, now applied to the filtered set.
+- **Changing an asset's currency asks through a modal**, not `window.confirm`.
+  The source warns that existing snapshots are not converted; a native
+  `confirm()` is unreliable in a Tauri webview, and a modal matches every other
+  confirmation here.
+- **Deleting from the detail page uses the same modal as the list.** The source
+  uses a bare `confirm()` there and a bootstrap modal on the list.
+- **Asset writes are atomic now.** Create, update and delete go through
+  `run_transaction`. Creation allocates the id inside the transaction
+  (`nextId` / `justInserted` against `sqlite_sequence`), so a failing first
+  snapshot rolls back the asset and its tags instead of leaving them behind.
+  Delete removes tag links and snapshots explicitly, because the plugin's
+  pooled connections do not all enforce `ON DELETE CASCADE`.
+- **The Value Evolution chart follows the theme.** The source builds it inline
+  with fixed teal colours and ignores dark mode; this one uses the shared
+  `ChartUtils` port like every other chart.
+- **The first snapshot defaults to the local calendar date.** The form's default
+  is `date.today` on the server; the desktop app has no server clock, so the
+  user's own date is the right one.
+- **"Load sample data" moved to the Data screen and only exists in development
+  builds**, as `docs/ANALYSIS.md` intended (a dev command for screenshots). It
+  no longer appears on the empty asset list.
+- **Snapshot links point at Phase 4 placeholders.** The detail page's
+  "Add Snapshot" and per-row "Edit" link to `/snapshots/new` and
+  `/snapshots/:id/edit`, which render a placeholder until Phase 4. The per-row
+  *delete* button is not shown yet.
 
 ## Open issues (observed, not yet explained)
 

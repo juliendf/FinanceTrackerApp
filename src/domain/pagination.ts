@@ -127,3 +127,32 @@ export function paginationLabel(page: Page<unknown>): string {
     page.page < page.pages ? page.perPage * page.page : page.total;
   return `Showing ${first} to ${last} of ${page.total} entries`;
 }
+
+/**
+ * `PaginationHelper.iter_pages` from `app/utils/pagination.py`, as the asset
+ * list uses it: edges of 2, a window from `current - 2` to `current + 2`.
+ *
+ * The source only yields the numbers and never the gaps, so its pager shows
+ * "1 2 5 6 7 8 9 20 21" with nothing marking the jumps. This returns `null` for
+ * a gap so the UI can print the ellipsis its own template already anticipates
+ * (`{% if page_num %} … {% else %}…`).
+ */
+export function assetPageNumbers(
+  current: number,
+  totalPages: number,
+  { leftEdge = 2, leftCurrent = 2, rightCurrent = 3, rightEdge = 2 } = {},
+): Array<number | null> {
+  const result: Array<number | null> = [];
+  let last = 0;
+  for (let page = 1; page <= totalPages; page += 1) {
+    const keep =
+      page <= leftEdge ||
+      (current - leftCurrent - 1 < page && page < current + rightCurrent) ||
+      page > totalPages - rightEdge;
+    if (!keep) continue;
+    if (last && page - last > 1) result.push(null);
+    result.push(page);
+    last = page;
+  }
+  return result;
+}

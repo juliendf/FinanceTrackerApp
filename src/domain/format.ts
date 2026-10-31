@@ -99,6 +99,11 @@ export function formatPercentage(
   return `${percentage.toFixed(decimalPlaces)}%`;
 }
 
+const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+
 /** Parse an ISO `YYYY-MM-DD` date as UTC midnight. Null when unparseable. */
 function parseIsoDate(value: string): Date | null {
   const parsed = new Date(`${value}T00:00:00Z`);
@@ -107,7 +112,7 @@ function parseIsoDate(value: string): Date | null {
 
 /**
  * `format_date` filter. Default format matches the source default `%Y-%m-%d`.
- * Supports the strftime tokens the app actually uses: %Y %m %d %H %M %S.
+ * Supports the strftime tokens the app actually uses: %Y %m %d %B %b %H %M %S.
  */
 export function formatDate(
   value: string | null | undefined,
@@ -118,7 +123,10 @@ export function formatDate(
   if (!date) return "Invalid date";
 
   const pad = (input: number) => String(input).padStart(2, "0");
+  const month = date.getUTCMonth();
   return formatString
+    .replace(/%B/g, MONTH_NAMES[month])
+    .replace(/%b/g, MONTH_NAMES[month].slice(0, 3))
     .replace(/%Y/g, String(date.getUTCFullYear()))
     .replace(/%m/g, pad(date.getUTCMonth() + 1))
     .replace(/%d/g, pad(date.getUTCDate()))
@@ -168,4 +176,27 @@ export function relativeDate(
   }
   const years = Math.floor(days / 365);
   return `${years} year${years > 1 ? "s" : ""} ago`;
+}
+
+/**
+ * A stored percentage *value* (1.25 means 1.25 %) for display.
+ *
+ * Distinct from {@link formatPercentage}, which treats its input as a fraction
+ * and scales by 100. The asset form stores interest rate and cost/charges as
+ * percentage values, which the source detail page mis-rendered through the
+ * scaling filter (1.25 -> "125.00%") and the currency filter respectively.
+ */
+export function formatPercentValue(value: Decimal.Value | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "N/A";
+  let amount: Decimal;
+  try {
+    amount = new Decimal(value);
+  } catch {
+    return "N/A";
+  }
+  if (!amount.isFinite()) return "N/A";
+  // Two places as a floor, up to four as the form allows.
+  const four = amount.toDecimalPlaces(4, Decimal.ROUND_HALF_EVEN);
+  const text = four.decimalPlaces() <= 2 ? four.toFixed(2) : four.toString();
+  return `${text}%`;
 }

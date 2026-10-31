@@ -9,9 +9,11 @@ interface Props {
   icon?: string;
   accent?: "success" | "primary";
   small?: boolean;
+  /** Adds `stat-number-money`, which sizes currency amounts. */
+  money?: boolean;
 }
 
-export function StatCard({ label, value, subtitle, icon, accent, small = true }: Props) {
+export function StatCard({ label, value, subtitle, icon, accent, small = true, money = false }: Props) {
   const classes = [
     "stat-card",
     small ? "stat-card-sm" : "",
@@ -28,7 +30,7 @@ export function StatCard({ label, value, subtitle, icon, accent, small = true }:
           <i className={`bi ${icon}`} aria-hidden="true" />
         </div>
       ) : null}
-      <div className="stat-number">{value}</div>
+      <div className={`stat-number${money ? " stat-number-money" : ""}`}>{value}</div>
       {subtitle ? <div className="stat-subtitle">{subtitle}</div> : null}
     </div>
   );

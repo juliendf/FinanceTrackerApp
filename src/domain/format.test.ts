@@ -20,6 +20,7 @@ import {
   formatDate,
   formatMinorAsCurrency,
   formatPercentage,
+  formatPercentValue,
   relativeDate,
 } from "./format";
 
@@ -177,5 +178,32 @@ describe("relativeDate — relative_date filter", () => {
 
   it("clamps future dates to Today, as the source clamps negatives", () => {
     expect(relativeDate("2026-12-01", today)).toBe("Today");
+  });
+});
+
+describe("formatDate — month names", () => {
+  it("supports %B and %b, as the asset detail page's '%B %d, %Y' needs", () => {
+    expect(formatDate("2026-10-01", "%B %d, %Y")).toBe("October 01, 2026");
+    expect(formatDate("2026-03-15", "%b %d")).toBe("Mar 15");
+  });
+});
+
+describe("formatPercentValue — a stored percentage, not a fraction", () => {
+  it("shows 1.25 as 1.25%, where the scaling filter would say 125.00%", () => {
+    expect(formatPercentValue("1.25")).toBe("1.25%");
+    expect(formatPercentage("1.25")).toBe("125.00%");
+  });
+
+  it("keeps two decimals as a floor and four as a ceiling", () => {
+    expect(formatPercentValue("0.85")).toBe("0.85%");
+    expect(formatPercentValue("3")).toBe("3.00%");
+    expect(formatPercentValue("0.1234")).toBe("0.1234%");
+    expect(formatPercentValue("0.123456")).toBe("0.1235%");
+  });
+
+  it("returns N/A for nothing usable", () => {
+    expect(formatPercentValue(null)).toBe("N/A");
+    expect(formatPercentValue("")).toBe("N/A");
+    expect(formatPercentValue("abc")).toBe("N/A");
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  assetPageNumbers,
   nextSortState,
   pageNumbers,
   paginate,
@@ -132,5 +133,26 @@ describe("paginationLabel", () => {
 
   it("says so when there is nothing", () => {
     expect(paginationLabel(paginate([], 1, 20))).toBe("No entries");
+  });
+});
+
+describe("assetPageNumbers — PaginationHelper.iter_pages", () => {
+  it("shows every page when there are few", () => {
+    expect(assetPageNumbers(1, 5)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("keeps two edge pages and a window around the current page", () => {
+    // predicate from the source: num <= 2, or current-3 < num < current+3, or num > last-2
+    expect(assetPageNumbers(10, 20)).toEqual([1, 2, null, 8, 9, 10, 11, 12, null, 19, 20]);
+  });
+
+  it("marks the gaps the source's pager leaves unmarked", () => {
+    expect(assetPageNumbers(1, 20)).toEqual([1, 2, 3, null, 19, 20]);
+    // window is current-3 < n < current+3, so 17 just misses it
+    expect(assetPageNumbers(20, 20)).toEqual([1, 2, null, 18, 19, 20]);
+  });
+
+  it("is a single page for a single page", () => {
+    expect(assetPageNumbers(1, 1)).toEqual([1]);
   });
 });

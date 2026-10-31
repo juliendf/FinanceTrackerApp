@@ -14,6 +14,7 @@ import { ImportWizard } from "../import/ImportWizard";
 import { useToast } from "../../layout/Toasts";
 import { resetDatabase } from "../../../db/reset";
 import { seedFirstRun } from "../../../db/seed";
+import { loadSampleData, resetData } from "../../../dev/sampleData";
 import { countAssets } from "../../../db/repositories/assets";
 import { countSnapshots } from "../../../db/repositories/snapshots";
 
@@ -27,6 +28,18 @@ export function DataPage() {
 
   const assets = useQuery({ queryKey: ["assets"], queryFn: countAssets });
   const snapshots = useQuery({ queryKey: ["snapshot-count"], queryFn: countSnapshots });
+
+  const sample = useMutation({
+    mutationFn: async () => {
+      await resetData();
+      await loadSampleData();
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries();
+      toast.success("Sample data loaded.");
+    },
+    onError: (error: unknown) => toast.error(error instanceof Error ? error.message : String(error)),
+  });
 
   const reset = useMutation({
     mutationFn: async () => {
@@ -102,6 +115,24 @@ export function DataPage() {
           </button>
         </div>
       </div>
+
+      {import.meta.env.DEV ? (
+        <div className="card card-finance mb-4">
+          <div className="card-body">
+            <h5 className="card-title">
+              <i className="bi bi-bug me-2" aria-hidden="true" />
+              Sample data <span className="badge bg-secondary ms-1">development builds only</span>
+            </h5>
+            <p className="text-muted">
+              Replaces institutions, categories, assets and snapshots with a small deterministic
+              dataset, for screenshots. Not available in release builds.
+            </p>
+            <button type="button" className="btn btn-outline-secondary" onClick={() => sample.mutate()}>
+              Load sample data
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <ImportWizard
         show={wizardOpen}

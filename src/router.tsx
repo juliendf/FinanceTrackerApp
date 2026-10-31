@@ -1,6 +1,8 @@
-import { createHashRouter, Navigate } from "react-router-dom";
+import { createHashRouter } from "react-router-dom";
 import { AppShell } from "./ui/layout/AppShell";
 import { PlaceholderPage } from "./ui/components/PlaceholderPage";
+import { AssetDetailPage } from "./ui/pages/assets/AssetDetailPage";
+import { AssetFormPage } from "./ui/pages/assets/AssetFormPage";
 import { AssetListPage } from "./ui/pages/assets/AssetListPage";
 import { ChatSpikePage } from "./ui/pages/chat/ChatSpikePage";
 import { DataPage } from "./ui/pages/settings/DataPage";
@@ -43,6 +45,56 @@ export const router = createHashRouter([
     element: (
       <AppShell>
         <AssetListPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/assets/new",
+    element: (
+      <AppShell>
+        <AssetFormPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/assets/:assetId",
+    element: (
+      <AppShell>
+        <AssetDetailPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/assets/:assetId/edit",
+    element: (
+      <AppShell>
+        <AssetFormPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/snapshots/new",
+    element: (
+      <AppShell>
+        <PlaceholderPage
+          title="Record Snapshot"
+          phase="Phase 4"
+          icon="camera"
+          description="Single entry with the previous-value lookup. Asset pages already link here."
+        />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/snapshots/:snapshotId/edit",
+    element: (
+      <AppShell>
+        <PlaceholderPage
+          title="Edit Snapshot"
+          phase="Phase 4"
+          icon="camera"
+          description="Edit a single snapshot."
+        />
       </AppShell>
     ),
   },
@@ -163,9 +215,5 @@ export const router = createHashRouter([
         />
       </AppShell>
     ),
-  },
-  {
-    path: "/assets/new",
-    element: <Navigate to="/assets" replace />,
   },
 ]);

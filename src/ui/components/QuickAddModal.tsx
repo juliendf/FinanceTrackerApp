@@ -11,6 +11,7 @@ import { Modal } from "react-bootstrap";
 import { createInstitution, institutionNameExists } from "../../db/repositories/institutions";
 import { createCategory, categoryNameExists } from "../../db/repositories/categories";
 import { QUICK_ADD_CATEGORY_COLOR } from "../../domain/referenceData";
+import { createTag, tagNameExists } from "../../db/repositories/tags";
 import { useToast } from "../layout/Toasts";
 
 interface BaseProps {
@@ -180,6 +181,98 @@ export function QuickAddCategoryModal({
         <button type="button" className="btn btn-primary" onClick={() => void submit()} disabled={busy}>
           <i className="bi bi-plus-lg me-2" aria-hidden="true" />
           Add Category
+        </button>
+      </Modal.Footer>
+    </Modal>
+  );
+}
+
+export function QuickAddTagModal({
+  show,
+  onClose,
+  onCreated,
+}: BaseProps & { onCreated: (created: { id: number; name: string }) => void }) {
+  const [name, setName] = useState("");
+  const [color, setColor] = useState("#6c757d");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const toast = useToast();
+
+  const close = () => {
+    setName("");
+    setColor("#6c757d");
+    setError(null);
+    onClose();
+  };
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError("Tag name is required");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      if (await tagNameExists(trimmed)) {
+        setError("Tag name must be unique.");
+        return;
+      }
+      const id = await createTag(trimmed, color);
+      onCreated({ id, name: trimmed });
+      toast.success(`Tag "${trimmed}" created.`);
+      close();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal show={show} onHide={close} centered>
+      <Modal.Header closeButton>
+        <Modal.Title>Add New Tag</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submit();
+          }}
+        >
+          <div className="mb-3">
+            <label htmlFor="quickTagName" className="form-label">
+              Tag Name
+            </label>
+            <input
+              id="quickTagName"
+              className={`form-control${error ? " is-invalid" : ""}`}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+            />
+            {error ? <div className="invalid-feedback">{error}</div> : null}
+          </div>
+          <div className="mb-3">
+            <label htmlFor="quickTagColor" className="form-label">
+              Color (optional)
+            </label>
+            <input
+              id="quickTagColor"
+              type="color"
+              className="form-control form-control-color"
+              value={color}
+              onChange={(event) => setColor(event.target.value)}
+            />
+          </div>
+        </form>
+      </Modal.Body>
+      <Modal.Footer>
+        <button type="button" className="btn btn-secondary" onClick={close} disabled={busy}>
+          Cancel
+        </button>
+        <button type="button" className="btn btn-primary" onClick={() => void submit()} disabled={busy}>
+          Add Tag
         </button>
       </Modal.Footer>
     </Modal>
