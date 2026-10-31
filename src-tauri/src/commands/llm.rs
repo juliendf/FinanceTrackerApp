@@ -35,8 +35,10 @@ pub enum ChatEvent {
         arguments: String,
         /// Provider-specific extras that must travel back with the call.
         /// Gemini 3 puts a `thought_signature` here and rejects the next
-        /// request without it.
-        #[serde(rename = "extraContent")]
+        /// request without it. Omitted entirely when absent: sending
+        /// `"extra_content": null` makes Gemini answer
+        /// `400 Value is not a struct: null`.
+        #[serde(rename = "extraContent", skip_serializing_if = "Option::is_none")]
         extra_content: Option<Value>,
     },
     /// Stream finished cleanly.
@@ -562,6 +564,28 @@ mod tests {
             acc[0].extra_content,
             Some(json!({"google": {"thought_signature": "sig-123"}}))
         );
+    }
+
+    #[test]
+    fn absent_extra_content_is_not_serialized() {
+        let event = ChatEvent::ToolCall {
+            id: "c1".into(),
+            name: "get_portfolio_summary".into(),
+            arguments: "{}".into(),
+            extra_content: None,
+        };
+        let json = serde_json::to_string(&event).unwrap();
+        assert!(!json.contains("extraContent"), "got: {json}");
+        assert!(json.contains("get_portfolio_summary"));
+
+        let with = ChatEvent::ToolCall {
+            id: "c1".into(),
+            name: "n".into(),
+            arguments: "{}".into(),
+            extra_content: Some(json!({"google": {"thought_signature": "s"}})),
+        };
+        let json = serde_json::to_string(&with).unwrap();
+        assert!(json.contains("extraContent"), "got: {json}");
     }
 
     #[test]

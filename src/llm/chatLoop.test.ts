@@ -75,6 +75,22 @@ describe("runTurn", () => {
     expect(assistant?.tool_calls?.[0].extra_content).toEqual(signature);
   });
 
+  it("treats a null extraContent as absent", async () => {
+    // The Rust side used to serialize `None` as `extraContent: null`; forwarding
+    // that made Gemini answer 400 "Value is not a struct: null".
+    const result = await runTurn({
+      requestId: "t",
+      messages: [{ role: "user", content: "x" }],
+      transport: scripted([
+        { calls: [{ id: "c1", name: "list_assets", arguments: "{}", extraContent: null }] },
+        { content: "done" },
+      ]),
+      execute: async () => ok([]),
+    });
+    const assistant = result.messages.find((message) => message.role === "assistant" && message.tool_calls);
+    expect(assistant?.tool_calls?.[0]).not.toHaveProperty("extra_content");
+  });
+
   it("omits extra_content for providers that send none", async () => {
     const result = await runTurn({
       requestId: "t",

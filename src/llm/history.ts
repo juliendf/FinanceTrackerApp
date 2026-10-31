@@ -41,6 +41,23 @@ export function toolCallNames(raw: string | null): Record<string, string> {
 }
 
 /**
+ * Strip `extra_content: null` from stored tool calls.
+ *
+ * Rows written by 0.1.2 carry it, because the Rust side serialized an absent
+ * `extra_content` as `null` and the webview passed it straight through. Gemini
+ * answers `400 Value is not a struct: null` for any request that repeats it.
+ */
+function sanitiseToolCalls(calls: unknown): ChatMessage["tool_calls"] {
+  if (!Array.isArray(calls)) return undefined;
+  return calls.map((call) => {
+    if (typeof call !== "object" || call === null) return call;
+    const record = { ...(call as Record<string, unknown>) };
+    if (record.extra_content === null || record.extra_content === undefined) delete record.extra_content;
+    return record as NonNullable<ChatMessage["tool_calls"]>[number];
+  });
+}
+
+/**
  * Turn stored rows into a valid message list, repairing a cut window.
  * `rows` must be oldest first (the repository returns them that way).
  */
@@ -90,7 +107,9 @@ export function buildHistoryMessages(rows: readonly Message[]): ChatMessage[] {
       continue;
     }
     const entry: ChatMessage = { role: row.role, content: row.content ?? "" };
-    if (row.role === "assistant" && row.tool_calls) entry.tool_calls = JSON.parse(row.tool_calls);
+    if (row.role === "assistant" && row.tool_calls) {
+      entry.tool_calls = sanitiseToolCalls(JSON.parse(row.tool_calls));
+    }
     messages.push(entry);
   }
   return messages;

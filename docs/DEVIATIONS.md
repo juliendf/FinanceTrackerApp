@@ -361,6 +361,10 @@ and changeable there.
   slot, producing names like `get_allocationget_allocationlist_assets`, which the
   tool executor rejected and the provider then refused on the next request.
   `tests/live.rs::gemini_streams_two_tool_calls_kept_apart` covers it.
+- **An absent `extra_content` is omitted, never sent as `null`.** Serde
+  serialized the option as `null`, the webview forwarded it, and Gemini answers
+  `400 Value is not a struct: null`. Rust skips the field when absent, the loop
+  treats `null` as absent, and replayed rows have a stored `null` stripped.
 - **Corrupt tool rows are dropped from the history window.** Rows written by
   those merged calls carry names no longer in `tools.json`; replaying them makes
   every later turn fail, so `buildHistoryMessages` drops them (and their

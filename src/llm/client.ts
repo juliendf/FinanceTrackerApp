@@ -74,7 +74,8 @@ export async function chatCompletion(
           id: event.id,
           name: event.name,
           arguments: event.arguments,
-          ...(event.extraContent === undefined ? {} : { extraContent: event.extraContent }),
+          // `null` means "no extras"; forwarding it makes Gemini 400.
+          ...(event.extraContent == null ? {} : { extraContent: event.extraContent }),
         });
         break;
       case "cancelled":

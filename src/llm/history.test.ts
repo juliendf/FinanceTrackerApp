@@ -101,6 +101,42 @@ describe("buildHistoryMessages", () => {
     ]);
   });
 
+  it("drops a stored extra_content of null", () => {
+    const withNull = JSON.stringify([
+      {
+        id: "c1",
+        type: "function",
+        function: { name: "list_assets", arguments: "{}" },
+        extra_content: null,
+      },
+    ]);
+    const messages = buildHistoryMessages([
+      row(1, { role: "user", content: "x" }),
+      row(2, { role: "assistant", content: "", tool_calls: withNull }),
+      row(3, { role: "tool", content: "[]", tool_call_id: "c1" }),
+    ]);
+    const assistant = messages.find((m) => m.role === "assistant");
+    expect(assistant?.tool_calls?.[0]).not.toHaveProperty("extra_content");
+  });
+
+  it("keeps a real extra_content when replaying", () => {
+    const withSignature = JSON.stringify([
+      {
+        id: "c1",
+        type: "function",
+        function: { name: "list_assets", arguments: "{}" },
+        extra_content: { google: { thought_signature: "sig" } },
+      },
+    ]);
+    const messages = buildHistoryMessages([
+      row(1, { role: "user", content: "x" }),
+      row(2, { role: "assistant", content: "", tool_calls: withSignature }),
+      row(3, { role: "tool", content: "[]", tool_call_id: "c1" }),
+    ]);
+    const assistant = messages.find((m) => m.role === "assistant");
+    expect(assistant?.tool_calls?.[0].extra_content).toEqual({ google: { thought_signature: "sig" } });
+  });
+
   it("is empty-safe", () => {
     expect(buildHistoryMessages([])).toEqual([]);
   });
