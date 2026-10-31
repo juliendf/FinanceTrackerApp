@@ -60,7 +60,12 @@ vi.mock("../db/repositories/snapshots", () => ({
 import { confirmAction, extractMemories, loadPendingActions, rejectAction, sendMessage } from "./service";
 import type { ChatTransport } from "./chatLoop";
 
-const transportWith = (responses: Array<{ content?: string; calls?: Array<{ id: string; name: string; arguments: string }> }>): ChatTransport => {
+const transportWith = (
+  responses: Array<{
+    content?: string;
+    calls?: Array<{ id: string; name: string; arguments: string; extraContent?: unknown }>;
+  }>,
+): ChatTransport => {
   let index = 0;
   return async () => {
     const response = responses[Math.min(index, responses.length - 1)];
@@ -160,6 +165,25 @@ describe("sendMessage", () => {
     const toolRow = repo.appendMessage.mock.calls[2][0] as { toolCallId: string; content: string };
     expect(toolRow.toolCallId).toBe("c1");
     expect(JSON.parse(toolRow.content).pending_action_id).toBe(9);
+  });
+
+  it("persists the thought signature so a replayed history keeps it", async () => {
+    const signature = { google: { thought_signature: "sig-abc" } };
+    await sendMessage({
+      conversationId: 5,
+      text: "use a tool",
+      transport: transportWith([
+        { calls: [{ id: "c1", name: "get_portfolio_summary", arguments: "{}", extraContent: signature }] },
+        { content: "done" },
+      ]),
+      requestId: "r",
+      execute: async () => ({ result: { total_value_base: 1 }, summary: "ok" }),
+    });
+    const assistantRow = repo.appendMessage.mock.calls.find(
+      (call) => (call[0] as { role: string }).role === "assistant" && (call[0] as { toolCalls?: string }).toolCalls,
+    );
+    const stored = JSON.parse((assistantRow![0] as { toolCalls: string }).toolCalls);
+    expect(stored[0].extra_content).toEqual(signature);
   });
 
   it("refuses without a provider", async () => {

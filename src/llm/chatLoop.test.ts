@@ -3,7 +3,13 @@ import { parseToolArgs, pendingActionsFrom, runTurn, type ChatTransport } from "
 import type { ToolResult } from "./tools";
 
 /** A transport that replays a fixed script of responses. */
-function scripted(responses: Array<{ content?: string; calls?: Array<{ id: string; name: string; arguments: string }>; cancelled?: boolean }>): ChatTransport {
+function scripted(
+  responses: Array<{
+    content?: string;
+    calls?: Array<{ id: string; name: string; arguments: string; extraContent?: unknown }>;
+    cancelled?: boolean;
+  }>,
+): ChatTransport {
   let index = 0;
   return async () => {
     const response = responses[Math.min(index, responses.length - 1)];
@@ -52,6 +58,32 @@ describe("runTurn", () => {
     expect(JSON.parse(tool!.content)).toEqual({ total_value_base: 10 });
     const assistantCall = result.messages.find((message) => message.role === "assistant" && message.tool_calls);
     expect(assistantCall?.tool_calls?.[0].function.name).toBe("get_portfolio_summary");
+  });
+
+  it("echoes the provider's extra content back on the assistant call", async () => {
+    const signature = { google: { thought_signature: "sig-123" } };
+    const result = await runTurn({
+      requestId: "t",
+      messages: [{ role: "user", content: "x" }],
+      transport: scripted([
+        { calls: [{ id: "c1", name: "list_assets", arguments: "{}", extraContent: signature }] },
+        { content: "done" },
+      ]),
+      execute: async () => ok([]),
+    });
+    const assistant = result.messages.find((message) => message.role === "assistant" && message.tool_calls);
+    expect(assistant?.tool_calls?.[0].extra_content).toEqual(signature);
+  });
+
+  it("omits extra_content for providers that send none", async () => {
+    const result = await runTurn({
+      requestId: "t",
+      messages: [{ role: "user", content: "x" }],
+      transport: scripted([{ calls: [{ id: "c1", name: "list_assets", arguments: "{}" }] }, { content: "done" }]),
+      execute: async () => ok([]),
+    });
+    const assistant = result.messages.find((message) => message.role === "assistant" && message.tool_calls);
+    expect(assistant?.tool_calls?.[0]).not.toHaveProperty("extra_content");
   });
 
   it("stops at the round cap and says so", async () => {

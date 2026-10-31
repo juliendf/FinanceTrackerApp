@@ -33,6 +33,11 @@ pub enum ChatEvent {
         id: String,
         name: String,
         arguments: String,
+        /// Provider-specific extras that must travel back with the call.
+        /// Gemini 3 puts a `thought_signature` here and rejects the next
+        /// request without it.
+        #[serde(rename = "extraContent")]
+        extra_content: Option<Value>,
     },
     /// Stream finished cleanly.
     Done { content: String },
@@ -48,6 +53,8 @@ pub struct ToolCall {
     pub id: String,
     pub name: String,
     pub arguments: String,
+    /// Verbatim `extra_content` from the provider (Gemini's thought signature).
+    pub extra_content: Option<Value>,
 }
 
 /// What one round trip produced, for callers that need the values rather than
@@ -165,6 +172,10 @@ fn merge_tool_delta(acc: &mut Vec<ToolCall>, delta: &Value) {
     }
     if let Some(args) = delta["function"]["arguments"].as_str() {
         slot.arguments.push_str(args);
+    }
+    // Sent whole in one delta; a later delta omits it, so do not clear it.
+    if delta["extra_content"].is_object() {
+        slot.extra_content = Some(delta["extra_content"].clone());
     }
 }
 
@@ -313,6 +324,7 @@ where
             id: call.id.clone(),
             name: call.name.clone(),
             arguments: call.arguments.clone(),
+            extra_content: call.extra_content.clone(),
         });
     }
 
@@ -473,6 +485,31 @@ mod tests {
         assert_eq!(acc[0].id, "call_1");
         assert_eq!(acc[0].name, "get_portfolio_summary");
         assert_eq!(acc[0].arguments, "{\"a\":1}");
+    }
+
+    #[test]
+    fn tool_deltas_keep_the_provider_extra_content() {
+        let mut acc: Vec<ToolCall> = Vec::new();
+        let signature = json!({"google": {"thought_signature": "sig-123"}});
+
+        merge_tool_delta(
+            &mut acc,
+            &json!({"index": 0, "id": "c1", "extra_content": signature, "function": {"name": "one", "arguments": "{}"}}),
+        );
+        // A following delta without extra_content must not wipe it.
+        merge_tool_delta(&mut acc, &json!({"index": 0, "function": {"arguments": ""}}));
+
+        assert_eq!(
+            acc[0].extra_content,
+            Some(json!({"google": {"thought_signature": "sig-123"}}))
+        );
+    }
+
+    #[test]
+    fn tool_calls_without_extra_content_stay_none() {
+        let mut acc: Vec<ToolCall> = Vec::new();
+        merge_tool_delta(&mut acc, &json!({"index": 0, "id": "c1", "function": {"name": "one"}}));
+        assert_eq!(acc[0].extra_content, None);
     }
 
     #[test]

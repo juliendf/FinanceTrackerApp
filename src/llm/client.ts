@@ -15,6 +15,12 @@ export interface ChatMessage {
     id: string;
     type: "function";
     function: { name: string; arguments: string };
+    /**
+     * Provider extras that must be echoed back verbatim. Gemini 3 returns a
+     * `thought_signature` here and answers 400 INVALID_ARGUMENT if the next
+     * request omits it.
+     */
+    extra_content?: unknown;
   }>;
   tool_call_id?: string;
   /** Gemini's functionResponse needs the name; OpenAI ignores it. */
@@ -25,11 +31,13 @@ export interface ToolCall {
   id: string;
   name: string;
   arguments: string;
+  /** Gemini's thought signature, when the provider sends one. */
+  extraContent?: unknown;
 }
 
 export type StreamEvent =
   | { type: "delta"; content: string }
-  | { type: "toolCall"; id: string; name: string; arguments: string }
+  | { type: "toolCall"; id: string; name: string; arguments: string; extraContent?: unknown }
   | { type: "done"; content: string }
   | { type: "error"; message: string }
   | { type: "cancelled" };
@@ -66,6 +74,7 @@ export async function chatCompletion(
           id: event.id,
           name: event.name,
           arguments: event.arguments,
+          ...(event.extraContent === undefined ? {} : { extraContent: event.extraContent }),
         });
         break;
       case "cancelled":

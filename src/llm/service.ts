@@ -159,6 +159,7 @@ export async function sendMessage(options: SendOptions): Promise<SendResult> {
             id: call.id,
             type: "function",
             function: { name: call.name, arguments: call.arguments },
+            ...(call.extraContent === undefined ? {} : { extra_content: call.extraContent }),
           })),
         ),
       });

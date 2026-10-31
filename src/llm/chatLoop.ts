@@ -115,6 +115,8 @@ export async function runTurn(options: LoopOptions): Promise<LoopResult> {
         id: call.id,
         type: "function" as const,
         function: { name: call.name, arguments: call.arguments },
+        // Gemini 3 needs its thought signature back; other providers send none.
+        ...(call.extraContent === undefined ? {} : { extra_content: call.extraContent }),
       })),
     });
     await options.onAssistantToolCalls?.({ content: response.content, toolCalls: response.toolCalls });

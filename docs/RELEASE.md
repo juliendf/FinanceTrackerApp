@@ -44,7 +44,7 @@ codesign --force --deep --sign - "$APP"
 rm -rf /tmp/ftstage && mkdir -p /tmp/ftstage
 cp -R "$APP" /tmp/ftstage/ && ln -s /Applications /tmp/ftstage/Applications
 hdiutil create -volname "FinanceTracker" -srcfolder /tmp/ftstage -ov \
-  -format UDZO src-tauri/target/release/bundle/dmg/FinanceTracker_0.1.0_aarch64.dmg
+  -format UDZO src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
 ```
 
 With a Developer ID, Tauri signs before bundling and this repack is unnecessary.

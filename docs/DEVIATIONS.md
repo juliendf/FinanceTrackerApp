@@ -345,8 +345,16 @@ and changeable there.
   facts to a provider. The source has no such switch.
 - **Gemini uses its OpenAI-compatible surface.** The app speaks the OpenAI
   schema everywhere, so `gemini` providers are pointed at
-  `.../v1beta/openai` and migration 3 rewrites imported rows. The litellm
-  thought-signature special case is not ported.
+  `.../v1beta/openai` and migration 3 rewrites imported rows.
+- **Gemini's thought signature is carried, not dropped.** The brief said not to
+  port litellm's special case unless a test proved it necessary. It is: Gemini 3
+  returns `extra_content.google.thought_signature` inside each streamed tool
+  call and answers `400 INVALID_ARGUMENT` ("Function call is missing a
+  thought_signature") when the assistant turn is echoed without it. Rust keeps
+  the value, the loop puts it back on the tool-call turn, and it is persisted
+  with the message so a replayed history still has it.
+  `tests/live.rs::gemini_keeps_the_thought_signature_across_a_tool_round`
+  asserts both the failure without it and the success with it.
 - **Reasoning models get `max_tokens` 4096**, computed in Rust from the model
   name (`qwen3*`, `deepseek-r1`, `deepseek-v3`), as `llm_client.py` does.
 - **No `ChatJob` table.** Streaming is a Tauri channel and cancellation an

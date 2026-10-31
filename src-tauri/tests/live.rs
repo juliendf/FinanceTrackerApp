@@ -248,3 +248,108 @@ fn keychain_round_trip() {
     secrets::secret_delete(account.clone()).expect("delete");
     assert_eq!(secrets::secret_get(account).expect("get after delete"), None);
 }
+
+/// Gemini 3 refuses a follow-up request that drops the `thought_signature` it
+/// returned with a tool call.
+///
+/// This is the bug that made chat answer `400 INVALID_ARGUMENT`: the streamed
+/// tool call carries `extra_content.google.thought_signature`, and echoing the
+/// assistant turn back without it is invalid. The test proves both halves
+/// against the real endpoint — failing without the signature, succeeding with
+/// it — so the plumbing is verified, not just unit-tested.
+///
+///   GEMINI_API_KEY=... cargo test --test live gemini_keeps -- --ignored --nocapture
+#[tokio::test]
+#[ignore = "needs GEMINI_API_KEY"]
+async fn gemini_keeps_the_thought_signature_across_a_tool_round() {
+    let Ok(api_key) = std::env::var("GEMINI_API_KEY") else {
+        eprintln!("set GEMINI_API_KEY to run this test");
+        return;
+    };
+    let base_url = std::env::var("GEMINI_BASE_URL")
+        .unwrap_or_else(|_| "https://generativelanguage.googleapis.com/v1beta/openai".into());
+    let model = std::env::var("GEMINI_MODEL").unwrap_or_else(|_| "gemini-3-flash-preview".into());
+    let tools = json!([{
+        "type": "function",
+        "function": {
+            "name": "get_portfolio_summary",
+            "description": "Get the portfolio summary",
+            "parameters": {"type": "object", "properties": {}, "required": []}
+        }
+    }]);
+    let first = json!([{ "role": "user", "content": "Call the get_portfolio_summary tool now." }]);
+
+    let (events, emit) = collector();
+    let outcome = stream_completion(
+        CompletionRequest {
+            base_url: &base_url,
+            api_key: Some(&api_key),
+            model: &model,
+            messages: &first,
+            tools: Some(&tools),
+        },
+        Arc::new(AtomicBool::new(false)),
+        emit,
+    )
+    .await
+    .expect("the first round should stream");
+
+    assert_eq!(outcome.tool_calls.len(), 1, "expected one tool call, events: {events:?}");
+    let call = &outcome.tool_calls[0];
+    let signature = call
+        .extra_content
+        .clone()
+        .expect("Gemini 3 returns a thought signature with the call");
+
+    let follow_up = |include_signature: bool| {
+        let mut echoed = json!({
+            "id": call.id,
+            "type": "function",
+            "function": {"name": call.name, "arguments": call.arguments}
+        });
+        if include_signature {
+            echoed["extra_content"] = signature.clone();
+        }
+        json!([
+            { "role": "user", "content": "Call the get_portfolio_summary tool now." },
+            { "role": "assistant", "content": "", "tool_calls": [echoed] },
+            {
+                "role": "tool",
+                "tool_call_id": call.id,
+                "name": call.name,
+                "content": "{\"total_value_base\": 406860.98}"
+            }
+        ])
+    };
+
+    let without = stream_completion(
+        CompletionRequest {
+            base_url: &base_url,
+            api_key: Some(&api_key),
+            model: &model,
+            messages: &follow_up(false),
+            tools: Some(&tools),
+        },
+        Arc::new(AtomicBool::new(false)),
+        collector().1,
+    )
+    .await;
+    let without = without.expect_err("dropping the signature must be rejected");
+    assert!(without.contains("400"), "got: {without}");
+
+    let with = stream_completion(
+        CompletionRequest {
+            base_url: &base_url,
+            api_key: Some(&api_key),
+            model: &model,
+            messages: &follow_up(true),
+            tools: Some(&tools),
+        },
+        Arc::new(AtomicBool::new(false)),
+        collector().1,
+    )
+    .await
+    .expect("echoing the signature must work");
+    println!("answer: {}", with.content);
+    assert!(!with.content.is_empty() || !with.tool_calls.is_empty());
+}
