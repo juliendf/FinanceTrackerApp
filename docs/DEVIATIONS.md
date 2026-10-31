@@ -281,3 +281,7 @@ up rather than rediscovering them.
   correct auto behaviour. Symptoms: app ignores the system appearance until the
   user cycles the toggle. — investigate in Phase 1 with devtools attached.
 
+
+## Security hardening (after Phase 4)
+
+- **File dialogs live in Rust.** The brief lists `tauri-plugin-fs`; it is removed. The webview never passes a path, so a compromised webview cannot read or write arbitrary files. The dialog plugin stays, Rust-side only.

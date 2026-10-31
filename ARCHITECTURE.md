@@ -14,7 +14,7 @@ The UI and all business logic are TypeScript. Rust does only what a webview cann
 | Atomic multi-statement writes | Rust `run_transaction` | The SQL plugin cannot hold a transaction (see below) |
 | Provider API keys | Rust `secret_*` (macOS Keychain) | Keys never enter SQLite |
 | LLM HTTP and streaming | Rust `chat_completion` (reqwest) | Streams over a Tauri channel; cancellable |
-| User-picked file read/write | Rust `pick_and_read_text_file`, `save_text_file` | Avoids widening the fs plugin scope |
+| User-picked file read/write | Rust `pick_and_read_text_file`, `save_text_file` | The webview never supplies a path; Rust opens the dialog |
 
 ## Layers
 
