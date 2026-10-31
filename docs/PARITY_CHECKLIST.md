@@ -52,7 +52,7 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Institution form | `admin/institution_form.html` | 2 | dev | Fields and validators ported; rendered in a modal |
 | Categories list | `admin/categories.html` | 2 | dev | Includes colour swatch and French system-role label |
 | Category form | `admin/category_form.html` | 2 | dev | Includes `system_role` + colour; rendered in a modal |
-| Admin dashboard ("Data") | `admin/dashboard.html` | 2 | wip | Data screen now hosts import + reset; reference-data CRUD lands in Phase 2 |
+| Admin dashboard ("Data") | `admin/dashboard.html` | 2 | dev | Import (v2 and v3), export at v3 with entity selection, typed-confirmation reset |
 | Tags list | `tags/list.html` | 2 | dev | Badge rendering and usage counts |
 | Tag form | `tags/form.html` | 2 | dev | Rendered in a modal |
 | Quick-add modal | `components/quick_add_modal.html`, `static/js/admin.js` | 2 | done | Wired into the asset create form |
@@ -81,16 +81,16 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Settings index | `settings/index.html` | 6 | - | API key generate/revoke section dropped (no REST API) |
-| Settings layout | `settings/_layout.html` | 6 | - | |
-| Exchange rates | `settings/exchange_rates.html` | 6 | - | |
-| Exchange rate edit | `settings/exchange_rates_edit.html` | 6 | - | Bulk edit + history |
+| Settings index | `settings/index.html` | 6 | dev | Six fields, save, export/import links; API key section dropped (no REST API) |
+| Settings layout | `settings/_layout.html` | 6 | dev | Shared nav: General, Exchange Rates, Data & Backup |
+| Exchange rates | `settings/exchange_rates.html` | 6 | dev | List + history, unset rows badged |
+| Exchange rate edit | `settings/exchange_rates_edit.html` | 6 | dev | Bulk edit, validation, one transaction; full precision kept |
 | LLM providers | `settings/llm_providers.html` | 7 | - | |
 | LLM provider form | `settings/llm_provider_form.html` | 7 | - | Endpoint shown prominently; key → Keychain |
-| Data backup | `settings/data_backup.html` | 6 | - | Desktop export/import at v3, no API keys |
-| Settings export | `settings/export.html` | 6 | - | |
-| Settings import | `settings/import.html` | 6 | - | |
-| Reset | `settings/reset.html` | 6 | - | Typed confirmation |
+| Data backup | `settings/data_backup.html` | 6 | dev | Export at v3 with entity selection (no API keys), import of v2/v3, typed-confirmation reset |
+| Settings export | `settings/export.html` | 6 | dev | JSON on screen, saved through a native dialog |
+| Settings import | `settings/import.html` | 6 | dev | Paste or open a file; unknown keys ignored and reported |
+| Reset | `settings/reset.html` | 6 | dev | Checkbox confirmation; deletes the settings rows only |
 | Import from FinanceTracker (wizard) | `services/data_export.py` (v2/v3) | 1b | done | Pick → preview → import → role mapping → report. Verified against a real 18-asset backup |
 
 ## Chat and profile

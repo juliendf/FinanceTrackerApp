@@ -9,8 +9,11 @@ import type { ReactNode } from "react";
 import { Navbar } from "./Navbar";
 import { Sidebar, useSidebarCollapsed } from "./Sidebar";
 import { Breadcrumbs, type Crumb } from "./Breadcrumbs";
+import { useStoredTheme } from "../../lib/useStoredTheme";
 
 export function AppShell({ children }: { children: ReactNode }) {
+  useStoredTheme();
+
   return (
     <>
       <Navbar />

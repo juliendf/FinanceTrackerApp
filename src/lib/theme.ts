@@ -23,10 +23,11 @@ declare global {
   }
 }
 
-const media = window.matchMedia("(prefers-color-scheme: dark)");
+// jsdom (the component tests) has no matchMedia; treat that as a light system.
+const media = typeof window.matchMedia === "function" ? window.matchMedia("(prefers-color-scheme: dark)") : null;
 
 export function systemTheme(): ThemeName {
-  return media.matches ? "dark" : "light";
+  return media?.matches ? "dark" : "light";
 }
 
 export function resolveTheme(preference: ThemePreference): ThemeName {
@@ -86,6 +87,7 @@ export function watchSystemTheme(): () => void {
   const onChange = () => {
     if (readPreference() === "auto") applyTheme("auto");
   };
+  if (!media) return () => {};
   media.addEventListener("change", onChange);
   return () => media.removeEventListener("change", onChange);
 }

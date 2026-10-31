@@ -317,6 +317,31 @@ up rather than rediscovering them.
   date, not money paid in, so deposits during the period count as performance.
   This is the source's definition, kept on purpose.
 
+## Phase 6: settings and data
+
+- **No API key section.** The source's Settings page generates and revokes a
+  REST API key; this build has no REST API, so the section and its routes are
+  gone. `X-API-Key` auth has no equivalent.
+- **Backups are version 3 and carry no keys.** The source writes `api_key` in
+  plaintext into the export. This app's export sets `api_key: null` and omits
+  `keychain_ref`, so a backup can be shared without leaking a provider key.
+- **Category roles go into the export.** v2 has no `system_role`, which is why
+  importing a web backup asks the user to map roles. This export includes it, so
+  a round-trip keeps the Résumé and Cash/Emergency figures intact.
+- **Backup entity selection covers memories and goals too**, which the source's
+  exporter does not have.
+- **Exchange-rate edit keeps full precision.** The source's `DecimalField`
+  round-trips through 6 decimal places, so saving the form unchanged silently
+  shortens `1.0730765` to `1.073077`. The grid here shows the stored text.
+- **Unset rates are badged.** The source creates CHF<->USD placeholder rows at
+  rate 0 and shows `0`; here they read `unset`, and `RateTable` already treats a
+  non-positive rate as "no rate".
+- **Settings import/export stay JSON**, as in the source, but the file is written
+  through a native save dialog instead of `?format=json` downloads.
+- **The `theme` setting wins over the toggle.** The theme toggle still writes
+  localStorage so the first paint is right; once the database is read, a stored
+  `theme` row is applied to both.
+
 ## Security hardening (after Phase 4)
 
 - **File dialogs live in Rust.** The brief lists `tauri-plugin-fs`; it is removed. The webview never passes a path, so a compromised webview cannot read or write arbitrary files. The dialog plugin stays, Rust-side only.

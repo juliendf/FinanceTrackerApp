@@ -38,6 +38,21 @@ v2 had no profile, and it does:
 
 Not present in v2: `memories`, `goals` (only the free-text `financial_goals`).
 
+## What this app writes (v3)
+
+Same envelope, `version: 3`, produced by `src/export/backup.ts`. Differences from
+a v2 web export:
+
+- **No `api_key`.** `llm_providers[].api_key` is always `null` and
+  `keychain_ref` is not written; keys stay in the Keychain.
+- **`categories[].system_role`** is included, so a round-trip keeps the Résumé
+  and the Cash/Emergency tiles working.
+- **`memories` and `goals` arrays** are written (v2 has neither).
+- Amounts are JSON numbers in major units, rates are decimal strings.
+
+Verified round-trip on the real backup: 196 statements into a fresh database
+reproduce every exported table row for row (`tests/roundtrip/compare.py`).
+
 ## How the desktop app maps it
 
 | Source | Destination | Transform |

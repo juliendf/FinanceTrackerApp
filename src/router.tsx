@@ -17,6 +17,12 @@ import { SnapshotListPage } from "./ui/pages/snapshots/SnapshotListPage";
 import { AssetsDashboardPage } from "./ui/pages/dashboard/AssetsDashboardPage";
 import { AssetEvolutionPage, DistributionChartPage } from "./ui/pages/dashboard/ChartsPages";
 import { PerformancePage } from "./ui/pages/dashboard/PerformancePage";
+import { ExchangeRatesEditPage } from "./ui/pages/settings/ExchangeRatesEditPage";
+import { ExchangeRatesPage } from "./ui/pages/settings/ExchangeRatesPage";
+import { SettingsExportPage } from "./ui/pages/settings/SettingsExportPage";
+import { SettingsImportPage } from "./ui/pages/settings/SettingsImportPage";
+import { SettingsPage } from "./ui/pages/settings/SettingsPage";
+import { SettingsResetPage } from "./ui/pages/settings/SettingsResetPage";
 import { ResumePage } from "./ui/pages/dashboard/ResumePage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
 
@@ -173,6 +179,14 @@ export const router = createHashRouter([
     ),
   },
   {
+    path: "/settings/data",
+    element: (
+      <AppShell>
+        <DataPage />
+      </AppShell>
+    ),
+  },
+  {
     path: "/chat",
     element: (
       <AppShell>
@@ -181,23 +195,66 @@ export const router = createHashRouter([
     ),
   },
   {
-    path: "/data",
+    path: "/settings",
     element: (
       <AppShell>
-        <DataPage />
+        <SettingsPage />
       </AppShell>
     ),
   },
   {
-    path: "/settings",
+    path: "/settings/reset",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Settings"
-          phase="Phase 6"
-          icon="gear"
-          description="General settings, exchange rates, backup export/import, reset to defaults."
-        />
+        <SettingsResetPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/export",
+    element: (
+      <AppShell>
+        <SettingsExportPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/import",
+    element: (
+      <AppShell>
+        <SettingsImportPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/exchange-rates",
+    element: (
+      <AppShell>
+        <ExchangeRatesPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/exchange-rates/edit",
+    element: (
+      <AppShell>
+        <ExchangeRatesEditPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/exchange-rates/history",
+    element: (
+      <AppShell>
+        <ExchangeRatesPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/data",
+    element: (
+      <AppShell>
+        <DataPage />
       </AppShell>
     ),
   },

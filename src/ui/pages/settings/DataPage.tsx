@@ -1,9 +1,8 @@
 /**
  * Settings > Data.
  *
- * Phase 1b needs the import entry point and the reset; the full settings screen
- * (export at v3, JSON settings export/import, API key section removal) is
- * Phase 6.
+ * Import (including the desktop app's own v3 backups), export at v3, and the
+ * typed-confirmation reset. Settings JSON export/import lives under /settings.
  */
 
 import { useState } from "react";
@@ -11,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { PageHeader } from "../../components/FormCard";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { ImportWizard } from "../import/ImportWizard";
+import { BackupExportCard } from "./BackupExportCard";
 import { useToast } from "../../layout/Toasts";
 import { resetDatabase } from "../../../db/reset";
 import { seedFirstRun } from "../../../db/seed";
@@ -82,6 +82,8 @@ export function DataPage() {
         </div>
       </div>
 
+      <BackupExportCard />
+
       <div className="card card-finance mb-4">
         <div className="card-body">
           <h5 className="card-title">
@@ -91,7 +93,7 @@ export function DataPage() {
           <p className="text-muted">
             Replace the local database with the contents of a JSON backup. The import
             runs in a single transaction: either everything lands or nothing does.
-            This also covers a desktop backup once Phase 6 writes version 3.
+            Backups written by this app (version 3) are read the same way.
           </p>
           <button type="button" className="btn btn-primary" onClick={() => setWizardOpen(true)}>
             Import a backup

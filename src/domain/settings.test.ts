@@ -10,10 +10,13 @@ import { describe, expect, it } from "vitest";
 import { ratePairs } from "../db/seed";
 import {
   DEFAULT_SETTINGS,
+  exportSettingsJson,
   mergeSettings,
   parseSettingValue,
+  parseSettingsImport,
   serializeSettingValue,
   settingValue,
+  validateSetting,
 } from "./settings";
 
 describe("DEFAULT_SETTINGS", () => {
@@ -111,5 +114,35 @@ describe("ratePairs", () => {
       ["USD", "CHF", "0.86"],
       ["CHF", "USD", "1.1628"],
     ]);
+  });
+});
+
+describe("settings screen helpers", () => {
+  it("validates the choices the source validates", () => {
+    expect(validateSetting("base_currency", "CHF")).toBe(true);
+    expect(validateSetting("base_currency", "GBP")).toBe(false);
+    expect(validateSetting("items_per_page", 50)).toBe(true);
+    expect(validateSetting("items_per_page", 25)).toBe(false);
+    expect(validateSetting("theme", "auto")).toBe(true);
+    expect(validateSetting("theme", "blue")).toBe(false);
+    expect(validateSetting("unknown_key", "x")).toBe(false);
+    expect(validateSetting("date_format", "%d.%m.%Y")).toBe(true);
+  });
+
+  it("exports indented JSON of the merged settings", () => {
+    const json = exportSettingsJson({ base_currency: "CHF", show_converted_amounts: true });
+    expect(json).toBe('{\n  "base_currency": "CHF",\n  "show_converted_amounts": true\n}');
+  });
+
+  it("imports only known keys and reports the rest", () => {
+    const result = parseSettingsImport(JSON.stringify({ base_currency: "USD", theme: "dark", auto_backup: "false", items_per_page: 10 }));
+    expect(result.error).toBeNull();
+    expect(result.values).toEqual({ base_currency: "USD", theme: "dark", items_per_page: 10 });
+    expect(result.ignored).toEqual(["auto_backup"]);
+  });
+
+  it("rejects non-JSON and non-objects with a readable message", () => {
+    expect(parseSettingsImport("nope").error).toBe("That is not valid JSON.");
+    expect(parseSettingsImport("[1,2]").error).toBe("Expected a JSON object of setting names to values.");
   });
 });

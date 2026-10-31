@@ -6,7 +6,7 @@ Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LL
 
 ## Status
 
-Phases 0 to 5 are done: backup import, institutions, categories and tags, assets, snapshots, and the dashboards (home, Résumé, distribution, asset evolution). Settings and data, AI chat and packaging are still to come. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
+Phases 0 to 6 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, and settings (general, exchange rates, settings JSON, backup, reset). AI chat and packaging are still to come. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
 
 ## Requirements
 
@@ -45,6 +45,12 @@ Parity tests against real data are opt-in. They compare the app with independent
 python3 tests/oracle/snapshots_csv.py backup.json out.csv > filters.json
 SNAPSHOT_ROWS=... ORACLE_CSV=out.csv ORACLE_FILTERS=filters.json \
   npx vitest run src/domain/snapshots.golden.test.ts
+```
+
+The backup round-trip can be re-checked on real data: export the database, import it into a fresh one, diff the rows.
+
+```sh
+python3 tests/roundtrip/compare.py ORIGINAL.db REBUILT.db
 ```
 
 The dashboards are checked against the *source app's own output*. `tests/oracle/dashboard.py` runs the real Flask code (read-only, throwaway SQLite database, clock frozen) against a backup and writes the chart endpoints' JSON; `src/domain/dashboard.golden.test.ts` compares the TypeScript results with it at several pinned dates. It needs a Python 3.12 venv with the source's requirements plus `freezegun`; the header of the script has the command.
