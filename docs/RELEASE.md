@@ -32,6 +32,23 @@ codesign --verify --deep --strict --verbose=2 \
 Ad-hoc signing keeps the app runnable locally (Gatekeeper still warns, and it is
 not notarised). It gives no tamper evidence and no update trust.
 
+Signing after `tauri build` leaves the `.dmg` holding the *previous* signature,
+and that one does not survive `codesign --verify --strict` ("code has no
+resources but signature indicates they must be present"), so the image must be
+repacked from the signed app:
+
+```sh
+APP="src-tauri/target/release/bundle/macos/FinanceTracker.app"
+codesign --force --deep --sign - "$APP"
+
+rm -rf /tmp/ftstage && mkdir -p /tmp/ftstage
+cp -R "$APP" /tmp/ftstage/ && ln -s /Applications /tmp/ftstage/Applications
+hdiutil create -volname "FinanceTracker" -srcfolder /tmp/ftstage -ov \
+  -format UDZO src-tauri/target/release/bundle/dmg/FinanceTracker_0.1.0_aarch64.dmg
+```
+
+With a Developer ID, Tauri signs before bundling and this repack is unnecessary.
+
 ### With a Developer ID
 
 1. Create a **Developer ID Application** certificate in the Apple Developer

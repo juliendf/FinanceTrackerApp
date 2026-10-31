@@ -383,6 +383,10 @@ and changeable there.
 - **The updater checks, it does not install.** `tauri-plugin-updater` is wired
   to a GitHub Releases `latest.json`, and the Data page has a "Check for
   updates" card. Downloading and restarting the app silently is not offered.
+- **The DMG is repacked after signing.** `tauri build` writes the disk image
+  before the ad-hoc signature is applied by hand, and the signature inside that
+  image fails `codesign --verify --strict`. `docs/RELEASE.md` has the repack
+  recipe; a Developer ID build signs before bundling and needs none.
 - **The release workflow has never run.** The repository has no remote. It is
   written to be read, not assumed working (docs/RELEASE.md).
 - **An About modal sits in the "You" menu** next to the macOS default About
