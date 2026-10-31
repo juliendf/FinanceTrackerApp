@@ -342,6 +342,38 @@ up rather than rediscovering them.
   localStorage so the first paint is right; once the database is read, a stored
   `theme` row is applied to both.
 
+## Phase 7: AI
+
+- **AI is off until you switch it on.** `ai_enabled` is a new setting (default
+  false) on the Settings page. Chat, the prompt rail and memory extraction stay
+  disabled until then, because using them sends your questions and portfolio
+  facts to a provider. The source has no such switch.
+- **Gemini uses its OpenAI-compatible surface.** The app speaks the OpenAI
+  schema everywhere, so `gemini` providers are pointed at
+  `.../v1beta/openai` and migration 3 rewrites imported rows. The litellm
+  thought-signature special case is not ported.
+- **Reasoning models get `max_tokens` 4096**, computed in Rust from the model
+  name (`qwen3*`, `deepseek-r1`, `deepseek-v3`), as `llm_client.py` does.
+- **No `ChatJob` table.** Streaming is a Tauri channel and cancellation an
+  atomic flag, so there is nothing to poll and no job rows.
+- **Memory extraction stages cards, it does not save.** Each proposal becomes a
+  `pending_actions` row, exactly like a proposed snapshot.
+- **"No write without confirmation" is structural.** `propose_snapshot` and
+  `remember_fact` only insert pending actions; `confirmAction` is the sole path
+  to `snapshots` / `user_memories`. The service tests assert the negative.
+- **Tool look-back windows use real days.** The source computes
+  `today.replace(day=max(1, today.day - days))`, which shifts the day inside the
+  current month only: on the 31st, "90 days of history" means "since the 1st".
+  `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
+  real days instead.
+- **Markdown is sanitised.** The source trusted its own converter; here
+  `react-markdown` + `rehype-sanitize` strip anything executable.
+- **The profile has no account fields.** Email, phone and password are gone;
+  `job_title` and `financial_goals` have no column in this schema, so they are
+  dropped (see IMPORT_FORMAT.md).
+- **Per-provider model choice is remembered** in localStorage, so switching back
+  to a provider restores the model you last used with it.
+
 ## Security hardening (after Phase 4)
 
 - **File dialogs live in Rust.** The brief lists `tauri-plugin-fs`; it is removed. The webview never passes a path, so a compromised webview cannot read or write arbitrary files. The dialog plugin stays, Rust-side only.

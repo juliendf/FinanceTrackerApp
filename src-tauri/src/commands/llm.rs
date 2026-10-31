@@ -97,6 +97,17 @@ fn client() -> Result<reqwest::Client, String> {
         .map_err(|e| format!("http client: {e}"))
 }
 
+/// `_is_reasoning_model`: models whose visible answer comes after a long
+/// chain of thought need a bigger token budget.
+const REASONING_MODELS: [&str; 4] = ["qwen3.5", "qwen3", "deepseek-r1", "deepseek-v3"];
+
+fn reasoning_max_tokens(model: &str) -> Option<u32> {
+    REASONING_MODELS
+        .iter()
+        .any(|prefix| model.starts_with(prefix))
+        .then_some(4096)
+}
+
 /// Join a user-supplied base URL with an OpenAI path, tolerating a trailing
 /// slash.
 fn endpoint(base_url: &str, path: &str) -> String {
@@ -176,6 +187,11 @@ where
         "messages": request.messages,
         "stream": true,
     });
+    // Reasoning models spend tokens thinking before they answer, so give them
+    // room, as `llm_client.py` does.
+    if let Some(max_tokens) = reasoning_max_tokens(request.model) {
+        body["max_tokens"] = json!(max_tokens);
+    }
     if let Some(tools) = request.tools {
         let has_tools = tools.as_array().map(|a| !a.is_empty()).unwrap_or(false);
         if has_tools {
@@ -419,6 +435,14 @@ pub async fn test_connection(base_url: String, api_key: Option<String>) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reasoning_models_get_a_bigger_budget() {
+        assert_eq!(reasoning_max_tokens("qwen3:32b"), Some(4096));
+        assert_eq!(reasoning_max_tokens("deepseek-r1:14b"), Some(4096));
+        assert_eq!(reasoning_max_tokens("qwen2.5-coder:14b"), None);
+        assert_eq!(reasoning_max_tokens("gpt-4o-mini"), None);
+    }
 
     #[test]
     fn endpoint_joins_without_double_slash() {

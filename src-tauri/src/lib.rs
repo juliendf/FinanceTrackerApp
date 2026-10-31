@@ -17,6 +17,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0002_full_schema.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 3,
+            description: "gemini_openai_base_url",
+            sql: include_str!("../migrations/0003_gemini_openai_base_url.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

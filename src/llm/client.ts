@@ -17,6 +17,8 @@ export interface ChatMessage {
     function: { name: string; arguments: string };
   }>;
   tool_call_id?: string;
+  /** Gemini's functionResponse needs the name; OpenAI ignores it. */
+  name?: string;
 }
 
 export interface ToolCall {

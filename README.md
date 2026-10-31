@@ -6,7 +6,7 @@ Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LL
 
 ## Status
 
-Phases 0 to 6 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, and settings (general, exchange rates, settings JSON, backup, reset). AI chat and packaging are still to come. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
+Phases 0 to 7 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, settings, and the AI assistant (providers, streaming chat, tools with confirm-before-write, profile, memories, goals). Packaging is still to come. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
 
 ## Requirements
 
@@ -56,6 +56,16 @@ python3 tests/roundtrip/compare.py ORIGINAL.db REBUILT.db
 The dashboards are checked against the *source app's own output*. `tests/oracle/dashboard.py` runs the real Flask code (read-only, throwaway SQLite database, clock frozen) against a backup and writes the chart endpoints' JSON; `src/domain/dashboard.golden.test.ts` compares the TypeScript results with it at several pinned dates. It needs a Python 3.12 venv with the source's requirements plus `freezegun`; the header of the script has the command.
 
 See the header of each `*.golden.test.ts` for the exact variables.
+
+## AI
+
+Chat is off until you enable it under Settings → AI assistant. For a local model:
+
+1. Settings → LLM Providers → New Provider: base URL `http://localhost:11434/v1`, model as listed by `ollama list` (a tool-capable one, e.g. `qwen3.5:4b`), no key.
+2. Tick Enable AI features on the Settings page.
+3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject.
+
+Keys live in the macOS Keychain, never in the database or a backup.
 
 ## Your data
 

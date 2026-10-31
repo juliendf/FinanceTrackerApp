@@ -18,6 +18,8 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 - The app makes no network calls except to the LLM provider base URL the user configures (OpenAI-compatible, including local Ollama). All of it goes through Rust (`reqwest`, rustls) with 10 s connect and 300 s total timeouts.
 - Chat sends conversation content, and any portfolio data the tools return, **to the configured provider**. With a hosted provider that means financial data leaves the machine. Use a local model for fully offline use.
+- **AI is opt-in**: `ai_enabled` defaults to false, and chat, the prompt rail and memory extraction are disabled until you turn it on in Settings.
+- Write tools (record a snapshot, save a memory) never execute from the model's call; they stage a pending action that only the confirm card can resolve.
 - No analytics, crash reporting or auto-update channel exists yet. Phase 8 must decide on update delivery before shipping.
 
 ## Webview and IPC
@@ -40,7 +42,7 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 ## Open issues (to fix before shipping, Phase 8)
 
 1. **`run_transaction` has no table allow-list.** The verb guard stops schema changes and stacked statements, but a compromised webview could still delete or rewrite rows. Replace with named, parameterised operations as the write set stabilises.
-2. **Keys pass through JS.** `secret_get` hands the key to the webview, which passes it to `chat_completion`. Have Rust read the Keychain from the provider id (Phase 7).
+2. **Keys pass through JS.** `secret_get` hands the key to the webview, which passes it to `chat_completion`. The planned fix is for Rust to read the Keychain from the provider id; it is not done yet. Note that `test_connection` and `list_models` also take the key from JS for the same reason.
 3. **Unsigned build.** Phase 8 covers code signing and notarisation; until then Gatekeeper warns and there is no tamper evidence.
 4. **Database is unencrypted** (see Data at rest).
 

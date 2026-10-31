@@ -4,7 +4,10 @@ import { PlaceholderPage } from "./ui/components/PlaceholderPage";
 import { AssetDetailPage } from "./ui/pages/assets/AssetDetailPage";
 import { AssetFormPage } from "./ui/pages/assets/AssetFormPage";
 import { AssetListPage } from "./ui/pages/assets/AssetListPage";
-import { ChatSpikePage } from "./ui/pages/chat/ChatSpikePage";
+import { ChatPage } from "./ui/pages/chat/ChatPage";
+import { LlmProviderFormPage } from "./ui/pages/settings/LlmProviderFormPage";
+import { LlmProvidersPage } from "./ui/pages/settings/LlmProvidersPage";
+import { ProfilePage } from "./ui/pages/profile/ProfilePage";
 import { DataPage } from "./ui/pages/settings/DataPage";
 import { CategoriesPage } from "./ui/pages/reference/CategoriesPage";
 import { InstitutionsPage } from "./ui/pages/reference/InstitutionsPage";
@@ -190,7 +193,15 @@ export const router = createHashRouter([
     path: "/chat",
     element: (
       <AppShell>
-        <ChatSpikePage />
+        <ChatPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/chat/:conversationId",
+    element: (
+      <AppShell>
+        <ChatPage />
       </AppShell>
     ),
   },
@@ -199,6 +210,30 @@ export const router = createHashRouter([
     element: (
       <AppShell>
         <SettingsPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/llm-providers",
+    element: (
+      <AppShell>
+        <LlmProvidersPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/llm-providers/new",
+    element: (
+      <AppShell>
+        <LlmProviderFormPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/llm-providers/:providerId/edit",
+    element: (
+      <AppShell>
+        <LlmProviderFormPage />
       </AppShell>
     ),
   },
@@ -262,12 +297,7 @@ export const router = createHashRouter([
     path: "/profile",
     element: (
       <AppShell>
-        <PlaceholderPage
-          title="Profile"
-          phase="Phase 7"
-          icon="person-gear"
-          description="Financial profile, AI style preferences, memories and goals."
-        />
+        <ProfilePage />
       </AppShell>
     ),
   },

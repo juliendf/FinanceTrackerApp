@@ -29,6 +29,8 @@ describe("DEFAULT_SETTINGS", () => {
       llm_timeout: "120",
       theme: "light",
       enable_animations: true,
+      // Not in the source: the AI opt-in (docs/DEVIATIONS.md).
+      ai_enabled: false,
     });
   });
 });

@@ -20,6 +20,12 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   llm_timeout: "120",
   theme: "light",
   enable_animations: true,
+  /**
+   * Not in the source: a deliberate opt-in. Chat stays off until the user turns
+   * it on here, because using it sends portfolio data to a provider.
+   * See docs/DEVIATIONS.md.
+   */
+  ai_enabled: false,
 };
 
 /** Port of `_parse_setting_value`. */

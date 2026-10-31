@@ -29,6 +29,7 @@ type Draft = {
   date_format: string;
   theme: string;
   enable_animations: boolean;
+  ai_enabled: boolean;
 };
 
 const toDraft = (settings: Record<string, SettingValue>): Draft => ({
@@ -38,6 +39,7 @@ const toDraft = (settings: Record<string, SettingValue>): Draft => ({
   date_format: String(settings.date_format ?? DEFAULT_SETTINGS.date_format),
   theme: String(settings.theme ?? DEFAULT_SETTINGS.theme),
   enable_animations: settings.enable_animations !== false,
+  ai_enabled: settings.ai_enabled === true,
 });
 
 export function SettingsPage() {
@@ -198,6 +200,25 @@ export function SettingsPage() {
           </div>
         </div>
 
+        <div className="form-section">
+          <h5 className="mb-3"><i className="bi bi-robot me-2" aria-hidden="true" />AI assistant</h5>
+          <div className="form-check mb-2">
+            <input
+              id="ai_enabled"
+              type="checkbox"
+              className="form-check-input"
+              checked={draft.ai_enabled}
+              onChange={(e) => setDraft({ ...draft, ai_enabled: e.target.checked })}
+            />
+            <label htmlFor="ai_enabled" className="form-check-label">Enable AI features</label>
+          </div>
+          <div className="form-text">
+            Off by default. When on, the assistant sends your questions and the portfolio facts it looks up to the
+            provider you configure under <Link to="/settings/llm-providers">LLM Providers</Link>. Nothing is sent
+            anywhere else.
+          </div>
+        </div>
+
         <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>
             <i className="bi bi-check-lg me-2" aria-hidden="true" />
@@ -207,6 +228,10 @@ export function SettingsPage() {
             <i className="bi bi-arrow-counterclockwise me-2" aria-hidden="true" />
             Reset to Defaults
           </button>
+          <Link to="/settings/llm-providers" className="btn btn-outline-secondary">
+            <i className="bi bi-cpu me-2" aria-hidden="true" />
+            LLM Providers
+          </Link>
           <Link to="/settings/export" className="btn btn-outline-info">
             <i className="bi bi-download me-2" aria-hidden="true" />
             Export Settings

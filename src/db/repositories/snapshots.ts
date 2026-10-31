@@ -206,3 +206,14 @@ export async function countSnapshots(): Promise<number> {
   const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM snapshots`);
   return rows[0]?.n ?? 0;
 }
+
+/** The snapshot for an asset on one date, if any (the confirm flow's upsert check). */
+export async function getSnapshotOn(assetId: number, date: string): Promise<SnapshotRow | null> {
+  const db = await getDb();
+  const rows = await db.select<SnapshotRow[]>(
+    `SELECT id, asset_id, date, amount_minor, created_at, updated_at
+       FROM snapshots WHERE asset_id = ? AND date = ?`,
+    [assetId, date],
+  );
+  return rows[0] ?? null;
+}

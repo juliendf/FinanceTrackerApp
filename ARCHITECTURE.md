@@ -81,4 +81,4 @@ Stack: Tauri 2, React 19, TypeScript, Vite, react-router (hash), TanStack Query,
 
 ## Phases
 
-0 spike, 1 schema/shell/components, 1b importer, 2 reference data, 3 assets, 4 snapshots, 5 dashboards (done); 6 settings and data, 7 AI chat, 8 ship, 9 optional MCP. Status per screen: `docs/PARITY_CHECKLIST.md`.
+0 spike, 1 schema/shell/components, 1b importer, 2 reference data, 3 assets, 4 snapshots, 5 dashboards, 6 settings and data, 7 AI chat (all done); 8 ship, 9 optional MCP remain. Status per screen: `docs/PARITY_CHECKLIST.md`.

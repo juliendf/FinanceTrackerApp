@@ -85,8 +85,8 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Settings layout | `settings/_layout.html` | 6 | dev | Shared nav: General, Exchange Rates, Data & Backup |
 | Exchange rates | `settings/exchange_rates.html` | 6 | dev | List + history, unset rows badged |
 | Exchange rate edit | `settings/exchange_rates_edit.html` | 6 | dev | Bulk edit, validation, one transaction; full precision kept |
-| LLM providers | `settings/llm_providers.html` | 7 | - | |
-| LLM provider form | `settings/llm_provider_form.html` | 7 | - | Endpoint shown prominently; key → Keychain |
+| LLM providers | `settings/llm_providers.html` | 7 | dev | List with default/set-default/test/delete, global timeout |
+| LLM provider form | `settings/llm_provider_form.html` | 7 | dev | Endpoint shown prominently, key to the Keychain only, test connection, fetch models |
 | Data backup | `settings/data_backup.html` | 6 | dev | Export at v3 with entity selection (no API keys), import of v2/v3, typed-confirmation reset |
 | Settings export | `settings/export.html` | 6 | dev | JSON on screen, saved through a native dialog |
 | Settings import | `settings/import.html` | 6 | dev | Paste or open a file; unknown keys ignored and reported |
@@ -97,8 +97,8 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
-| Chat | `chat/index.html`, `static/js/chat.js` | 7 | wip | Phase 0 spike proves streaming + one tool; conversation sidebar, pending actions, memories, markdown and stop/confirm cards still missing |
-| Profile | `auth/profile.html` | 7 | - | Minus password/account parts |
+| Chat | `chat/index.html`, `static/js/chat.js` | 7 | dev | Streaming transcript, conversation sidebar with inline rename, provider/model switch, suggested prompts, stop, confirm/reject cards, per-message delete, extract memories. Markdown sanitised |
+| Profile | `auth/profile.html` | 7 | dev | Identity, financial context, AI style, memories and goals CRUD; account/password parts dropped |
 
 ## Auth and errors — not ported
 

@@ -122,6 +122,51 @@ async fn streams_a_tool_call() {
 
 #[tokio::test(flavor = "multi_thread")]
 #[ignore = "needs a live OpenAI-compatible endpoint"]
+async fn cancelling_mid_stream_stops_within_a_second() {
+    use std::sync::atomic::Ordering;
+    use std::time::{Duration, Instant};
+
+    let flag = Arc::new(AtomicBool::new(false));
+    let flipped_at = Arc::new(Mutex::new(None::<Instant>));
+
+    let sink = flag.clone();
+    let stamp = flipped_at.clone();
+    let emit = move |event: ChatEvent| {
+        // Flip the flag as soon as the first token lands, as the UI's Stop button
+        // does between chunks.
+        if matches!(event, ChatEvent::Delta { .. }) && !sink.load(Ordering::Relaxed) {
+            *stamp.lock().unwrap() = Some(Instant::now());
+            sink.store(true, Ordering::Relaxed);
+        }
+    };
+
+    let messages = json!([{ "role": "user", "content": "Count from 1 to 500, one number per line." }]);
+    let outcome = stream_completion(
+        CompletionRequest {
+            base_url: &base_url(),
+            api_key: None,
+            model: &model(),
+            messages: &messages,
+            tools: None,
+        },
+        flag.clone(),
+        emit,
+    )
+    .await
+    .expect("cancellation is not an error");
+
+    assert!(outcome.cancelled, "expected the outcome to report cancellation");
+    let elapsed = flipped_at
+        .lock()
+        .unwrap()
+        .map(|at| at.elapsed())
+        .expect("the stream should have produced at least one token");
+    assert!(
+        elapsed < Duration::from_secs(1),
+        "stop took {elapsed:?}, expected under 1s"
+    );
+}
+
 async fn cancellation_stops_the_stream() {
     let (_events, emit) = collector();
     let messages = json!([{ "role": "user", "content": "Count to 500." }]);
