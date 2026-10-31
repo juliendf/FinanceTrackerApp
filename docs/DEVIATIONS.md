@@ -269,18 +269,13 @@ screens that hit them do not exist yet.
   snapshot.
 - **Export CSV opens a native save dialog** instead of a browser download.
 
-## Open issues (observed, not yet explained)
+## Resolved: the theme that stayed dark
 
-These are not intentional differences. They are recorded so Phase 1 picks them
-up rather than rediscovering them.
-
-- **A `theme` value of `dark` appeared in the webview's localStorage during the
-  spike, and the app then stayed dark while macOS was light.** Only
-  `cycleTheme()` writes a literal `dark`, and no click was performed, so the
-  writer is unidentified. Clearing the localStorage row and relaunching restored
-  correct auto behaviour. Symptoms: app ignores the system appearance until the
-  user cycles the toggle. — investigate in Phase 1 with devtools attached.
-
+Recorded in Phase 0 and closed in Phase 6. The stored `theme` setting is now
+authoritative once the database has loaded (`src/lib/useStoredTheme.ts`), so a
+stale localStorage value can no longer override it. If the system appearance and
+the app disagree, the `theme` row in Settings is the reason, and it is visible
+and changeable there.
 
 ## Phase 5: dashboards
 
@@ -373,6 +368,27 @@ up rather than rediscovering them.
   dropped (see IMPORT_FORMAT.md).
 - **Per-provider model choice is remembered** in localStorage, so switching back
   to a provider restores the model you last used with it.
+
+## Phase 8: packaging
+
+- **The icon is drawn from code.** `scripts/make-icon.py` renders a 1024 px
+  master with signed-distance shapes (no image library, no binary blob to
+  review), and `npx tauri icon` derives every size plus `.icns`/`.ico`. The
+  Android/iOS/Windows Store outputs that command also writes were removed: this
+  is a macOS-only app.
+- **Ad-hoc signing for now.** There is no Developer ID certificate on this
+  machine, so the bundle is signed with `--sign -` after the build. The config
+  already sets the hardened runtime and the entitlements a signed build needs;
+  docs/RELEASE.md has the steps for the real certificate.
+- **The updater checks, it does not install.** `tauri-plugin-updater` is wired
+  to a GitHub Releases `latest.json`, and the Data page has a "Check for
+  updates" card. Downloading and restarting the app silently is not offered.
+- **The release workflow has never run.** The repository has no remote. It is
+  written to be read, not assumed working (docs/RELEASE.md).
+- **An About modal sits in the "You" menu** next to the macOS default About
+  panel; it shows the bundle version and the database path.
+- **Update artifacts are opt-in** through `src-tauri/tauri.release.conf.json`,
+  so a plain `npm run tauri build` works without the updater private key.
 
 ## Security hardening (after Phase 4)
 

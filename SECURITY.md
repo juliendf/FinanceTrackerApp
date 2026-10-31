@@ -39,12 +39,24 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 - Multi-statement transactions must inline values (the plugin offers no transaction handle). Every value goes through `src/db/literals.ts`: text is escaped by doubling quotes, integers are validated, and the builders are unit-tested against quotes, newlines, semicolons and an injection attempt. New code must not concatenate raw strings into SQL.
 - `run_transaction` guards every statement in Rust (`check_statement`): it must start with `INSERT`, `UPDATE` or `DELETE`, contain no second statement and no SQL comment outside a quoted literal. `DROP`, `ATTACH`, `PRAGMA`, `CREATE` and `SELECT` are refused. The guard is tested, including against all 196 statements generated from a real backup. It does not restrict *which tables* may be modified.
 
-## Open issues (to fix before shipping, Phase 8)
+## Distribution
+
+- **The local build is ad-hoc signed**, so Gatekeeper warns on first launch and
+  there is no tamper evidence. `docs/RELEASE.md` covers the Developer ID
+  certificate, notarisation and the hardened runtime (already enabled, with
+  `src-tauri/entitlements.plist` granting only network client and
+  user-selected files).
+- **Updater keys live outside the repository** at
+  `~/.config/financetrackerapp/updater.key`. Losing that file permanently breaks
+  updates for existing installs; leaking it lets anyone sign an update.
+- **The updater shows a check result only**; it never downloads or restarts on
+  its own.
+
+## Open issues (to fix before shipping)
 
 1. **`run_transaction` has no table allow-list.** The verb guard stops schema changes and stacked statements, but a compromised webview could still delete or rewrite rows. Replace with named, parameterised operations as the write set stabilises.
 2. **Keys pass through JS.** `secret_get` hands the key to the webview, which passes it to `chat_completion`. The planned fix is for Rust to read the Keychain from the provider id; it is not done yet. Note that `test_connection` and `list_models` also take the key from JS for the same reason.
-3. **Unsigned build.** Phase 8 covers code signing and notarisation; until then Gatekeeper warns and there is no tamper evidence.
-4. **Database is unencrypted** (see Data at rest).
+3. **Database is unencrypted** (see Data at rest).
 
 Personal data is git-ignored: `finance_tracker_data_*.json`, `snapshots_export_*.csv`, `*.db`, `*.db-wal`, `*.db-shm`.
 

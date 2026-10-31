@@ -6,7 +6,9 @@
  *   * the mobile floating action buttons are kept, since they are layout, not auth.
  */
 
+import { useState } from "react";
 import { NavLink } from "react-router-dom";
+import { AboutModal } from "../components/AboutModal";
 import { ThemeToggle } from "./ThemeToggle";
 
 const NAV_LINKS = [
@@ -19,6 +21,8 @@ const NAV_LINKS = [
 ];
 
 export function Navbar() {
+  const [aboutOpen, setAboutOpen] = useState(false);
+
   return (
     <>
       <nav className="navbar navbar-expand-lg navbar-glass">
@@ -88,12 +92,21 @@ export function Navbar() {
                       Settings
                     </NavLink>
                   </li>
+                  <li><hr className="dropdown-divider" /></li>
+                  <li>
+                    <button type="button" className="dropdown-item" onClick={() => setAboutOpen(true)}>
+                      <i className="bi bi-info-circle me-2" aria-hidden="true" />
+                      About
+                    </button>
+                  </li>
                 </ul>
               </li>
             </ul>
           </div>
         </div>
       </nav>
+
+      <AboutModal show={aboutOpen} onHide={() => setAboutOpen(false)} />
 
       <div
         className="d-lg-none position-fixed bottom-0 end-0 p-3 d-flex flex-column gap-2"

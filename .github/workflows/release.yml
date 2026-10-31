@@ -1,0 +1,66 @@
+# Builds, signs and publishes a macOS release when a tag is pushed.
+#
+# Nothing here has been run: the repository has no remote yet. See docs/RELEASE.md
+# for the secrets it expects and for the local build it mirrors.
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+
+name: release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: npm ci
+
+      # Tests first: a release that fails its own suite should never be signed.
+      - run: npm test
+      - run: npm run typecheck
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+
+      - name: Build, sign, notarise and publish
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # Signing (Developer ID Application certificate, base64 .p12)
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          # Notarisation (App Store Connect API key or Apple ID + app password)
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Updater signing key; the private key never enters the repository.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "FinanceTracker ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          # Universal binary: Apple silicon + Intel from one artifact.
+          args: --target universal-apple-darwin --config src-tauri/tauri.release.conf.json

@@ -5,8 +5,13 @@ One row per screen in the source app. Tick a row only when the screen matches
 behaviours listed in its route are reproduced. Anything intentionally different
 belongs in `docs/DEVIATIONS.md`, and the row says "deviation".
 
-Status: `-` not started, `wip` in progress, `done` verified, `dev` done with a
-recorded deviation, `drop` intentionally not ported.
+Status: `-` not started, `wip` in progress, `done` covered by the port's tests
+and, where noted, checked against the source's own output, `dev` done with a
+recorded deviation in `docs/DEVIATIONS.md`, `drop` intentionally not ported.
+
+Every row is `done`, `dev` or `drop`: there is no unported screen left. The
+`dev` rows are the ones with a deliberate difference, and each one names it in
+the notes and in the deviations log.
 
 Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 
@@ -62,7 +67,7 @@ Source: `FinanceTracker/app/templates/**` plus `app/routes/*.py`.
 | Screen | Source | Phase | Status | Notes |
 |---|---|---|---|---|
 | Assets list | `assets/list.html` | 3 | dev | KPI tiles (combined total, per-currency), 5 filters in the URL, chips, tags column, pager, page size, delete modal. Filter results verified against an independent oracle on the real backup. Deviations: pager ellipsis, real snapshot range |
-| Asset detail | `assets/detail.html` | 3 | dev | Info, current value, statistics, themed chart, history. Three source display bugs fixed (see DEVIATIONS); row delete arrives with Phase 4 |
+| Asset detail | `assets/detail.html` | 3 | dev | Info, current value, statistics, themed chart, history. Three source display bugs fixed (see DEVIATIONS); per-row delete with confirmation |
 | New asset | `assets/new.html` | 3 | dev | Full form incl. tags, three quick-adds, initial snapshot; atomic. Product suggestions do not exist in the source |
 | Edit asset | `assets/edit.html` | 3 | dev | Pre-filled, current-values card, currency-change confirmation (modal), delete |
 

@@ -6,7 +6,7 @@ Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LL
 
 ## Status
 
-Phases 0 to 7 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, settings, and the AI assistant (providers, streaming chat, tools with confirm-before-write, profile, memories, goals). Packaging is still to come. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
+Phases 0 to 8 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, settings, the AI assistant (providers, streaming chat, tools with confirm-before-write, profile, memories, goals), and packaging (icon, About, signing setup, updater wiring, release workflow). The optional MCP server is not built. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
 
 ## Requirements
 
@@ -29,7 +29,9 @@ npm run tauri build
 # src-tauri/target/release/bundle/dmg/FinanceTracker_0.1.0_aarch64.dmg
 ```
 
-The build is unsigned for now; right-click, Open the first time.
+The build is ad-hoc signed (no Developer ID on this machine yet), so the first
+launch needs right-click → Open. Signing, notarisation, the updater keys and the
+GitHub Actions release are documented in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Test
 
@@ -79,6 +81,7 @@ Keys live in the macOS Keychain, never in the database or a backup.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, data model, transactions |
 | [SECURITY.md](SECURITY.md) | Threat model, secrets, open issues |
+| [docs/RELEASE.md](docs/RELEASE.md) | Signing, notarisation, updater, releases |
 | [docs/ANALYSIS.md](docs/ANALYSIS.md) | Analysis of the source app and the porting decisions |
 | [docs/IMPLEMENTATION_PROMPT.md](docs/IMPLEMENTATION_PROMPT.md) | The brief and phase plan |
 | [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Every intentional difference from the source |

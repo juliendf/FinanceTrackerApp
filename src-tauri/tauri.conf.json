@@ -35,6 +35,31 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "category": "Finance",
+    "shortDescription": "Personal finance tracker: assets, snapshots, dashboards and an AI assistant.",
+    "longDescription": "A native macOS app for tracking assets and their value over time, with dashboards, an AI assistant and local-only storage.",
+    "copyright": "\u00a9 2026 Julien",
+    "createUpdaterArtifacts": false,
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "hardenedRuntime": true,
+      "entitlements": "entitlements.plist",
+      "signingIdentity": null,
+      "providerShortName": null,
+      "exceptionDomain": ""
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/OWNER/financeTrackerApp/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIwM0VFNEQyRjAxOTMxMDcKUldRSE1SbncwdVErc09neklJWnpKNitNSS9VRlJ1TzNGaE5HcmhmQjhmczhUOFZXMUY3MWdFSS8K",
+      "dangerousInsecureTransportProtocol": false,
+      "windows": {
+        "installMode": "passive"
+      }
+    }
   }
 }

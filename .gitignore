@@ -33,3 +33,8 @@ snapshots_export_*.csv
 *.db
 *.db-wal
 *.db-shm
+
+# Updater signing key: lives outside the repo, never commit a copy
+updater.key
+updater.key.pub
+
