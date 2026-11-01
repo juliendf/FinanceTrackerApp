@@ -38,10 +38,22 @@ export const EMPTY_PROFILE: Profile = {
   ai_expertise: "intermediate",
 };
 
+/**
+ * The profile row.
+ *
+ * **Every column the interface declares must be listed here.** `saveProfile`
+ * writes `job_title`, `financial_goals` and `birth_date`, but this query used to
+ * omit them: the form loaded them as empty, showed an empty field, and the next
+ * save wrote `NULL` back over them. The chat prompt lost them too, since it reads
+ * the profile through this function. `profile.test.ts` now compares the column
+ * list with `EMPTY_PROFILE`, so a forgotten column fails the suite instead of
+ * quietly erasing what the user typed.
+ */
 export async function getProfile(): Promise<Profile> {
   const db = await getDb();
   const rows = await db.select<Profile[]>(
-    `SELECT first_name, last_name, currency, timezone, date_format, salary_minor,
+    `SELECT first_name, last_name, job_title, financial_goals, birth_date,
+            currency, timezone, date_format, salary_minor,
             monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise
        FROM profile WHERE id = 1`,
   );

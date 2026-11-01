@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** the profile query did not read `job_title`, `financial_goals` or
+  `birth_date`, although the form writes them. The fields therefore looked empty
+  after saving, and the next save overwrote them with NULL. The assistant's prompt
+  was missing them as well, since it reads the profile through the same query.
+
 - Chat streaming no longer re-renders and re-parses the whole transcript for every
   token: text is batched at ~16 fps, the streaming bubble is plain text, and saved
   messages are memoised. Long conversations stay responsive while an answer streams.

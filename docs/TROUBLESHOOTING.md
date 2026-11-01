@@ -118,6 +118,12 @@ be sent safely. Open the provider and enter the key again once.
 Intended: the key belonged to the old endpoint. Enter it again after saving if the
 new endpoint needs one.
 
+**Job title or "Other Aspirations" comes back empty after saving**
+
+Fixed in 0.4.0: the profile query did not read those columns, so the form reloaded
+them as empty and the next save wrote NULL over them. Re-enter them once; the
+assistant's context has them again too.
+
 **Stop does nothing**
 
 Fixed in 0.2.2; before that the cancel went to the base request id while the
