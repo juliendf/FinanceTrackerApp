@@ -78,6 +78,38 @@ New asset ids are allocated inside the transaction (`nextId` / `justInserted` ag
 - Behaviour is verified against the source, not assumed: independent Python oracles in `tests/oracle/` recompute results from a real backup file and the tests compare (asset filters; snapshot CSV byte-for-byte). The dashboards go further: `tests/oracle/dashboard.py` runs the *source's own code* with the clock frozen and the TypeScript is compared with the JSON its endpoints return.
 - Oracle-backed tests are opt-in via environment variables and skip otherwise, so the default suite needs no private data.
 
+## The chat turn, end to end
+
+Rendered by GitHub; the same flow in prose is under "Layers".
+
+```mermaid
+sequenceDiagram
+    participant UI as ChatPage
+    participant S as llm/service
+    participant L as llm/chatLoop
+    participant R as Rust chat_completion
+    participant P as Provider
+    participant D as SQLite
+
+    UI->>S: sendMessage(text)
+    S->>D: persist user message
+    S->>D: profile, goals, memories, settings
+    S->>L: runTurn(system prompt + history window)
+    loop up to 5 tool rounds
+        L->>R: stream completion(messages, tools)
+        R->>P: POST /chat/completions
+        P-->>R: deltas, tool calls (with Gemini signatures)
+        R-->>L: Channel events (delta / toolCall / done)
+        L->>D: persist assistant tool-call turn
+        L->>D: execute tool (read) or stage pending action (write)
+        L->>D: persist tool result
+    end
+    L-->>S: final answer + pending action ids
+    S->>D: persist assistant answer
+    UI->>D: refetch transcript, drop streaming bubbles
+    Note over UI,D: A write only lands when the user confirms the card:<br/>confirmAction() upserts the snapshot or memory.
+```
+
 ## Tests
 
 Four layers, cheapest first:
