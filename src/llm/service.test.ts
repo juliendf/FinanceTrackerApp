@@ -12,6 +12,7 @@ const repo = vi.hoisted(() => ({
   listRecentMessages: vi.fn(),
   listMessages: vi.fn(),
   getPendingAction: vi.fn(),
+  claimPendingAction: vi.fn(),
   resolvePendingAction: vi.fn(),
   listPendingActions: vi.fn(),
   createPendingAction: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock("../db/repositories/chat", () => ({
   listRecentMessages: () => repo.listRecentMessages(),
   listMessages: () => repo.listMessages(),
   getPendingAction: () => repo.getPendingAction(),
+  claimPendingAction: (...a: unknown[]) => repo.claimPendingAction(...a),
   resolvePendingAction: (...a: unknown[]) => repo.resolvePendingAction(...a),
   listPendingActions: () => repo.listPendingActions(),
   createPendingAction: (...a: unknown[]) => repo.createPendingAction(...a),
@@ -82,6 +84,12 @@ const PROVIDER = { id: 2, name: "Ollama", base_url: "http://localhost:11434/v1",
 
 beforeEach(() => {
   vi.clearAllMocks();
+  repo.claimPendingAction.mockResolvedValue(true);
+  // Implementations survive clearAllMocks, so reset the ones a test overrides.
+  repo.getSnapshotOn.mockResolvedValue(null);
+  repo.updateSnapshot.mockResolvedValue(undefined);
+  repo.createSnapshot.mockResolvedValue(1);
+  repo.resolvePendingAction.mockResolvedValue(undefined);
   repo.getConversation.mockResolvedValue({ id: 5, provider_id: 2, model_override: null, title: "New conversation", created_at: "", updated_at: "" });
   repo.getDefaultProvider.mockResolvedValue(PROVIDER);
   repo.getProfile.mockResolvedValue({
@@ -225,6 +233,33 @@ describe("pending actions", () => {
     updated_at: "",
   };
 
+  it("claims the action before writing, and refuses a second confirm", async () => {
+    repo.getPendingAction.mockResolvedValue(snapshotAction);
+    repo.getSnapshotOn.mockResolvedValue(null);
+    repo.createSnapshot.mockResolvedValue(3);
+
+    await confirmAction(9);
+    expect(repo.claimPendingAction).toHaveBeenCalledWith(9, "confirmed");
+    expect(repo.createSnapshot).toHaveBeenCalledTimes(1);
+
+    // Someone else already took it: the conditional UPDATE matched no row.
+    repo.claimPendingAction.mockResolvedValue(false);
+    const second = await confirmAction(9);
+    expect(second.success).toBe(false);
+    expect(second.resultMessage).toMatch(/already resolved/i);
+    expect(repo.createSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks the action failed when the write throws", async () => {
+    repo.getPendingAction.mockResolvedValue(snapshotAction);
+    repo.getSnapshotOn.mockResolvedValue(null);
+    repo.createSnapshot.mockRejectedValue(new Error("disk full"));
+
+    const result = await confirmAction(9);
+    expect(result.success).toBe(false);
+    expect(repo.resolvePendingAction).toHaveBeenCalledWith(9, "failed", expect.stringContaining("disk full"));
+  });
+
   it("confirm writes the snapshot and narrates", async () => {
     repo.getPendingAction.mockResolvedValue(snapshotAction);
     repo.getSnapshotOn.mockResolvedValue(null);
@@ -250,9 +285,10 @@ describe("pending actions", () => {
     expect(result.wasUpdate).toBe(true);
   });
 
-  it("reject writes nothing but the narration", async () => {
+  it("reject claims the action, then writes nothing but the narration", async () => {
     repo.getPendingAction.mockResolvedValue(snapshotAction);
     const result = await rejectAction(9);
+    expect(repo.claimPendingAction).toHaveBeenCalledWith(9, "rejected");
     expect(result.success).toBe(true);
     expect(repo.createSnapshot).not.toHaveBeenCalled();
     expect(repo.updateSnapshot).not.toHaveBeenCalled();
@@ -261,7 +297,9 @@ describe("pending actions", () => {
   });
 
   it("a resolved action cannot be confirmed twice", async () => {
+    // The row is gone from `pending`, so the conditional claim matches nothing.
     repo.getPendingAction.mockResolvedValue({ ...snapshotAction, status: "confirmed" });
+    repo.claimPendingAction.mockResolvedValue(false);
     const result = await confirmAction(9);
     expect(result.success).toBe(false);
     expect(repo.createSnapshot).not.toHaveBeenCalled();

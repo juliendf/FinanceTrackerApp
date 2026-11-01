@@ -255,12 +255,14 @@ async function listAssetsTool(args: Record<string, unknown>): Promise<unknown> {
   if (category) rows = rows.filter((row) => row.category_name.toLowerCase().includes(category));
   if (tag) rows = rows.filter((row) => row.tags.some((t) => t.name.toLowerCase().includes(tag)));
 
+  // Sort first, then cap: slicing first dropped arbitrary assets, so a named
+  // asset could be missing from a list of more than fifty.
   return rows
-    .slice(0, 50)
     .sort(
       (a, b) =>
         a.institution_name.localeCompare(b.institution_name) || a.product_name.localeCompare(b.product_name),
     )
+    .slice(0, 50)
     .map((row) => ({
       asset_id: row.id,
       name: displayName(row),
@@ -285,7 +287,9 @@ async function assetDetails(assetId: number, today: string): Promise<unknown> {
   const change = (days: number): number | null => {
     const since = lookBack(today, days);
     const first = points.find((point) => point.date >= since);
-    if (!first || !latest || latest.amount_minor === 0) return null;
+    // The guard has to cover the denominator: a first snapshot of 0 makes the
+    // change infinite, while a latest of 0 is a real drop to zero.
+    if (!first || !latest || first.amount_minor === 0) return null;
     return round2(
       new Decimal(latest.amount_minor - first.amount_minor).dividedBy(first.amount_minor).times(100),
     );

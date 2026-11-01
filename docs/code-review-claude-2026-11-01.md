@@ -12,9 +12,9 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 | 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, see below** |
 | 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted — **fixed, see below** |
 | 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent — **fixed, see below** |
-| 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable |
-| 6 | Medium | Correctness | `src/llm/tools.ts:259` | `list_assets` truncates before sorting |
-| 7 | Medium | Correctness | `src/llm/service.ts:206` | `confirmAction` race: double confirm |
+| 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable — **fixed** |
+| 6 | Medium | Correctness | `src/llm/tools.ts:259` | `list_assets` truncates before sorting — **fixed** |
+| 7 | Medium | Correctness | `src/llm/service.ts:206` | `confirmAction` race: double confirm — **fixed** |
 | 8 | Medium | Security | `src/ui/pages/chat/ChatPage.tsx:506` | Assistant links can navigate the app window |
 | 9 | Low | Correctness | `src/db/repositories/assets.ts:149` | First snapshot dated in UTC, not local time |
 | 10 | Low | Correctness | `src/llm/tools.ts:394` | Wrong "already exists" value; impossible dates accepted |
@@ -157,6 +157,11 @@ The 30/90-day change checks `latest.amount_minor === 0` but divides by `first.am
 
 **Fix:** `if (!first || !latest || first.amount_minor === 0) return null`.
 
+**Status: done (2026-11-01, 0.4.0).** The guard now checks the denominator. Two
+tests pin both halves: a fall from 800 to 0 reports `-100` (it used to be hidden
+as "no change"), and a window that starts at 0 reports `null` instead of
+dividing by zero.
+
 ### 6. Medium — `list_assets` truncates before sorting
 
 **Where:** `src/llm/tools.ts:259`
@@ -167,6 +172,13 @@ The list is sliced to 50 rows before it is sorted.
 
 **Fix:** `.sort(...).slice(0, 50)`, and add a `truncated: true` flag so the model knows to filter.
 
+**Status: done (2026-11-01, 0.4.0).** Sorting now happens before the cap, so the
+50 that survive are the first 50 by institution and product rather than an
+arbitrary slice. The payload stays a bare array — the source's shape, and what the
+model expects — rather than becoming an object with a `truncated` flag; the cap
+is deterministic instead, which is the property that mattered. A test with 60
+assets asserts the first 50 by name and not the repository's order.
+
 ### 7. Medium — `confirmAction` race: double confirm
 
 **Where:** `src/llm/service.ts:206`
@@ -176,6 +188,15 @@ The list is sliced to 50 rows before it is sorted.
 **Scenario:** double-clicking Confirm on a `create_memory` card creates the memory twice. If `resolvePendingAction` fails after the write, the card stays pending and can be confirmed again.
 
 **Fix:** one `runTransaction` that starts with `UPDATE pending_actions SET status='confirmed' WHERE id=? AND status='pending'` and stops if no row changed, plus a busy state on the button.
+
+**Status: done (2026-11-01, 0.4.0).** `confirmAction` and `rejectAction` first
+**claim** the row with one conditional `UPDATE … WHERE id = ? AND status =
+'pending'` (through `execute_write`, so the row count comes back) and only then
+write the snapshot or the memory. A second click, a second tab, or a double
+confirm gets no row, returns "already resolved" and writes nothing. A failed write
+marks the action `failed` with the error, and the card's Confirm/Reject buttons
+disable while a request is in flight. Tests cover the claim, the second-confirm
+refusal and the failure path.
 
 ### 9. Low — First snapshot dated in UTC, not local time
 

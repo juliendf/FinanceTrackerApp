@@ -6,6 +6,13 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Chat tools: a fall to zero is reported as `-100 %` instead of "no change", and a
+  window that starts at zero reports no change instead of dividing by it.
+- Chat tools: `list_assets` sorts before it caps at 50, so a named asset is no
+  longer hidden behind an arbitrary slice.
+- Confirming a card claims it atomically: a double click can no longer create the
+  same memory or snapshot twice, and the buttons lock while it runs.
+
 - Stop now works while a provider is silent: the request waits on a cancellation
   poll as well as on the network, both before the first byte and mid-stream.
   Previously a model that was loading, or thinking, ignored Stop until the

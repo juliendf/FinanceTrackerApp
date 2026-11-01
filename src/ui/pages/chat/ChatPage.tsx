@@ -99,6 +99,8 @@ export function ChatPage() {
   const [renameValue, setRenameValue] = useState("");
   const [sessionQuery, setSessionQuery] = useState("");
   const [models, setModels] = useState<string[]>([]);
+  /** The card being confirmed or rejected, so its buttons lock while it runs. */
+  const [busyAction, setBusyAction] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<
     { kind: "conversation"; id: number; title: string } | { kind: "message"; id: number } | null
   >(null);
@@ -276,11 +278,14 @@ export function ChatPage() {
   };
 
   const confirmPending = async (action: PendingActionView) => {
+    if (busyAction !== null) return;
+    setBusyAction(action.id);
     try {
       const result = await confirmAction(action.id);
       if (result.success) toast.success(result.resultMessage);
       else toast.error(result.resultMessage);
     } finally {
+      setBusyAction(null);
       refreshList();
       void queryClient.invalidateQueries({ queryKey: ["snapshot-rows"] });
       void queryClient.invalidateQueries({ queryKey: ["assets"] });
@@ -290,9 +295,15 @@ export function ChatPage() {
   };
 
   const rejectPending = async (action: PendingActionView) => {
-    const result = await rejectAction(action.id);
-    toast.info(result.resultMessage);
-    refreshList();
+    if (busyAction !== null) return;
+    setBusyAction(action.id);
+    try {
+      const result = await rejectAction(action.id);
+      toast.info(result.resultMessage);
+      refreshList();
+    } finally {
+      setBusyAction(null);
+    }
   };
 
   const runExtraction = async () => {
@@ -557,8 +568,22 @@ export function ChatPage() {
                       </p>
                     )}
                     <div className="d-flex gap-2">
-                      <button type="button" className="btn btn-primary btn-sm" onClick={() => void confirmPending(action)}>Confirm</button>
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => void rejectPending(action)}>Reject</button>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm"
+                        disabled={busyAction !== null}
+                        onClick={() => void confirmPending(action)}
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={busyAction !== null}
+                        onClick={() => void rejectPending(action)}
+                      >
+                        Reject
+                      </button>
                     </div>
                   </div>
                 ))}

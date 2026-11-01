@@ -9,6 +9,7 @@
 
 import {
   appendMessage,
+  claimPendingAction,
   getConversation,
   getPendingAction,
   listMessages,
@@ -37,6 +38,13 @@ export const HISTORY_LIMIT = 60;
 export const MEMORY_LIMIT = 10;
 /** User messages are capped at 4000 characters, as the route does. */
 export const MAX_MESSAGE_CHARS = 4000;
+
+/** The stored row, as the confirm/reject flow needs it. */
+type PendingActionRow = Awaited<ReturnType<typeof getPendingAction>> extends infer T
+  ? T extends null
+    ? never
+    : T
+  : never;
 
 export interface PendingActionView {
   id: number;
@@ -203,8 +211,28 @@ export interface ConfirmResult {
 export async function confirmAction(actionId: number): Promise<ConfirmResult> {
   const action = await getPendingAction(actionId);
   if (!action) return { success: false, resultMessage: "Action not found." };
-  if (action.status !== "pending") return { success: false, resultMessage: "That action was already resolved." };
 
+  // Claim it before writing anything: one conditional UPDATE, so a double click
+  // (or two tabs) cannot write the snapshot or the memory twice.
+  if (!(await claimPendingAction(actionId, "confirmed"))) {
+    return { success: false, resultMessage: "That action was already resolved." };
+  }
+
+  try {
+    return await applyConfirmedAction(action);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    // Marking the failure is best effort: it must not mask the original error.
+    try {
+      await resolvePendingAction(actionId, "failed", `Error: ${message}`);
+    } catch {
+      /* the action stays confirmed without a result message; the caller still sees the error */
+    }
+    return { success: false, resultMessage: message };
+  }
+}
+
+async function applyConfirmedAction(action: PendingActionRow): Promise<ConfirmResult> {
   const payload = JSON.parse(action.payload) as Record<string, unknown>;
 
   if (action.action_type === "create_snapshot") {
@@ -260,7 +288,11 @@ export async function confirmAction(actionId: number): Promise<ConfirmResult> {
 export async function rejectAction(actionId: number): Promise<ConfirmResult> {
   const action = await getPendingAction(actionId);
   if (!action) return { success: false, resultMessage: "Action not found." };
-  if (action.status !== "pending") return { success: false, resultMessage: "That action was already resolved." };
+
+  // Same claim as confirming: whoever gets the row decides.
+  if (!(await claimPendingAction(actionId, "rejected"))) {
+    return { success: false, resultMessage: "That action was already resolved." };
+  }
 
   const message = "Cancelled, nothing was saved.";
   await resolvePendingAction(action.id, "rejected", message);

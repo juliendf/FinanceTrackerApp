@@ -190,6 +190,23 @@ export async function createPendingAction(input: {
   return Number(result.lastInsertId);
 }
 
+/**
+ * Move an action out of `pending` in one statement, so two confirms cannot both
+ * win. Returns false when someone else got there first (or it is unresolved).
+ */
+export async function claimPendingAction(
+  id: number,
+  status: "confirmed" | "rejected",
+): Promise<boolean> {
+  const result = await executeWrite(
+    `UPDATE pending_actions
+        SET status = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+      WHERE id = ? AND status = 'pending'`,
+    [status, id],
+  );
+  return result.rowsAffected > 0;
+}
+
 export async function resolvePendingAction(
   id: number,
   status: Exclude<PendingActionStatus, "pending">,

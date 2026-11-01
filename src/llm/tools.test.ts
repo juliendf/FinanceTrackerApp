@@ -121,6 +121,18 @@ describe("read tools", () => {
     ]);
   });
 
+  it("sorts before it caps, so a named asset is not silently dropped", async () => {
+    // 60 assets, sorted by product: the cap must keep the first 50 by name, not
+    // whichever 50 the repository happened to return.
+    const many = Array.from({ length: 60 }, (_, index) => asset(index + 1, { product_name: `P${String(index).padStart(2, "0")}` }));
+    repo.listAssets.mockResolvedValue(many);
+    const { result } = await executeTool("list_assets", {}, ctx);
+    const rows = result as Array<{ asset_id: number }>;
+    expect(rows).toHaveLength(50);
+    // P00 … P49 by name, i.e. ids 1…50, not the repository's insertion order.
+    expect(rows.map((row) => row.asset_id)).toEqual(Array.from({ length: 50 }, (_, i) => i + 1));
+  });
+
   it("filters by institution, category and tag", async () => {
     const byInstitution = await executeTool("list_assets", { institution_name: "bours" }, ctx);
     expect((byInstitution.result as unknown[]).length).toBe(1);
@@ -135,6 +147,26 @@ describe("read tools", () => {
     // window only holds the latest point itself, so both changes are flat/null.
     expect((result as { change_30d_pct: number | null }).change_30d_pct).toBeNull();
     expect((result as { change_90d_pct: number | null }).change_90d_pct).toBe(0);
+  });
+
+  it("reports a drop to zero instead of hiding it", async () => {
+    // first snapshot 800, latest 0: a real -100 %, not "no change".
+    repo.listAllSnapshotPoints.mockResolvedValue([
+      { asset_id: 1, date: "2026-09-01", amount_minor: 80000, currency: "CHF" },
+      { asset_id: 1, date: "2026-09-30", amount_minor: 0, currency: "CHF" },
+    ]);
+    const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    expect((result as { change_90d_pct: number }).change_90d_pct).toBe(-100);
+  });
+
+  it("returns no change when the window starts at zero rather than dividing by it", async () => {
+    // first snapshot 0: the ratio is undefined, so the change is null.
+    repo.listAllSnapshotPoints.mockResolvedValue([
+      { asset_id: 1, date: "2026-09-01", amount_minor: 0, currency: "CHF" },
+      { asset_id: 1, date: "2026-09-30", amount_minor: 50000, currency: "CHF" },
+    ]);
+    const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    expect((result as { change_90d_pct: number | null }).change_90d_pct).toBeNull();
   });
 
   it("details measure the change from the first snapshot in the window", async () => {
