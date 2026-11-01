@@ -190,13 +190,14 @@ export function buildImportStatements(
   const profile = data.profile ?? {};
   if (Object.keys(profile).length > 0) {
     statements.push(
-      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
+      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
         [
           sqlInt(1),
           sqlText(profile.first_name ?? null),
           sqlText(profile.last_name ?? null),
           sqlText(profile.job_title ?? null),
           sqlText(profile.financial_goals ?? null),
+          sqlText(profile.birth_date ?? null),
           sqlText(profile.default_currency ?? "EUR"),
           sqlText(profile.timezone ?? "UTC"),
           sqlText(profile.date_format ?? "%Y-%m-%d"),

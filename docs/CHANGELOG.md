@@ -6,6 +6,12 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Profile: **Date of Birth**, with the age derived from it (not stored, so it
+  never goes stale). The assistant's profile section now starts with `age: N`.
+- Profile: fixed a save that silently kept the old values — the form reseeded
+  itself on every background refetch (React Query refetches on window focus), so
+  text typed just before a refocus was replaced by the stored row.
+
 - Toolbar: no navigation at all — it is the app name, the theme toggle and the
   window drag strip. Profile and Settings both live in the sidebar (under "You");
   About moved to the sidebar footer, on the version line.

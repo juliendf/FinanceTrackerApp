@@ -35,6 +35,12 @@ fn migrations() -> Vec<Migration> {
             sql: include_str!("../migrations/0005_profile_free_text.sql"),
             kind: MigrationKind::Up,
         },
+        Migration {
+            version: 6,
+            description: "profile_birth_date",
+            sql: include_str!("../migrations/0006_profile_birth_date.sql"),
+            kind: MigrationKind::Up,
+        },
     ]
 }
 

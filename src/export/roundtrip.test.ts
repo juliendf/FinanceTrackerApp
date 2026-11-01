@@ -52,7 +52,7 @@ describe("backup round-trip on the real database", () => {
       llm_providers: q(`SELECT id, name, base_url, model, provider_type, keychain_ref, is_default, is_active, created_at, updated_at FROM llm_providers ORDER BY id`),
       provider_models: q(`SELECT provider_id, model, enabled FROM provider_models ORDER BY provider_id, model`),
       settings: q(`SELECT id, key, value, created_at, updated_at FROM settings ORDER BY key`),
-      profile: q<ExportRows["profile"]>(`SELECT first_name, last_name, job_title, financial_goals, currency,
+      profile: q<ExportRows["profile"]>(`SELECT first_name, last_name, job_title, financial_goals, birth_date, currency,
                          timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile,
                          ai_tone, ai_verbosity, ai_expertise FROM profile LIMIT 1`)[0] ?? null,
       memories: q(`SELECT id, category, key, content, source, importance, created_at, updated_at FROM user_memories ORDER BY id`),

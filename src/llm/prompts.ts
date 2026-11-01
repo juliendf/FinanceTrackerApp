@@ -7,7 +7,9 @@
  */
 
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
+import { ageFromBirthDate } from "../domain/age";
 import { formatNumber } from "../domain/format";
+import { todayIso } from "../domain/dates";
 import Decimal from "decimal.js";
 
 export const SYSTEM_PROMPT_TEMPLATE =
@@ -40,8 +42,10 @@ const money = (minor: number | null): string =>
   formatNumber(new Decimal(minor ?? 0).dividedBy(100));
 
 /** `_build_profile_context`: one paragraph plus a structured goals list. */
-export function buildProfileContext(profile: Profile, goals: readonly Goal[]): string {
+export function buildProfileContext(profile: Profile, goals: readonly Goal[], today = todayIso()): string {
   const parts: string[] = [];
+  const age = ageFromBirthDate(profile.birth_date, today);
+  if (age !== null) parts.push(`age: ${age}`);
   if (profile.first_name) {
     const name = profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
     parts.push(`name: ${name}`);
@@ -111,7 +115,7 @@ export function buildSystemPrompt(input: {
 }): string {
   return SYSTEM_PROMPT_TEMPLATE.replace("{date}", input.today)
     .replace("{base_currency}", input.baseCurrency)
-    .replace("{profile_section}", buildProfileContext(input.profile, input.goals))
+    .replace("{profile_section}", buildProfileContext(input.profile, input.goals, input.today))
     .replace("{style_section}", buildStyleContext(input.profile))
     .replace("{memory_section}", buildMemoryContext(input.memories));
 }

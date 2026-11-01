@@ -69,6 +69,7 @@ reproduce every exported table row for row (`tests/roundtrip/compare.py`).
 | `profile.default_currency` | `profile.currency` | |
 | `profile.salary`, `monthly_savings_target` | `*_minor` | half-even, 2 dp |
 | `profile.job_title`, `profile.financial_goals` | `profile.job_title`, `profile.financial_goals` | added in migration 5; both feed the assistant's profile section |
+| `profile.birth_date` | `profile.birth_date` | not in the source; written by this app so age survives a round-trip |
 | `profile.username`, `email` | **dropped** | no account any more; listed in the report |
 | `categories` (no `system_role`) | asks the user to map roles after import | the Résumé view needs them |
 

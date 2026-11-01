@@ -7,7 +7,7 @@
  * fed into its prompt.
  */
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   GOAL_CATEGORIES,
@@ -31,6 +31,8 @@ import { fromMinorUnits, toMinorUnits } from "../../../domain/money";
 import { CURRENCY_CHOICES } from "../../../domain/settings";
 import { formatDate } from "../../../domain/format";
 import { deriveMemoryKey } from "../../../domain/memoryKey";
+import { ageFromBirthDate } from "../../../domain/age";
+import { todayIso } from "../../../domain/dates";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
@@ -100,8 +102,14 @@ export function ProfilePage() {
   const goals = useQuery({ queryKey: ["goals"], queryFn: listGoals });
 
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Seed once. React Query refetches on window focus, and reseeding the form on
+  // every refetch silently replaced what was being typed — a save then wrote the
+  // old values back, which looked like the fields never persisted.
+  const seeded = useRef(false);
   useEffect(() => {
-    if (profile.data) setDraft(toDraft(profile.data));
+    if (!profile.data || seeded.current) return;
+    setDraft(toDraft(profile.data));
+    seeded.current = true;
   }, [profile.data]);
 
   const refresh = () => {
@@ -137,6 +145,8 @@ export function ProfilePage() {
   };
 
   if (!draft) return <p className="text-muted">Loading…</p>;
+
+  const age = ageFromBirthDate(draft.birth_date, todayIso());
 
   return (
     <>
@@ -224,6 +234,20 @@ export function ProfilePage() {
                 placeholder="0.00"
                 onChange={(e) => setDraft({ ...draft, savings: e.target.value })}
               />
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="birth_date" className="form-label">Date of Birth</label>
+              <input
+                id="birth_date"
+                type="date"
+                className="form-control"
+                value={draft.birth_date ?? ""}
+                max={todayIso()}
+                onChange={(e) => setDraft({ ...draft, birth_date: e.target.value || null })}
+              />
+              <div className="form-text">
+                {age !== null ? `${age} years old — used for advice that depends on your horizon.` : "Optional. Used for age-aware advice."}
+              </div>
             </div>
             <div className="col-md-4 mb-3">
               <label htmlFor="risk_profile" className="form-label">Risk Profile</label>

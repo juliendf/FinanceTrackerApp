@@ -27,6 +27,7 @@ const rows: ExportRows = {
   settings: [{ id: 1, key: "base_currency", value: "CHF", created_at: "a", updated_at: "b" }],
   profile: {
     first_name: "Julien", last_name: null, job_title: "Senior SRE", financial_goals: "Retire comfortably.",
+    birth_date: "1990-03-15",
     currency: "CHF", timezone: "Europe/Zurich", date_format: "%d.%m.%Y",
     salary_minor: 500000, monthly_savings_target_minor: null, risk_profile: null,
     ai_tone: "encouraging", ai_verbosity: "balanced", ai_expertise: "intermediate",

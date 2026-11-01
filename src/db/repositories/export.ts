@@ -24,6 +24,7 @@ export interface ExportProviderModel { provider_id: number; model: string; enabl
 export interface ExportSetting { id: number; key: string; value: string; created_at: string; updated_at: string }
 export interface ExportProfile {
   first_name: string | null; last_name: string | null; job_title: string | null; financial_goals: string | null;
+  birth_date: string | null;
   currency: string; timezone: string; date_format: string;
   salary_minor: number | null; monthly_savings_target_minor: number | null;
   risk_profile: string | null; ai_tone: string; ai_verbosity: string; ai_expertise: string;
@@ -87,8 +88,9 @@ export async function readExportRows(): Promise<ExportRows> {
       db.select<ExportSetting[]>(`SELECT id, key, value, created_at, updated_at FROM settings ORDER BY key`),
       db
         .select<ExportProfile[]>(
-          `SELECT first_name, last_name, job_title, financial_goals, currency, timezone, date_format,
-                  salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise
+          `SELECT first_name, last_name, job_title, financial_goals, birth_date, currency, timezone,
+                  date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone,
+                  ai_verbosity, ai_expertise
              FROM profile LIMIT 1`,
         )
         .then((rows) => rows[0] ?? null),

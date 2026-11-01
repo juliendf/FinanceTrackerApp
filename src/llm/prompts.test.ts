@@ -7,6 +7,7 @@ const profile: Profile = {
   last_name: "Doe",
   job_title: null,
   financial_goals: null,
+  birth_date: null,
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "%d.%m.%Y",
@@ -23,6 +24,17 @@ describe("prompt sections", () => {
     expect(buildProfileContext(profile, [])).toBe(
       "## User financial context\nname: Julien Doe; annual salary: 120,000.00 CHF; risk profile: growth; monthly savings target: 1,500.00\n",
     );
+  });
+
+  it("states the age computed from the birth date", () => {
+    const text = buildProfileContext(
+      { ...profile, salary_minor: null, monthly_savings_target_minor: null, risk_profile: null, birth_date: "1990-03-15" },
+      [],
+      "2026-11-01",
+    );
+    expect(text).toContain("age: 36");
+    // Age leads the paragraph, before the name.
+    expect(text.indexOf("age:")).toBeLessThan(text.indexOf("name:"));
   });
 
   it("includes the job title and the free-text aspirations", () => {

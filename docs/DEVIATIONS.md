@@ -482,6 +482,10 @@ and changeable there.
   backup sets it) and the app uses the Mac's clock for dates, so a control would
   have promised behaviour it does not have. If it is ever used for date
   boundaries it can come back as a picker.
+- **The profile has a birth date.** The source has no age field, but advice that
+  ignores the horizon is guesswork. A date is stored rather than a number, and the
+  age is computed when the prompt is built (`age: 34`), so it cannot go stale. It
+  travels in backups as `profile.birth_date`.
 - **Memory keys are derived, not typed.** `user_memories.key` is a short label;
   the form builds it from the memory's text (`deriveMemoryKey`) and keeps the
   existing key when editing.
