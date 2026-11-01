@@ -31,6 +31,7 @@ const ROW: Profile = {
   job_title: "Cloud engineer",
   financial_goals: "Buy a house; learn to sail",
   birth_date: "1988-04-12",
+  tax_residence: "CH",
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "DD.MM.YYYY",
@@ -65,6 +66,7 @@ describe("getProfile", () => {
     expect(profile.job_title).toBe("Cloud engineer");
     expect(profile.financial_goals).toBe("Buy a house; learn to sail");
     expect(profile.birth_date).toBe("1988-04-12");
+    expect(profile.tax_residence).toBe("CH");
   });
 
   it("falls back to the empty profile when no row exists", async () => {

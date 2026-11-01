@@ -32,6 +32,7 @@ import { CURRENCY_CHOICES } from "../../../domain/settings";
 import { formatDate } from "../../../domain/format";
 import { deriveMemoryKey } from "../../../domain/memoryKey";
 import { ageFromBirthDate } from "../../../domain/age";
+import { COUNTRIES } from "../../../domain/countries";
 import { todayIso } from "../../../domain/dates";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
@@ -247,6 +248,24 @@ export function ProfilePage() {
               />
               <div className="form-text">
                 {age !== null ? `${age} years old — used for advice that depends on your horizon.` : "Optional. Used for age-aware advice."}
+              </div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="tax_residence" className="form-label">Country of Tax Residence</label>
+              <select
+                id="tax_residence"
+                className="form-select"
+                value={draft.tax_residence ?? ""}
+                onChange={(e) => setDraft({ ...draft, tax_residence: e.target.value || null })}
+              >
+                <option value="">-- Not set --</option>
+                {COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>{country.name}</option>
+                ))}
+              </select>
+              <div className="form-text">
+                Where you pay tax. The assistant uses it for tax-advantaged accounts, contribution
+                limits and products that only exist in some countries.
               </div>
             </div>
             <div className="col-md-4 mb-3">

@@ -130,6 +130,7 @@ export const profileSchema = z.object({
   /** Not in the source app: a birth date, so advice can be age-aware. */
   birth_date: z.string().nullable().optional(),
   job_title: z.string().nullable().optional(),
+  tax_residence: z.string().max(2).nullable().optional(),
   username: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
 });

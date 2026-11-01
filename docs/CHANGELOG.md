@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- The profile gains a **country of tax residence** (ISO code, picked from a list).
+  It is given to the assistant as context, so answers about tax-advantaged
+  accounts, contribution limits and country-specific products can take the
+  jurisdiction into account. Backups carry it as `profile.tax_residence`.
+
 - Chat tools now carry a `*_display` string for every money field (for example
   `1,475.00 CHF`), and the system prompt tells the model to copy those verbatim
   instead of formatting amounts itself — one answer came back as `₫ 578’865` for a

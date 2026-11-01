@@ -154,7 +154,7 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
   const profile = data.profile ?? {};
   if (Object.keys(profile).length > 0) {
     statements.push(
-      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
+      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
         [
           sqlInt(1),
           sqlText(profile.first_name ?? null),
@@ -162,6 +162,7 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
           sqlText(profile.job_title ?? null),
           sqlText(profile.financial_goals ?? null),
           sqlText(profile.birth_date ?? null),
+          sqlText(profile.tax_residence ?? null),
           sqlText(profile.default_currency ?? "EUR"),
           sqlText(profile.timezone ?? "UTC"),
           sqlText(profile.date_format ?? "%Y-%m-%d"),

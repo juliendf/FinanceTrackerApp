@@ -8,6 +8,7 @@ const profile: Profile = {
   job_title: null,
   financial_goals: null,
   birth_date: null,
+  tax_residence: null,
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "%d.%m.%Y",
@@ -91,7 +92,16 @@ describe("prompt sections", () => {
     expect(prompt).toContain("never invent numbers");
     // The rule that stops a model from inventing a currency symbol of its own.
     expect(prompt).toContain("Copy those strings verbatim");
+    // Tax residence is context for jurisdiction-dependent answers.
+    expect(prompt).toContain("Tax residence");
     expect(prompt).toContain("Never substitute a currency symbol");
+  });
+
+  it("puts the country of tax residence in the profile context", () => {
+    const context = buildProfileContext({ ...profile, tax_residence: "CH" }, []);
+    expect(context).toContain("tax residence: Switzerland (CH)");
+    // An unknown or unset code adds nothing rather than a stray label.
+    expect(buildProfileContext({ ...profile, tax_residence: null }, [])).not.toContain("tax residence");
   });
 
   it("labels the extraction transcript by role", () => {

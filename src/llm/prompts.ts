@@ -9,6 +9,7 @@
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
 import { ageFromBirthDate } from "../domain/age";
 import { formatNumber } from "../domain/format";
+import { countryLabel } from "../domain/countries";
 import { todayIso } from "../domain/dates";
 import Decimal from "decimal.js";
 
@@ -30,6 +31,11 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "for future conversations, use the `remember_fact` tool. Be concise. " +
   // Money is where small models improvise: a CHF portfolio came back as
   // "₫ 578’865", a symbol and a digit grouping nothing in the app produces.
+  "Tax residence: the profile above gives the country the user pays tax in. Use " +
+  "it when an answer depends on jurisdiction — tax-advantaged accounts, " +
+  "contribution limits, withholding tax, products that only exist in some " +
+  "countries — and say plainly that rules vary and that they should check the " +
+  "current local rules for anything that matters. " +
   "Money: every tool result carries a `*_display` string (for example " +
   "`CHF 12,345.00`) and a currency code. Copy those strings verbatim. Never " +
   "substitute a currency symbol of your own, never translate the currency, and " +
@@ -61,6 +67,10 @@ export function buildProfileContext(profile: Profile, goals: readonly Goal[], to
   }
   if (profile.salary_minor !== null) {
     parts.push(`annual salary: ${money(profile.salary_minor)} ${profile.currency}`);
+  }
+  const residence = countryLabel(profile.tax_residence);
+  if (residence) {
+    parts.push(`tax residence: ${residence}`);
   }
   if (profile.risk_profile) {
     parts.push(`risk profile: ${profile.risk_profile}`);

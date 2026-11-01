@@ -152,10 +152,10 @@ screens that hit them do not exist yet.
   `docs/ANALYSIS.md`, which both say v2 has no profile. A real export proves
   otherwise, so profile fields are imported. `docs/IMPORT_FORMAT.md` records the
   verified shape.
-- **Four profile fields are dropped:** `job_title`, `username`, `email` and the
-  free-text `financial_goals`. There is no account any more, no job-title
-  column, and goals are a table rather than a note. All four are listed in the
-  import report rather than silently lost.
+- **The account fields are dropped:** `username` and `email`. There is no account
+  any more. `job_title` and the free-text `financial_goals` are kept, in their own
+  columns. What is dropped is listed in the import report rather than silently
+  lost.
 - **Provider API keys go to the Keychain during the import**, before any SQL
   runs, so a plaintext secret never exists in the database. If the import then
   fails, the Keychain items are deleted again.
@@ -486,6 +486,13 @@ and changeable there.
   ignores the horizon is guesswork. A date is stored rather than a number, and the
   age is computed when the prompt is built (`age: 34`), so it cannot go stale. It
   travels in backups as `profile.birth_date`.
+- **The profile has a country of tax residence.** The source has no such field, and
+  tax treatment is not something a portfolio can imply: two identical holdings in
+  two countries have different wrappers, limits and withholding. Stored as an ISO
+  3166-1 alpha-2 code (`profile.tax_residence`), chosen from a country picker, and
+  given to the assistant as `tax residence: Switzerland (CH)` so it can reason
+  about jurisdiction while saying plainly that local rules vary. When it is unset
+  the line is simply absent.
 - **Memory keys are derived, not typed.** `user_memories.key` is a short label;
   the form builds it from the memory's text (`deriveMemoryKey`) and keeps the
   existing key when editing.

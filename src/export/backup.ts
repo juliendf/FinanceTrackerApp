@@ -121,6 +121,7 @@ export function buildBackup(
           job_title: p.job_title,
           financial_goals: p.financial_goals,
           birth_date: p.birth_date,
+          tax_residence: p.tax_residence,
           default_currency: p.currency,
           currency: p.currency,
           timezone: p.timezone,

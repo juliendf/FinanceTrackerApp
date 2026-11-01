@@ -45,8 +45,15 @@ async fn creates_the_database_and_its_schema() {
             "{table} should exist"
         );
     }
+    // The column migration 7 added, so "the schema is there" is checked rather
+    // than only "a table exists".
+    assert_eq!(
+        scalar(&file, "SELECT COUNT(*) FROM pragma_table_info('profile') WHERE name = 'tax_residence'").await,
+        1,
+        "profile.tax_residence should exist"
+    );
     // Every migration is recorded, so a later release only applies the new ones.
-    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 6);
+    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 7);
 }
 
 #[tokio::test]
@@ -68,7 +75,7 @@ async fn running_twice_is_a_no_op() {
     migrate_at(&file).await.expect("a second run must succeed");
 
     assert_eq!(scalar(&file, "SELECT COUNT(*) FROM institutions").await, 1);
-    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 6);
+    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 7);
 }
 
 #[tokio::test]
