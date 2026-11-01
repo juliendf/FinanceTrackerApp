@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** a wide markdown table in a chat answer scrolled the whole conversation
+  sideways. Tables now scroll inside their own bubble, columns keep their natural
+  width, and long unbroken values wrap. The streaming answer also keeps its line
+  breaks instead of arriving as one block.
+
 - **Fixed:** "Extract memories" sent its prompt as a single system message, which
   Gemini answers with `500 no user query found in messages`. The instruction is now
   the system turn and the conversation is the user turn, which every provider

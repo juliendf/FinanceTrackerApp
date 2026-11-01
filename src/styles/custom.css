@@ -2735,6 +2735,18 @@ body.chat-page main > .container-fluid {
 .msg-user .msg-text {
     display: block;
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
+}
+
+/*
+ * The streaming answer is plain text until it is saved and rendered as markdown,
+ * so its line breaks have to survive — otherwise a multi-paragraph answer arrives
+ * as one wall of text and then reflows when it completes.
+ */
+.msg-assistant .msg-text {
+    display: block;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* Reserve room so long text never runs under the delete button. */
@@ -2827,16 +2839,32 @@ body.chat-page main > .container-fluid {
 
 .msg-bubble pre code { padding: 0; background: none; }
 
+/*
+ * A table with more columns than fit used to widen the whole conversation, so a
+ * row could only be read by dragging the layout sideways. The wrapper scrolls
+ * instead, and the table keeps its natural width so columns are not squeezed.
+ */
+.md-table-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    margin-bottom: 0.6rem;
+    /* The scroll container is focusable so it can be scrolled from the keyboard. */
+    outline-offset: 2px;
+}
+
 .msg-bubble table {
     width: 100%;
+    min-width: max-content;
     border-collapse: collapse;
-    margin-bottom: 0.6rem;
+    margin-bottom: 0;
     font-size: 0.85em;
 }
 
 .msg-bubble th,
 .msg-bubble td {
     padding: 0.35rem 0.5rem;
+    /* A long unbroken value (a reference, a URL) wraps instead of stretching the column. */
+    overflow-wrap: anywhere;
     border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
     text-align: left;
 }

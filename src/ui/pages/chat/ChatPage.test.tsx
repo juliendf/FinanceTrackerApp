@@ -187,6 +187,12 @@ describe("ChatPage", () => {
     expect(rows).toHaveLength(3);
     expect(rows[1].textContent).toContain("Bourse");
     expect(rows[1].textContent).toContain("113,627.08");
+
+    // A wide table scrolls inside the bubble; it must not widen the conversation,
+    // which used to force a sideways drag to read a row.
+    const wrapper = container.querySelector(".msg-assistant .md-table-scroll");
+    expect(wrapper).toBeTruthy();
+    expect(wrapper?.querySelector("table")).toBeTruthy();
   });
 
   it("shows a spinner and no partial text when streaming is turned off", async () => {
