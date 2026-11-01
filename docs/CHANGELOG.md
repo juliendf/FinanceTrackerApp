@@ -6,6 +6,9 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- The account menu is Profile + About only. Settings was duplicated there and in
+  the sidebar; the sidebar wins.
+
 - Profile: **Job Title** and **Other Aspirations** are back (migration 5). A v2
   backup carries both; the first schema dropped them, so imports lost them and
   the assistant never saw them. Both now feed the profile section of its prompt.

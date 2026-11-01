@@ -37,11 +37,7 @@ export function Navbar() {
           <Dropdown.Menu>
             <Dropdown.Item as={NavLink} to="/profile">
               <i className="bi bi-person-gear me-2" aria-hidden="true" />
-              Profile settings
-            </Dropdown.Item>
-            <Dropdown.Item as={NavLink} to="/settings">
-              <i className="bi bi-gear me-2" aria-hidden="true" />
-              Settings
+              Profile
             </Dropdown.Item>
             <Dropdown.Divider />
             <Dropdown.Item onClick={() => setAboutOpen(true)}>

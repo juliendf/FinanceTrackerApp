@@ -416,6 +416,8 @@ and changeable there.
 - **The asset list has a per-row "record a snapshot" shortcut** (camera icon, and
   an entry in the narrow-width actions menu). It links to
   `/snapshots/new?asset_id=…`, which the snapshot form already preselects.
+- **The top-right menu holds Profile and About only.** With navigation in the
+  sidebar, a Settings entry in both places read as two different settings.
 - **The chat session list is a sessions rail.** The source renders a bare list of
   conversation titles. Here it has a header with a new-session button, a search
   field, "This week" / "Earlier" groups and a timestamp per row (hour today,
