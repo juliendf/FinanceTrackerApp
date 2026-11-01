@@ -3639,20 +3639,30 @@ body {
    is a bounded, scrollable group of checkboxes rather than free text.
    ========================================================================== */
 
+/*
+ * Sticky, not fixed: it belongs to the form, so it appears at the bottom of the
+ * scrollport once the form is taller than the window and scrolls away with it at
+ * the end. `bottom: 0` and no negative bottom margin — the first attempt used
+ * `bottom: -1rem`, which parked the whole bar just below the fold.
+ */
 .provider-form-actions {
     position: sticky;
-    bottom: -1rem;
+    bottom: 0;
     z-index: 5;
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 0.75rem;
-    margin: 1rem -1.5rem -2rem;
+    margin: 1rem -1.5rem 0;
     padding: 0.75rem 1.5rem;
     border-top: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--surface-0) 92%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    background: var(--surface-0);
+    box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.45);
+}
+
+/* Room so the last field is not hidden behind the sticky bar. */
+.provider-form {
+    padding-bottom: 0.5rem;
 }
 
 .provider-model-list {

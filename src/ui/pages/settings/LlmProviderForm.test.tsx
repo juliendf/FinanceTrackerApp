@@ -124,6 +124,13 @@ describe("LlmProviderFormPage", () => {
     expect(repo.updateProvider).not.toHaveBeenCalled();
   });
 
+  it("offers Save in the page header, not only at the end of the form", async () => {
+    renderForm();
+    const headerSave = await screen.findByRole("button", { name: "Save" });
+    expect(headerSave.getAttribute("form")).toBe("provider-form");
+    expect(document.getElementById("provider-form")).toBeTruthy();
+  });
+
   it("asks for no provider type and detects Gemini from the URL", async () => {
     const user = userEvent.setup();
     repo.getProvider.mockResolvedValue({ ...PROVIDER, base_url: "https://generativelanguage.googleapis.com/v1beta/openai" });

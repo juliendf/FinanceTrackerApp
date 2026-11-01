@@ -1,0 +1,5 @@
+- generic [ref=e2]:
+  - generic [ref=e3]: tall content
+  - generic [ref=e4]:
+    - button "Save Provider" [ref=e5]
+    - button "Delete" [ref=e6]

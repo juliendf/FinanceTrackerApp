@@ -232,13 +232,19 @@ export function LlmProviderFormPage() {
       title={id === null ? "New LLM Provider" : "Edit LLM Provider"}
       subtitle="Chat requests go to this endpoint. The key is stored in the macOS Keychain, never in the database."
       actions={
-        <Link to="/settings/llm-providers" className="btn btn-secondary btn-sm">
-          <i className="bi bi-arrow-left" aria-hidden="true" />
-          Back
-        </Link>
+        <>
+          <button type="submit" form="provider-form" className="btn btn-primary btn-sm">
+            <i className="bi bi-check-lg me-2" aria-hidden="true" />
+            Save
+          </button>
+          <Link to="/settings/llm-providers" className="btn btn-secondary btn-sm">
+            <i className="bi bi-arrow-left" aria-hidden="true" />
+            Back
+          </Link>
+        </>
       }
     >
-      <form onSubmit={save} noValidate className="provider-form">
+      <form onSubmit={save} noValidate className="provider-form" id="provider-form">
         <div className="form-section">
           <h5 className="mb-3"><i className="bi bi-hdd-network me-2" aria-hidden="true" />Endpoint</h5>
           <div className="row">
