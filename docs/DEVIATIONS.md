@@ -405,6 +405,9 @@ and changeable there.
   replaced with CSS grids (`auto-fit`) because they snapped at exactly 1200px
   inside a resizable window, and the charts observe their container with a
   `ResizeObserver` so a card changing width does not leave a stale canvas.
+- **Data lives under Settings only.** It was reachable from the sidebar *and*
+  from the settings nav; the sidebar entry is gone, the page renders inside the
+  settings shell, and `/data` redirects to `/settings/data` so old links work.
 - **The icon is drawn from code.** `scripts/make-icon.py` renders a 1024 px
   master with signed-distance shapes (no image library, no binary blob to
   review), and `npx tauri icon` derives every size plus `.icns`/`.ico`. The

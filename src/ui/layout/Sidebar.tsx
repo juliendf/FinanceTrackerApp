@@ -62,10 +62,7 @@ const SECTIONS = [
   },
   {
     title: "App",
-    links: [
-      { to: "/data", label: "Data", icon: "bi-hdd-stack" },
-      { to: "/settings", label: "Settings", icon: "bi-gear" },
-    ],
+    links: [{ to: "/settings", label: "Settings", icon: "bi-gear" }],
   },
 ] as const;
 

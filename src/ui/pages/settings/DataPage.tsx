@@ -7,7 +7,7 @@
 
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { PageHeader } from "../../components/FormCard";
+import { SettingsLayout } from "./SettingsLayout";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { ImportWizard } from "../import/ImportWizard";
 import { BackupExportCard } from "./BackupExportCard";
@@ -62,14 +62,11 @@ export function DataPage() {
   });
 
   return (
-    <>
-      <PageHeader
-        title="Data"
-        subtitle="Import, export and reset the local database."
-        icon="hdd-stack"
-        showDate={false}
-      />
-
+    <SettingsLayout
+      title="Data & Backup"
+      subtitle="Import, export and reset the local database"
+      actions={null}
+    >
       <div className="row g-4 mb-4">
         <div className="col-md-6">
           <div className="stat-card stat-card-sm accent-primary">
@@ -177,6 +174,6 @@ export function DataPage() {
           reset.mutate();
         }}
       />
-    </>
+    </SettingsLayout>
   );
 }

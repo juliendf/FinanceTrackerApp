@@ -1,4 +1,4 @@
-import { createHashRouter } from "react-router-dom";
+import { createHashRouter, Navigate } from "react-router-dom";
 import { AppShell } from "./ui/layout/AppShell";
 import { PlaceholderPage } from "./ui/components/PlaceholderPage";
 import { AssetDetailPage } from "./ui/pages/assets/AssetDetailPage";
@@ -286,12 +286,9 @@ export const router = createHashRouter([
     ),
   },
   {
+    // Kept as a redirect: Data moved under Settings, and old links still work.
     path: "/data",
-    element: (
-      <AppShell>
-        <DataPage />
-      </AppShell>
-    ),
+    element: <Navigate to="/settings/data" replace />,
   },
   {
     path: "/profile",
