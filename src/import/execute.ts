@@ -247,8 +247,9 @@ export async function executeImport(backup: ParsedBackup): Promise<ImportResult>
       base_url: row.base_url.replace(/\/+$/, ""),
       model: row.model,
       provider_type: row.provider_type ?? "openai",
-      is_default: row.is_default,
-      is_active: row.is_active ?? true,
+      // The schema allows a boolean or 0/1; Rust accepts either, but send booleans.
+      is_default: Boolean(row.is_default),
+      is_active: row.is_active === undefined ? true : Boolean(row.is_active),
       created_at: row.created_at ?? null,
       updated_at: row.updated_at ?? null,
       api_key: row.api_key ?? null,

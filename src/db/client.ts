@@ -8,11 +8,11 @@
  * * `execute_write` for one statement with bound values;
  * * `run_transaction` for a batch that must be atomic.
  *
- * `tauri-plugin-sql` is still registered in the Rust builder so it can own the
- * schema migrations, but **none of its commands are granted to the webview**. Its
- * `select` ran whatever followed the first statement (`SELECT 1; DROP TABLE
- * snapshots` returned `Ok` with the table gone), and it used a pool this app does
- * not guard.
+ * There is no SQL plugin any more. It used to run the string through sqlx's
+ * `fetch_all` on its own pool, so `SELECT 1; DROP TABLE snapshots` returned `Ok`
+ * with the table gone; its permissions are revoked and the dependency is gone.
+ * The schema is created and migrated in Rust (`db::migrate`) before the window
+ * opens.
  */
 
 import { invoke } from "@tauri-apps/api/core";

@@ -1,4 +1,4 @@
-//! A transaction primitive the SQL plugin does not offer.
+//! SQL access, and the only way the webview reaches SQLite.
 //!
 //! `tauri-plugin-sql` executes one prepared statement per call on a pool of up
 //! to ten connections, so:
@@ -46,7 +46,56 @@ use tauri::{AppHandle, Manager};
 
 const DB_FILE: &str = "financetracker.db";
 
-/// Resolve the database path used by the SQL plugin.
+/// The schema, embedded at compile time.
+///
+/// Filenames are `<version>_<description>.sql`, which is what `sqlx::migrate!`
+/// expects. Applied versions are recorded in `_sqlx_migrations`, the same table
+/// `tauri-plugin-sql` used, so an existing install is recognised and nothing is
+/// re-applied.
+pub static MIGRATIONS: sqlx::migrate::Migrator = sqlx::migrate!("./migrations");
+
+/// Create the database file if needed, then apply the pending migrations.
+///
+/// This runs in `Builder::setup`, before the window exists. The SQL plugin used
+/// to do it, but only for a database the webview opened — and the webview no
+/// longer has that permission, so a fresh install would never have had a schema.
+pub async fn migrate(app: &AppHandle) -> Result<(), String> {
+    migrate_at(&database_file(app)?).await
+}
+
+/// Same, for an explicit path — what the tests use.
+pub async fn migrate_at(file: &std::path::Path) -> Result<(), String> {
+    if let Some(directory) = file.parent() {
+        std::fs::create_dir_all(directory)
+            .map_err(|e| format!("cannot create {}: {e}", directory.display()))?;
+    }
+
+    // `filename` rather than a `sqlite://` URL: the path contains a space, and
+    // the URL form needs escaping.
+    let options = SqliteConnectOptions::new()
+        .filename(file)
+        .create_if_missing(true)
+        .foreign_keys(true)
+        .journal_mode(sqlx::sqlite::SqliteJournalMode::Wal)
+        .busy_timeout(Duration::from_secs(5));
+
+    let mut connection = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|e| format!("cannot open {}: {e}", file.display()))?;
+
+    MIGRATIONS
+        .run(&mut connection)
+        .await
+        .map_err(|e| format!("cannot migrate {}: {e}", file.display()))?;
+
+    connection
+        .close()
+        .await
+        .map_err(|e| format!("cannot close the migrated database: {e}"))?;
+    Ok(())
+}
+
+/// Resolve the database path used by the write and read commands.
 pub fn database_file(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     let directory = app
         .path()

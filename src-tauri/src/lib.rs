@@ -1,49 +1,5 @@
 pub mod commands;
 
-use tauri_plugin_sql::{Migration, MigrationKind};
-
-/// Schema migrations, applied by the SQL plugin at startup.
-fn migrations() -> Vec<Migration> {
-    vec![
-        Migration {
-            version: 1,
-            description: "phase0_init",
-            sql: include_str!("../migrations/0001_init.sql"),
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 2,
-            description: "full_schema",
-            sql: include_str!("../migrations/0002_full_schema.sql"),
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 3,
-            description: "gemini_openai_base_url",
-            sql: include_str!("../migrations/0003_gemini_openai_base_url.sql"),
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 4,
-            description: "provider_models",
-            sql: include_str!("../migrations/0004_provider_models.sql"),
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 5,
-            description: "profile_free_text",
-            sql: include_str!("../migrations/0005_profile_free_text.sql"),
-            kind: MigrationKind::Up,
-        },
-        Migration {
-            version: 6,
-            description: "profile_birth_date",
-            sql: include_str!("../migrations/0006_profile_birth_date.sql"),
-            kind: MigrationKind::Up,
-        },
-    ]
-}
-
 /// Backstop for the link guard in `src/lib/externalLinks.ts`.
 ///
 /// The webview guard intercepts clicks, which covers the app's own UI; this stops
@@ -56,31 +12,42 @@ fn migrations() -> Vec<Migration> {
 /// which is why this is a (tiny, inline) plugin.
 fn navigation_guard() -> tauri::plugin::TauriPlugin<tauri::Wry> {
     tauri::plugin::Builder::<tauri::Wry, ()>::new("navigation-guard")
-        .on_navigation(|_webview, url| match url.scheme() {
-            // The app itself, its assets and its IPC.
-            "tauri" | "asset" | "about" => true,
-            // The IPC endpoint Tauri uses on some platforms, and — in a dev build
-            // only — the Vite server. A release build never serves the app over
-            // http, so localhost navigation is not allowed there.
-            "http" | "https" => {
-                url.host_str() == Some("ipc.localhost")
-                    || (cfg!(dev)
-                        && matches!(url.host_str(), Some("localhost") | Some("127.0.0.1")))
-            }
-            _ => false,
-        })
+        .on_navigation(|_webview, url| allowed_navigation(url, cfg!(dev)))
         .build()
 }
+
+/// Whether the window may navigate to `url`.
+///
+/// Split out from the plugin so it can be tested without a runtime.
+pub fn allowed_navigation(url: &tauri::Url, dev: bool) -> bool {
+    match url.scheme() {
+        // The app itself, its assets and its IPC.
+        "tauri" | "asset" | "about" => true,
+        // The IPC endpoint Tauri uses on some platforms, and — in a dev build
+        // only — the Vite server. A release build never serves the app over http.
+        "http" | "https" => {
+            url.host_str() == Some("ipc.localhost")
+                || (dev && matches!(url.host_str(), Some("localhost") | Some("127.0.0.1")))
+        }
+        _ => false,
+    }
+}
+
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_sql::Builder::default()
-                // macOS: resolves to ~/Library/Application Support/<identifier>/
-                .add_migrations("sqlite:financetracker.db", migrations())
-                .build(),
-        )
+        // The schema is created and migrated before the window exists, so no
+        // command can run against a database that is not there.
+        .setup(|app| {
+            tauri::async_runtime::block_on(commands::db::migrate(app.handle()))
+                .map_err(|error| {
+                    // Without a schema every screen fails; refuse to start rather
+                    // than show an app that cannot work.
+                    eprintln!("database migration failed: {error}");
+                    Box::<dyn std::error::Error>::from(error)
+                })
+        })
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(navigation_guard())
@@ -107,4 +74,40 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::allowed_navigation;
+
+    fn url(value: &str) -> tauri::Url {
+        value.parse().expect("test URL")
+    }
+
+    #[test]
+    fn the_window_only_navigates_to_the_app() {
+        for allowed in ["tauri://localhost/", "asset://localhost/x", "about:blank"] {
+            assert!(allowed_navigation(&url(allowed), false), "{allowed} should be allowed");
+        }
+        for refused in [
+            "https://attacker.tld/",
+            "http://example.com/",
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "data:text/html,hi",
+        ] {
+            assert!(!allowed_navigation(&url(refused), true), "{refused} should be refused");
+        }
+    }
+
+    #[test]
+    fn the_dev_server_is_allowed_in_a_dev_build_only() {
+        assert!(allowed_navigation(&url("http://localhost:1420/"), true));
+        assert!(allowed_navigation(&url("http://127.0.0.1:1420/"), true));
+        // A release build serves the app from `tauri:`, never from a local server.
+        assert!(!allowed_navigation(&url("http://localhost:1420/"), false));
+        assert!(!allowed_navigation(&url("http://127.0.0.1:1420/"), false));
+        // The IPC endpoint is allowed in both.
+        assert!(allowed_navigation(&url("http://ipc.localhost/"), false));
+    }
 }

@@ -6,6 +6,13 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** the database is created and migrated by Rust before the window opens.
+  The SQL plugin used to do it, but only for a database the webview opened, and the
+  webview no longer can — a fresh install would have started with no schema at all.
+- **Fixed:** creating or editing a provider no longer fails with
+  `missing field 'baseUrl'`, and a restored backup accepts its `0`/`1` flags.
+- **Fixed:** the first-run seed creates its default provider through the provider
+  command, which the authorizer allows, instead of the generic write it refuses.
 - **Security:** all SQL now goes through Rust. The SQL plugin's `select` executed
   the whole string on its own pool (`SELECT 1; DROP TABLE snapshots` worked, past
   the guard and the authorizer), so **no `sql:*` permission is granted any more**.

@@ -364,3 +364,110 @@ async fn reset_reports_the_providers_it_removed() {
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM llm_providers").await, 0);
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM provider_models").await, 0);
 }
+
+// ---------------------------------------------------------------------------
+// The TS/Rust boundary
+// ---------------------------------------------------------------------------
+//
+// Every payload below is copied from what the webview actually sends. These are
+// the tests that would have caught `provider_save` rejecting every create and
+// edit: the struct had `#[serde(rename_all = "camelCase")]` while TypeScript
+// sent `base_url`, and nothing compared the two sides.
+
+#[test]
+fn the_form_payload_deserializes_as_the_webview_sends_it() {
+    // `createProvider` / `updateProvider` in src/db/repositories/llmProviders.ts.
+    let payload = serde_json::json!({
+        "id": serde_json::Value::Null,
+        "name": "Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "model": "gemini-2.5-flash",
+        "provider_type": "gemini",
+        "is_active": true,
+        "models": [{ "model": "gemini-2.5-flash", "enabled": true }],
+        "api_key": "AIza-not-a-real-key"
+    });
+
+    let input: ProviderInput = serde_json::from_value(payload).expect("the form payload must deserialize");
+    assert_eq!(input.id, None);
+    assert_eq!(input.base_url, "https://generativelanguage.googleapis.com/v1beta/openai");
+    assert_eq!(input.provider_type, "gemini");
+    assert!(input.is_active);
+    assert_eq!(input.api_key.as_deref(), Some("AIza-not-a-real-key"));
+    assert_eq!(input.models.expect("models").len(), 1);
+}
+
+#[test]
+fn an_edit_payload_carries_the_id() {
+    let payload = serde_json::json!({
+        "id": 3,
+        "name": "Ollama",
+        "base_url": "http://localhost:11434/v1",
+        "model": "qwen3",
+        "provider_type": "openai",
+        "is_active": true,
+        "models": serde_json::Value::Null,
+        "api_key": serde_json::Value::Null,
+    });
+
+    let input: ProviderInput = serde_json::from_value(payload).expect("the edit payload must deserialize");
+    assert_eq!(input.id, Some(3));
+    assert_eq!(input.api_key, None, "an empty key means 'unchanged', not 'clear'");
+    assert!(input.models.is_none(), "null models means 'leave the rows alone'");
+}
+
+#[test]
+fn the_seed_payload_deserializes_too() {
+    // `seedFirstRun` in src/db/seed.ts.
+    let payload = serde_json::json!({
+        "id": serde_json::Value::Null,
+        "name": "Ollama (default)",
+        "base_url": "http://localhost:11434/v1",
+        "model": "qwen2.5:7b",
+        "provider_type": "openai",
+        "is_active": true,
+        "models": serde_json::Value::Null,
+        "api_key": serde_json::Value::Null,
+    });
+
+    let input: ProviderInput = serde_json::from_value(payload).expect("the seed payload must deserialize");
+    assert_eq!(input.name, "Ollama (default)");
+    assert!(input.api_key.is_none());
+}
+
+#[test]
+fn a_restore_payload_accepts_booleans_numbers_and_missing_fields() {
+    // `providerSchema` allows `boolean | number | undefined` for both flags, and a
+    // v2 backup has neither `models` nor a real boolean.
+    let payload = serde_json::json!({
+        "id": 7,
+        "name": "Gemini",
+        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+        "model": "gemini-2.5-flash",
+        "provider_type": "gemini",
+        "is_default": 1,
+        "is_active": 0,
+        "created_at": "2026-01-01T00:00:00.000Z",
+        "updated_at": serde_json::Value::Null,
+        "api_key": serde_json::Value::Null,
+        "models": [{ "model": "gemini-2.5-flash", "enabled": 1 }]
+    });
+
+    let row: RestoreInput = serde_json::from_value(payload).expect("a numeric flag must deserialize");
+    assert!(row.is_default);
+    assert_eq!(row.is_active, Some(false));
+    assert!(row.models[0].enabled);
+
+    // Missing flags: a provider without a default, active by default.
+    let minimal = serde_json::json!({
+        "id": 8,
+        "name": "Ollama",
+        "base_url": "http://localhost:11434/v1",
+        "model": "qwen3",
+        "models": []
+    });
+    let row: RestoreInput = serde_json::from_value(minimal).expect("missing optional fields must deserialize");
+    assert!(!row.is_default);
+    assert_eq!(row.is_active, None);
+    assert_eq!(row.provider_type, None);
+}

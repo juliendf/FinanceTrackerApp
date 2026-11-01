@@ -31,17 +31,51 @@ use super::secrets::{account_for, delete_key, origin_of, read_key, store_key};
 
 const PROVIDER_TYPES: [&str; 2] = ["openai", "gemini"];
 
+/// Accept `true`/`false` and `1`/`0`.
+///
+/// The backup schema allows either (`is_default: z.union([z.boolean(), z.number()])`),
+/// and SQLite hands the same columns back as integers, so a strict `bool` here
+/// rejected a perfectly valid file.
+fn boolish<'de, D>(deserializer: D) -> Result<bool, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Bool(flag) => Ok(flag),
+        serde_json::Value::Number(number) => Ok(number.as_i64().unwrap_or(0) != 0),
+        serde_json::Value::Null => Ok(false),
+        other => Err(D::Error::custom(format!("expected a boolean, got {other}"))),
+    }
+}
+
+fn boolish_option<'de, D>(deserializer: D) -> Result<Option<bool>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    if value.is_null() {
+        return Ok(None);
+    }
+    boolish(value).map(Some).map_err(serde::de::Error::custom)
+}
+
 /// One model row, as the form sends it.
+///
+/// **Field names are the ones TypeScript uses** (`base_url`, not `baseUrl`):
+/// Tauri renames only the command's own arguments, never the fields of a nested
+/// struct, so a `rename_all` here silently rejected every create and edit.
 #[derive(Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
 pub struct ModelChoice {
     pub model: String,
+    #[serde(default, deserialize_with = "boolish")]
     pub enabled: bool,
 }
 
-/// What the form sends.
+/// What the form sends, in the webview's own field names.
 #[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct ProviderInput {
     /// `None` creates, `Some` updates.
     pub id: Option<i64>,
@@ -58,19 +92,24 @@ pub struct ProviderInput {
 }
 
 /// A provider as a backup holds it, with its id and timestamps.
+///
+/// Booleans arrive as `true`/`false` or `1`/`0` depending on the file's vintage
+/// (`providerSchema` allows both), and either must be accepted.
 #[derive(Deserialize, Debug)]
-#[serde(rename_all = "camelCase")]
 pub struct RestoreInput {
     pub id: i64,
     pub name: String,
     pub base_url: String,
     pub model: String,
     pub provider_type: Option<String>,
+    #[serde(default, deserialize_with = "boolish")]
     pub is_default: bool,
+    #[serde(default, deserialize_with = "boolish_option")]
     pub is_active: Option<bool>,
     pub created_at: Option<String>,
     pub updated_at: Option<String>,
     pub api_key: Option<String>,
+    #[serde(default)]
     pub models: Vec<ModelChoice>,
 }
 

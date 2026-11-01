@@ -9,6 +9,7 @@
  * to the Keychain, never to SQLite.
  */
 
+import { invoke } from "@tauri-apps/api/core";
 import { executeWrite, getDb } from "./client";
 import { getProfile } from "./repositories/profile";
 import { serializeSettingValue, DEFAULT_SETTINGS } from "../domain/settings";
@@ -92,16 +93,21 @@ export async function seedFirstRun(): Promise<SeedCounts> {
     `SELECT COUNT(*) AS n FROM llm_providers`,
   );
   if ((providerRows[0]?.n ?? 0) === 0) {
-    await executeWrite(
-      `INSERT INTO llm_providers (name, base_url, model, provider_type, is_default, is_active)
-       VALUES (?, ?, ?, ?, 1, 1)`,
-      [
-        DEFAULT_PROVIDER_NAME,
-        DEFAULT_PROVIDER.baseUrl,
-        DEFAULT_PROVIDER.model,
-        DEFAULT_PROVIDER.providerType,
-      ],
-    );
+    // Through the provider command, not the generic write: the authorizer refuses
+    // `llm_providers` on that path, because the row decides where a key is sent.
+    // The first provider becomes the default inside `provider_save`.
+    await invoke("provider_save", {
+      input: {
+        id: null,
+        name: DEFAULT_PROVIDER_NAME,
+        base_url: DEFAULT_PROVIDER.baseUrl,
+        model: DEFAULT_PROVIDER.model,
+        provider_type: DEFAULT_PROVIDER.providerType,
+        is_active: true,
+        models: null,
+        api_key: null,
+      },
+    });
     counts.provider += 1;
   }
 
