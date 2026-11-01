@@ -84,9 +84,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={api}>
       {children}
-      <div className="alert-container">
-        <div className="container mt-3">
-          {toasts.map((toast) => {
+      <div className="alert-container" aria-live="polite">
+        {toasts.map((toast) => {
             const meta = ALERT_META[toast.type];
             return (
               <div
@@ -105,7 +104,6 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               </div>
             );
           })}
-        </div>
       </div>
     </ToastContext.Provider>
   );

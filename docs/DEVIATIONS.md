@@ -390,6 +390,9 @@ and changeable there.
   answer is written out as it arrives or held back behind a spinner and shown
   whole. Either way a tool round clears the preamble text, so the final answer
   no longer accumulates on top of "let me look that up…".
+- **Toasts are a fixed stack under the toolbar.** They used to render in page
+  flow at the bottom, so "Settings saved" sat on the form's own buttons and
+  scrolled away with it.
 - **Chat is a fixed frame.** The transcript scrolls inside the window; the page
   no longer grows with the answer. Stop cancels the round actually in flight
   (the loop suffixes request ids per round, so cancelling the base id matched

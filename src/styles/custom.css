@@ -1626,9 +1626,47 @@ select[multiple].form-select option {
 
 .alert .alert-link { color: inherit; font-weight: 650; text-decoration: underline; }
 
+/*
+ * Toasts: a fixed stack under the toolbar, top right.
+ *
+ * They used to render in page flow at the bottom, so a "Settings saved" banner
+ * sat on top of the form's own buttons and scrolled away with it. Fixed puts
+ * them where a Mac user expects a transient notice and keeps the page clear.
+ */
 .alert-container {
-    position: relative;
-    z-index: 1035;
+    position: fixed;
+    top: 60px;
+    right: 1rem;
+    z-index: 1080;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: min(420px, calc(100vw - 2rem));
+    pointer-events: none;
+}
+
+.alert-container .alert {
+    margin-bottom: 0;
+    pointer-events: auto;
+    box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.28));
+    animation: toast-in 140ms ease-out;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .alert-container .alert {
+        animation: none;
+    }
 }
 
 /* ---- Breadcrumb ------------------------------------------------------ */
