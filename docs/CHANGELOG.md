@@ -6,6 +6,12 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- "Extract memories" no longer proposes what the app already knows: the request
+  carries the profile, the assets, the goals and the existing memories, the prompt
+  says not to repeat them, and a deterministic filter drops any proposal that
+  matches an existing memory. It is also told which provider model it runs on —
+  the one selected in the chat header, or that provider's default.
+
 - **Fixed:** a wide markdown table in a chat answer scrolled the whole conversation
   sideways. Tables now scroll inside their own bubble, columns keep their natural
   width, and long unbroken values wrap. The streaming answer also keeps its line

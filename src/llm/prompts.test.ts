@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExtractionMessages, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
+import { buildExtractionMessages, buildKnownContext, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
 import type { Profile } from "../db/repositories/profile";
 
 const profile: Profile = {
@@ -148,6 +148,35 @@ describe("prompt sections", () => {
     expect(system.content).toContain("Only extract facts explicitly stated");
     expect(user.role).toBe("user");
     expect(user.content).toBe("[User]: I have two kids\n[Assistant]: Noted");
+  });
+
+  it("tells the extraction model what it already knows", () => {
+    const known = buildKnownContext({
+      profile: { ...profile, job_title: "SRE", tax_residence: "CH" },
+      goals: [{ id: 1, label: "House", target_amount_minor: 5000000, target_date: "2030-01-01", priority: "high", category: null, created_at: "", updated_at: "" }],
+      memories: [{ key: "kids", content: "User has two children" }],
+      assets: ["UBS - Compte (Cash)", "Boursorama - PEA"],
+    });
+
+    expect(known).toContain("## Already known");
+    expect(known).toContain("job: SRE");
+    expect(known).toContain("tax residence: Switzerland (CH)");
+    expect(known).toContain("- UBS - Compte (Cash)");
+    expect(known).toContain("## Financial goals");
+    expect(known).toContain("- kids: User has two children");
+  });
+
+  it("says nothing when the app knows nothing yet", () => {
+    expect(buildKnownContext({ profile: null, goals: [], memories: [], assets: [] })).toBe("");
+  });
+
+  it("puts the known context and the no-repeat rule in the system turn", () => {
+    const [system] = buildExtractionMessages(
+      [{ role: "user", content: "hello" }],
+      "## Already known\nname: Julien\n\n",
+    );
+    expect(system.content).toContain("Do not propose anything already listed");
+    expect(system.content).toContain("## Already known");
   });
 
   it("ships the five suggested prompts", () => {

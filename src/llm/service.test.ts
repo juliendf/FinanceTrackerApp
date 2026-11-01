@@ -21,6 +21,7 @@ const repo = vi.hoisted(() => ({
   getProfile: vi.fn(),
   listGoals: vi.fn(),
   listTopMemories: vi.fn(),
+  listMemories: vi.fn(),
   createMemory: vi.fn(),
   getAllSettings: vi.fn(),
   listAssets: vi.fn(),
@@ -49,6 +50,7 @@ vi.mock("../db/repositories/profile", () => ({
   getProfile: () => repo.getProfile(),
   listGoals: () => repo.listGoals(),
   listTopMemories: () => repo.listTopMemories(),
+  listMemories: () => repo.listMemories(),
   createMemory: (...a: unknown[]) => repo.createMemory(...a),
 }));
 vi.mock("../db/repositories/settings", () => ({ getAllSettings: () => repo.getAllSettings() }));
@@ -99,6 +101,7 @@ beforeEach(() => {
   });
   repo.listGoals.mockResolvedValue([]);
   repo.listTopMemories.mockResolvedValue([]);
+  repo.listMemories.mockResolvedValue([]);
   repo.getAllSettings.mockResolvedValue({ base_currency: "CHF" });
   repo.listRecentMessages.mockResolvedValue([]);
   repo.appendMessage.mockResolvedValue(1);
@@ -373,6 +376,71 @@ describe("extractMemories", () => {
     expect(user).toHaveLength(1);
     expect(user[0].content).toContain("[User]: I have two kids");
     expect(user[0].content).toContain("[Assistant]: Noted.");
+  });
+
+  it("drops proposals that repeat what the app already knows", async () => {
+    // The failure behind this: extraction proposed the user's own name, their
+    // existing goals and assets already in the table.
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "I have two kids and I am 38", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    repo.listMemories.mockResolvedValue([
+      { id: 1, category: "personal", key: "kids", content: "User has two children", source: "manual", conversation_id: null, importance: 4, created_at: "", updated_at: "" },
+    ]);
+    const transport: ChatTransport = async () => ({
+      content: JSON.stringify([
+        { category: "personal", key: "children", content: "User has two children.", importance: 4 },
+        { category: "personal", key: "age", content: "User is 38 years old", importance: 3 },
+      ]),
+      toolCalls: [],
+      cancelled: false,
+    });
+
+    const proposals = await extractMemories(5, transport, "x");
+    expect(proposals.map((proposal) => proposal.key)).toEqual(["age"]);
+  });
+
+  it("collapses a fact proposed twice in one batch", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "I sail", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    const transport: ChatTransport = async () => ({
+      content: JSON.stringify([
+        { category: "preference", key: "sailing", content: "User likes sailing", importance: 3 },
+        { category: "preference", key: "sailing", content: "User likes sailing", importance: 3 },
+      ]),
+      toolCalls: [],
+      cancelled: false,
+    });
+
+    expect(await extractMemories(5, transport, "x")).toHaveLength(1);
+  });
+
+  it("tells the model what is already known", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "hello", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    repo.getProfile.mockResolvedValue({
+      first_name: "Julien", last_name: null, job_title: "SRE", financial_goals: null,
+      birth_date: null, tax_residence: "CH", monthly_expenses_minor: null, dependants_count: null,
+      dependant_ages: null, employment_status: null,
+      currency: "CHF", timezone: "Europe/Zurich", date_format: "%Y-%m-%d",
+      salary_minor: null, monthly_savings_target_minor: null, risk_profile: null,
+      ai_tone: "direct", ai_verbosity: "concise", ai_expertise: "expert",
+    });
+    repo.listMemories.mockResolvedValue([
+      { id: 1, category: "personal", key: "kids", content: "User has two children", source: "manual", conversation_id: null, importance: 4, created_at: "", updated_at: "" },
+    ]);
+    const transport = vi.fn(async () => ({ content: "[]", toolCalls: [], cancelled: false }));
+
+    await extractMemories(5, transport as unknown as ChatTransport, "x");
+
+    const request = (transport.mock.calls[0] as unknown[])[0] as { messages: Array<{ role: string; content: string }> };
+    const system = request.messages.find((message) => message.role === "system")?.content ?? "";
+    expect(system).toContain("## Already known");
+    expect(system).toContain("job: SRE");
+    expect(system).toContain("- kids: User has two children");
+    expect(system).toContain("- UBS - P (Cash)");
   });
 
   it("does not call the model on an empty conversation", async () => {

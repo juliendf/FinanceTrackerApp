@@ -19,7 +19,7 @@ import {
   resolvePendingAction,
 } from "../db/repositories/chat";
 import { getDefaultProvider, type LlmProvider } from "../db/repositories/llmProviders";
-import { createMemory, getProfile, listGoals, listTopMemories } from "../db/repositories/profile";
+import { createMemory, getProfile, listGoals, listMemories, listTopMemories } from "../db/repositories/profile";
 import { createSnapshot, getSnapshotOn, updateSnapshot } from "../db/repositories/snapshots";
 import { getAllSettings } from "../db/repositories/settings";
 import { displayName } from "../domain/assets";
@@ -27,7 +27,7 @@ import { todayIso } from "../domain/dates";
 import { formatNumber, formatSymbolAmount } from "../domain/format";
 import { buildHistoryMessages } from "./history";
 import { runTurn, type ChatTransport } from "./chatLoop";
-import { buildExtractionMessages, buildSystemPrompt } from "./prompts";
+import { buildExtractionMessages, buildKnownContext, buildSystemPrompt } from "./prompts";
 import { executeTool, type ToolResult } from "./tools";
 import Decimal from "decimal.js";
 import { listAssets } from "../db/repositories/assets";
@@ -324,6 +324,41 @@ export interface MemoryProposal {
 }
 
 /** `extract_memories`: the model proposes, the UI stages each as a card. */
+/** Lower-case, letters and digits only: "Job title" and "job_title" compare equal. */
+function normaliseFact(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "");
+}
+
+/**
+ * Whether a proposal repeats something the app already knows.
+ *
+ * The prompt is told not to repeat, but a model can still return the user's own
+ * name or an existing goal; this is the deterministic half, so a duplicate never
+ * reaches the confirmation cards.
+ */
+export function isDuplicateMemory(
+  proposal: { key: string; content: string },
+  existing: ReadonlyArray<{ key: string; content: string }>,
+): boolean {
+  const key = normaliseFact(proposal.key);
+  const content = normaliseFact(proposal.content);
+  if (!content) return true;
+
+  return existing.some((memory) => {
+    const memoryKey = normaliseFact(memory.key);
+    const memoryContent = normaliseFact(memory.content);
+    if (!memoryContent) return false;
+    // The same wording, or one is a rephrasing that contains the other.
+    if (content === memoryContent) return true;
+    if (key && key === memoryKey && content === memoryContent) return true;
+    const shortest = Math.min(content.length, memoryContent.length);
+    return shortest >= 24 && (content.includes(memoryContent) || memoryContent.includes(content));
+  });
+}
+
 export async function extractMemories(
   conversationId: number,
   transport: ChatTransport,
@@ -334,11 +369,26 @@ export async function extractMemories(
   const provider = await getDefaultProvider();
   if (!provider) throw new NoProviderError();
 
+  // What the app already holds: the extraction must not rediscover it, and the
+  // same facts must not come back as proposals.
+  const [profile, goals, existingMemories, assets] = await Promise.all([
+    getProfile(),
+    listGoals(),
+    listMemories(),
+    listAssets(),
+  ]);
+  const known = buildKnownContext({
+    profile,
+    goals,
+    memories: existingMemories,
+    assets: assets.map((asset) => displayName(asset)),
+  });
+
   const response = await transport({
     requestId,
     // Instruction and transcript as two turns: a system-only request is not a
     // chat, and Gemini rejects it with a 500.
-    messages: buildExtractionMessages(messages),
+    messages: buildExtractionMessages(messages, known),
     tools: [],
     onEvent: () => {},
   });
@@ -350,7 +400,7 @@ export async function extractMemories(
   try {
     const parsed = JSON.parse(match[0]);
     if (!Array.isArray(parsed)) return [];
-    return parsed
+    const proposals = parsed
       .filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
       .map((item) => ({
         category: String(item.category ?? "personal"),
@@ -359,6 +409,15 @@ export async function extractMemories(
         importance: Number(item.importance ?? 3),
       }))
       .filter((item) => item.key && item.content);
+
+    // Drop what is already known, then what repeats itself inside this batch.
+    const fresh: MemoryProposal[] = [];
+    for (const proposal of proposals) {
+      if (isDuplicateMemory(proposal, existingMemories)) continue;
+      if (fresh.some((kept) => isDuplicateMemory(proposal, [kept]))) continue;
+      fresh.push(proposal);
+    }
+    return fresh;
   } catch {
     return [];
   }

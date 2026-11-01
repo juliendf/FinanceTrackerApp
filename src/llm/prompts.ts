@@ -184,7 +184,54 @@ export const EXTRACTION_PROMPT_PREFIX =
   'Return a JSON array: [{"category": "...", "key": "...", ' +
   '"content": "...", "importance": 3}, ...]\n' +
   "If no facts worth remembering, return [].\n\n" +
-  "Conversation:\n\n";
+  // The app already knows a lot. Asking for it again produced "proposals" for the
+  // user's own name, their existing goals and the assets in the table.
+  "Do not propose anything already listed under \"Already known\" below: not the " +
+  "profile, not the assets, not the goals, not an existing memory. A fact that " +
+  "merely restates one of those is not a memory. Only propose what is genuinely " +
+  "new, or a real change to what is known (then keep the existing key).\n\n";
+
+/** The facts this app already holds, rendered for the extraction prompt. */
+export interface KnownFacts {
+  profile: Profile | null;
+  goals: readonly Goal[];
+  memories: ReadonlyArray<{ key: string; content: string }>;
+  /** Asset labels, e.g. "UBS - Compte (Cash)". */
+  assets: readonly string[];
+  today?: string;
+  /** At most this many memories are quoted, the most important first. */
+  memoryLimit?: number;
+}
+
+/**
+ * What the app already knows, as a compact block.
+ *
+ * The extraction model is not asked to rediscover this — it is given, so the only
+ * things it can propose are the ones that are actually new.
+ */
+export function buildKnownContext(facts: KnownFacts): string {
+  const sections: string[] = [];
+
+  if (facts.profile) {
+    const profile = buildProfileContext(facts.profile, facts.goals, facts.today).trim();
+    if (profile) sections.push(profile);
+  }
+
+  if (facts.assets.length > 0) {
+    sections.push(`## Assets\n${facts.assets.map((name) => `- ${name}`).join("\n")}`);
+  }
+
+  const limit = facts.memoryLimit ?? 40;
+  if (facts.memories.length > 0) {
+    const lines = facts.memories.slice(0, limit).map((memory) => {
+      const content = memory.content.length > 160 ? `${memory.content.slice(0, 157)}…` : memory.content;
+      return `- ${memory.key}: ${content}`;
+    });
+    sections.push(`## Existing memories\n${lines.join("\n")}`);
+  }
+
+  return sections.length > 0 ? `## Already known\n${sections.join("\n\n")}\n\n` : "";
+}
 
 /** The conversation, labelled by speaker, as the user turn of the request. */
 export function buildExtractionTranscript(
@@ -201,13 +248,15 @@ export function buildExtractionTranscript(
  * It used to be a single **system** message, and Gemini's OpenAI-compatible
  * endpoint answers that with `500 no user query found in messages`: a request with
  * no user turn is not a chat. The instruction is the system turn, the transcript is
- * the user turn, which every provider accepts.
+ * the user turn, which every provider accepts. `known` is what the app already
+ * holds, so the model proposes only new facts.
  */
 export function buildExtractionMessages(
   messages: ReadonlyArray<{ role: string; content: string }>,
+  known = "",
 ): Array<{ role: "system" | "user"; content: string }> {
   return [
-    { role: "system", content: EXTRACTION_PROMPT_PREFIX },
+    { role: "system", content: EXTRACTION_PROMPT_PREFIX + known },
     { role: "user", content: buildExtractionTranscript(messages) },
   ];
 }
