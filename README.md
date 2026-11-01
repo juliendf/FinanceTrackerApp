@@ -96,11 +96,11 @@ See the header of each `*.golden.test.ts` for the exact variables.
 
 ## AI
 
-Chat is off until you enable it under Settings → AI assistant. For a local model:
+Chat is off until you enable it under Settings → LLM Providers. For a local model:
 
 1. Settings → LLM Providers → New Provider: base URL `http://localhost:11434/v1`, no key. Press **Load models**, then enable the ones chat may use (a tool-capable one, e.g. `qwen3.5:4b`) and pick the default.
-2. Tick Enable AI features on the Settings page.
-3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject. Settings → AI assistant also has *Stream answers as they arrive*; turn it off to get a spinner (which names the tool it is running) and the whole reply at once.
+2. Tick **Enable AI features** on the same page (it sits above the provider list).
+3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject. The same page has *Stream answers as they arrive*; turn it off to get a spinner (which names the tool it is running) and the whole reply at once.
 
 Keys live in the macOS Keychain, never in the database or a backup.
 

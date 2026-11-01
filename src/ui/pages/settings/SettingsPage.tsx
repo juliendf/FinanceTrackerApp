@@ -29,8 +29,6 @@ type Draft = {
   date_format: string;
   theme: string;
   enable_animations: boolean;
-  ai_enabled: boolean;
-  chat_streaming: boolean;
 };
 
 const toDraft = (settings: Record<string, SettingValue>): Draft => ({
@@ -40,8 +38,6 @@ const toDraft = (settings: Record<string, SettingValue>): Draft => ({
   date_format: String(settings.date_format ?? DEFAULT_SETTINGS.date_format),
   theme: String(settings.theme ?? DEFAULT_SETTINGS.theme),
   enable_animations: settings.enable_animations !== false,
-  ai_enabled: settings.ai_enabled === true,
-  chat_streaming: settings.chat_streaming !== false,
 });
 
 export function SettingsPage() {
@@ -199,39 +195,6 @@ export function SettingsPage() {
               </div>
               <div className="form-text">Enable smooth transitions and animations</div>
             </div>
-          </div>
-        </div>
-
-        <div className="form-section">
-          <h5 className="mb-3"><i className="bi bi-robot me-2" aria-hidden="true" />AI assistant</h5>
-          <div className="form-check mb-2">
-            <input
-              id="ai_enabled"
-              type="checkbox"
-              className="form-check-input"
-              checked={draft.ai_enabled}
-              onChange={(e) => setDraft({ ...draft, ai_enabled: e.target.checked })}
-            />
-            <label htmlFor="ai_enabled" className="form-check-label">Enable AI features</label>
-          </div>
-          <div className="form-text mb-3">
-            Off by default. When on, the assistant sends your questions and the portfolio facts it looks up to the
-            provider you configure under <Link to="/settings/llm-providers">LLM Providers</Link>. Nothing is sent
-            anywhere else.
-          </div>
-          <div className="form-check">
-            <input
-              id="chat_streaming"
-              type="checkbox"
-              className="form-check-input"
-              checked={draft.chat_streaming}
-              onChange={(e) => setDraft({ ...draft, chat_streaming: e.target.checked })}
-            />
-            <label htmlFor="chat_streaming" className="form-check-label">Stream answers as they arrive</label>
-          </div>
-          <div className="form-text">
-            On, the reply is written out token by token. Off, a spinner shows while the model works and the whole
-            answer appears at once.
           </div>
         </div>
 

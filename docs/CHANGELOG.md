@@ -4,6 +4,12 @@ Every version below is a local build, ad-hoc signed, never notarised and never
 published. Version numbers are bumped in `package.json`, `src-tauri/Cargo.toml`
 and `src-tauri/tauri.conf.json` together.
 
+## Unreleased
+
+- The AI opt-in and the streaming switch moved from General settings to **LLM
+  Providers**, above the provider list: they govern where chat sends data, so
+  they belong with the endpoints.
+
 ## 0.3.0
 
 - Provider form: the model is chosen from a list the endpoint advertises. **Load

@@ -6,7 +6,7 @@
  * Keychain for a check.
  */
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
@@ -16,7 +16,7 @@ import {
   listProviders,
   setDefaultProvider,
 } from "../../../db/repositories/llmProviders";
-import { setSetting } from "../../../db/repositories/settings";
+import { getAllSettings, setSettings, setSetting } from "../../../db/repositories/settings";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../layout/Toasts";
 import { SettingsLayout } from "./SettingsLayout";
@@ -25,6 +25,19 @@ export function LlmProvidersPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
   const providers = useQuery({ queryKey: ["llm-providers"], queryFn: listProviders });
+  const settings = useQuery({ queryKey: ["settings"], queryFn: getAllSettings });
+
+  // The AI switches live with the providers: this is the page that decides where
+  // chat may send anything, so the opt-in belongs beside the endpoints.
+  const [aiEnabled, setAiEnabled] = useState(false);
+  const [streaming, setStreaming] = useState(true);
+  const [aiDirty, setAiDirty] = useState(false);
+
+  useEffect(() => {
+    if (!settings.data || aiDirty) return;
+    setAiEnabled(settings.data.ai_enabled === true);
+    setStreaming(settings.data.chat_streaming !== false);
+  }, [settings.data, aiDirty]);
   const [testing, setTesting] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const [timeoutValue, setTimeoutValue] = useState<string>("");
@@ -67,6 +80,18 @@ export function LlmProvidersPage() {
     }
   };
 
+  const saveAi = useMutation({
+    mutationFn: () => setSettings({ ai_enabled: aiEnabled, chat_streaming: streaming }),
+    onSuccess: () => {
+      setAiDirty(false);
+      refresh();
+      toast.success(
+        aiEnabled ? "AI features enabled." : "AI features disabled. Chat will not send anything.",
+      );
+    },
+    onError: (error: unknown) => toast.error(String(error)),
+  });
+
   const saveTimeout = useMutation({
     mutationFn: (value: string) => setSetting("llm_timeout", value),
     onSuccess: () => {
@@ -87,6 +112,59 @@ export function LlmProvidersPage() {
         </Link>
       }
     >
+      <div className="card card-finance mb-4">
+        <div className="card-body">
+          <h5 className="card-title">
+            <i className="bi bi-robot me-2" aria-hidden="true" />
+            AI assistant
+          </h5>
+          <p className="text-muted">
+            Off by default. When on, chat sends your questions and the portfolio facts it looks up to the provider
+            selected below. Nothing is sent anywhere else.
+          </p>
+          <div className="form-check mb-2">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="ai_enabled"
+              checked={aiEnabled}
+              onChange={(event) => {
+                setAiEnabled(event.target.checked);
+                setAiDirty(true);
+              }}
+            />
+            <label className="form-check-label" htmlFor="ai_enabled">Enable AI features</label>
+          </div>
+          <div className="form-check mb-3">
+            <input
+              className="form-check-input"
+              type="checkbox"
+              id="chat_streaming"
+              checked={streaming}
+              disabled={!aiEnabled}
+              onChange={(event) => {
+                setStreaming(event.target.checked);
+                setAiDirty(true);
+              }}
+            />
+            <label className="form-check-label" htmlFor="chat_streaming">Stream answers as they arrive</label>
+            <div className="form-text">
+              On, the reply is written out token by token. Off, a spinner shows while the model works and the whole
+              answer appears at once.
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={saveAi.isPending || !aiDirty}
+            onClick={() => saveAi.mutate()}
+          >
+            <i className="bi bi-check-lg me-2" aria-hidden="true" />
+            Save AI settings
+          </button>
+        </div>
+      </div>
+
       {providers.isLoading ? (
         <p className="text-muted">Loading…</p>
       ) : (providers.data ?? []).length === 0 ? (

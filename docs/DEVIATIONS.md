@@ -355,7 +355,8 @@ and changeable there.
 ## Phase 7: AI
 
 - **AI is off until you switch it on.** `ai_enabled` is a new setting (default
-  false) on the Settings page. Chat, the prompt rail and memory extraction stay
+  false) on the LLM Providers page, beside the endpoints it governs. Chat, the
+  prompt rail and memory extraction stay
   disabled until then, because using them sends your questions and portfolio
   facts to a provider. The source has no such switch.
 - **Gemini is detected, not chosen.** The form used to offer a provider type; the

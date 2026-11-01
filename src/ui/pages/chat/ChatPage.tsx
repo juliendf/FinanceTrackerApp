@@ -345,7 +345,7 @@ export function ChatPage() {
 
       {!aiEnabled ? (
         <div className="alert alert-warning">
-          <strong>AI is off.</strong> Turn it on in <a href="#/settings">Settings → Enable AI</a>. The assistant
+          <strong>AI is off.</strong> Turn it on in <a href="#/settings/llm-providers">Settings → LLM Providers</a>. The assistant
           sends your questions, and whatever it reads, to the provider you configure.
         </div>
       ) : providerList.length === 0 ? (

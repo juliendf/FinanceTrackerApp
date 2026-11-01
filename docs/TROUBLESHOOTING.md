@@ -71,7 +71,7 @@ Checking is harmless; nothing is downloaded.
 
 **The Chat page says "AI is off"**
 
-Settings → AI assistant → **Enable AI features**. It is off by default because
+Settings → LLM Providers → **Enable AI features** (above the provider list). It is off by default because
 chat sends your questions, and the portfolio facts it looks up, to the provider
 you configure.
 
