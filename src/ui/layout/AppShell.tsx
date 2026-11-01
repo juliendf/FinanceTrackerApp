@@ -28,9 +28,3 @@ export function AppShell({ children }: { children: ReactNode }) {
     </div>
   );
 }
-
-/**
- * Kept so older imports keep working; the sidebar shell is now the only one.
- * @deprecated use `AppShell`.
- */
-export const AppShellWithSidebar = AppShell;

@@ -7,40 +7,38 @@ Format: **what** — **why** — **revisit in**.
 
 ## Phase 0 (spike)
 
-### Scope omissions, by design
+Kept as the record of what the spike left out. Each item now states its current
+status, because all of them were closed by later phases.
 
-- **No filters on the assets list.** The brief limits the spike to "Asset list +
-  create form … minus the filters". Filters land in Phase 3. — revisit Phase 3.
-- **No Tags column in the assets table.** There is no `tags` table yet
-  (`0001_init.sql` covers institutions, categories, assets, snapshots only), so
-  the column would always be empty. — revisit Phase 2.
-- **No cross-currency conversion in the portfolio chart.** `exchange_rates`
-  does not exist yet, so the series sums raw minor units and the page says so
-  ("totals sum raw amounts, no FX conversion yet"). The source converts via
-  `utils/currency.py`. — revisit Phase 5.
-- **Six of the seven LLM tools are missing.** Only `get_portfolio_summary` is
-  wired up, which is what the spike needs to prove the tool round trip. —
-  revisit Phase 7.
-- **No chat persistence.** No conversations, messages or pending actions
-  tables; the spike transcript is in memory. — revisit Phase 7.
+### Scope omissions at the time
+
+- **No filters on the assets list.** Closed: the list has search, institution,
+  category, currency and tag filters, checked against an oracle.
+- **No Tags column in the assets table.** Closed: tags are a table, are
+  editable per asset, and show in the list.
+- **No cross-currency conversion in the portfolio chart.** Closed: every
+  dashboard converts through `CurrencyConverter`, and an unconverted amount is
+  badged rather than hidden.
+- **Six of the seven LLM tools are missing.** Closed: all seven are ported, and
+  the write tools stage a pending action instead of writing.
+- **No chat persistence.** Closed: conversations, messages and pending actions
+  are tables, and the transcript survives a restart.
 - **Sample data instead of a `demo_data.py` port.** `src/dev/sampleData.ts`
   inserts 2 institutions, 2 categories, 3 assets and 36 snapshots. It is
   deterministic (seeded LCG) like the source, but it is not the demo user's
-  dataset, and it has no reset command yet. — revisit Phase 1.
+  dataset. Both load and reset exist behind the Data screen in development builds.
 
 ### Behavioural differences
 
-- **(Resolved in Phase 3.) Asset creation is not transactional.** `tauri-plugin-sql` exposes no
-  transaction handle, so `createAsset()` inserts the asset, then the initial
-  snapshot, and deletes the asset again if the snapshot insert fails. The source
-  commits both or neither. A half-written asset is possible only if the process
-  dies between the two statements. — **Resolved in Phase 3:** `createAsset` now
-  runs asset, tags and first snapshot through `run_transaction`.
+- **Asset creation is transactional.** `createAsset` runs the asset, its tags
+  and its first snapshot through `run_transaction`, as the source commits both or
+  neither. (This was the spike's compensating-delete workaround; it is gone.)
 - **`PRAGMA foreign_keys` is per connection.** The plugin pools connections, so
   the pragma set in `db/client.ts` applies to one connection in the pool.
   `journal_mode=WAL` is persistent in the file header, so it does stick.
-  Cascading deletes therefore depend on the connection that runs the DELETE. —
-  revisit Phase 1.
+  Cascading deletes therefore depend on the connection that runs the DELETE, so
+  `reset.ts` deletes children explicitly before parents rather than relying on
+  `ON DELETE CASCADE`.
 - **The asset tiles show the real snapshot range, not the source's derived
   one.** `app/routes/assets.py:137` takes `min`/`max` over each asset's *latest*
   snapshot date, so every asset updated on the same day collapses the tile to
@@ -90,28 +88,28 @@ screens that hit them do not exist yet.
   redirects, so it survives exactly one request. There is no request boundary
   here, so `ToastProvider` keeps the same alert markup and the source's 5 s
   auto-dismiss. Call sites that used `flash()` now push a toast.
-- **The sidebar is built but not the default layout.** In the source,
+- **The sidebar is the primary navigation.** In the source,
   `components/sidebar.html` is included only by `layouts/main.html`, which no
-  live page extends, and its links are `#` anchors. The component is ported
-  (with collapse persisted in localStorage) and exposed as
-  `AppShellWithSidebar`, but screens use the navbar-only shell that the app
-  actually renders.
-- **The `theme` setting is stored but does not drive the UI.** The source keeps
+  live page extends, and its links are `#` anchors. Here it carries the whole
+  app: the top navbar became a thin toolbar, the footer is gone, and the sidebar
+  collapses (state remembered across launches). Changed in 0.2.0; the rest of
+  this log's shell notes describe the current layout.
+- **The `theme` setting and the toggle are kept in step.** The source keeps
   `theme` in `DEFAULT_SETTINGS` *and* in localStorage, and only localStorage is
-  read (`ThemeManager`). We seed the setting for parity and keep the UI on
-  localStorage, so the two cannot disagree at runtime.
+  read (`ThemeManager`). Here localStorage paints the first frame before any
+  database call, and once the settings table has loaded a stored `theme` row is
+  applied through `applyTheme` (`src/lib/useStoredTheme.ts`), so what you see in
+  Settings is what the app uses.
 - **`percentage` and the table's `percentage` column differ, as in the source.**
   `filters.py:percentage_filter` multiplies by 100 and appends `%`; the
   `percentage` column type in `table.html` formats the raw value without
   scaling. Both are ported separately rather than unified.
-- **Screens that are not built yet render a placeholder.** Every navbar route
-  exists from Phase 1 so navigation never dead-ends; `PlaceholderPage` names the
-  phase that replaces it. Rows live in `docs/PARITY_CHECKLIST.md`.
-- **No real transaction boundary for multi-statement writes yet.** Same caveat
-  as Phase 0: `tauri-plugin-sql` exposes no transaction handle, so the first-run
-  seed and `setAssetTags` issue statements one by one. The seed is idempotent,
-  which makes a partial run self-healing on the next launch. — revisit Phase 1b
-  (the importer needs a hard guarantee).
+- **Every route is real.** The phase placeholders are gone; `PlaceholderPage` is
+  used only by the catch-all 404. Rows live in `docs/PARITY_CHECKLIST.md`.
+- **Multi-statement writes go through Rust.** `tauri-plugin-sql` exposes no
+  transaction handle, so `run_transaction` opens its own connection and runs the
+  batch atomically (see ARCHITECTURE.md). Nothing writes statement-by-statement
+  any more.
 
 ## Phase 1b (import from FinanceTracker)
 
