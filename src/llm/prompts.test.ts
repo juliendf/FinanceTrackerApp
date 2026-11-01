@@ -9,6 +9,10 @@ const profile: Profile = {
   financial_goals: null,
   birth_date: null,
   tax_residence: null,
+  monthly_expenses_minor: null,
+  dependants_count: null,
+  dependant_ages: null,
+  employment_status: null,
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "%d.%m.%Y",
@@ -95,6 +99,34 @@ describe("prompt sections", () => {
     // Tax residence is context for jurisdiction-dependent answers.
     expect(prompt).toContain("Tax residence");
     expect(prompt).toContain("Never substitute a currency symbol");
+  });
+
+  it("states the planning facts the assistant needs", () => {
+    const text = buildProfileContext(
+      {
+        ...profile,
+        salary_minor: null,
+        monthly_savings_target_minor: null,
+        risk_profile: null,
+        monthly_expenses_minor: 420000,
+        dependants_count: 2,
+        dependant_ages: "4, 7",
+        employment_status: "self_employed",
+      },
+      [],
+    );
+    expect(text).toContain("monthly living expenses: 4,200.00 CHF");
+    expect(text).toContain("employment: self-employed");
+    expect(text).toContain("dependants: 2 (ages 4, 7)");
+  });
+
+  it("says 'none' only when the count is explicit, and omits an unset field", () => {
+    const none = buildProfileContext({ ...profile, salary_minor: null, monthly_savings_target_minor: null, risk_profile: null, dependants_count: 0 }, []);
+    expect(none).toContain("dependants: none");
+
+    const unset = buildProfileContext({ ...profile, salary_minor: null, monthly_savings_target_minor: null, risk_profile: null, dependants_count: null }, []);
+    expect(unset).not.toContain("dependants");
+    expect(unset).not.toContain("monthly living expenses");
   });
 
   it("puts the country of tax residence in the profile context", () => {

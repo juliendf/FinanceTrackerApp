@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- The profile gains three optional **planning facts**: monthly living expenses,
+  dependants (count, optionally their ages) and employment status. The assistant
+  uses them for savings rates, runway, affordability and emergency-buffer sizing,
+  and leaves them out of its context when they are unset. Backups carry them.
+
 - The profile gains a **country of tax residence** (ISO code, picked from a list).
   It is given to the assistant as context, so answers about tax-advantaged
   accounts, contribution limits and country-specific products can take the

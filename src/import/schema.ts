@@ -131,6 +131,10 @@ export const profileSchema = z.object({
   birth_date: z.string().nullable().optional(),
   job_title: z.string().nullable().optional(),
   tax_residence: z.string().max(2).nullable().optional(),
+  monthly_expenses: z.union([z.number(), z.string()]).nullable().optional(),
+  dependants_count: z.union([z.number(), z.string()]).nullable().optional(),
+  dependant_ages: z.string().nullable().optional(),
+  employment_status: z.string().nullable().optional(),
   username: z.string().nullable().optional(),
   email: z.string().nullable().optional(),
 });

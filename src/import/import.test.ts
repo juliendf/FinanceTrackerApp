@@ -266,6 +266,25 @@ describe("buildImportStatements", () => {
     expect(joined).toContain("INSERT OR IGNORE INTO asset_tags (asset_id, tag_id) VALUES (53, 5)");
   });
 
+  it("imports the planning facts and the tax residence", () => {
+    const raw = JSON.parse(fixtureRaw);
+    raw.data.profile = {
+      ...raw.data.profile,
+      tax_residence: "CH",
+      monthly_expenses: 4200.5,
+      dependants_count: 2,
+      dependant_ages: "4, 7",
+      employment_status: "self_employed",
+    };
+    const statements = buildImportStatements(parseBackup(JSON.stringify(raw)));
+    const profile = statements.find((statement) => statement.includes("INSERT INTO profile"));
+    expect(profile).toBeDefined();
+    expect(profile).toContain("'CH'");
+    expect(profile).toContain("420050");
+    expect(profile).toContain("'4, 7'");
+    expect(profile).toContain("'self_employed'");
+  });
+
   it("never puts an API key in SQL", () => {
     expect(joined).not.toContain("test-key-not-a-real-secret");
   });

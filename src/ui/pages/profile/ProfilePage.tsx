@@ -38,6 +38,16 @@ import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
 
+const EMPLOYMENT_CHOICES = [
+  { value: "", label: "-- Not set --" },
+  { value: "employed", label: "Employed" },
+  { value: "self_employed", label: "Self-employed" },
+  { value: "retired", label: "Retired" },
+  { value: "student", label: "Student" },
+  { value: "between_jobs", label: "Between jobs" },
+  { value: "other", label: "Other" },
+] as const;
+
 const RISK_CHOICES = [
   { value: "", label: "-- Select --" },
   { value: "conservative", label: "Conservative" },
@@ -72,11 +82,24 @@ const IMPORTANCE_CHOICES = [1, 2, 3, 4, 5].map((n) => ({
 interface Draft extends Profile {
   salary: string;
   savings: string;
+  expenses: string;
+  dependants: string;
+}
+
+/** A whole number typed into a text field, or `null` when it is empty or unusable. */
+function wholeOrNull(text: string): number | null {
+  const trimmed = text.trim();
+  if (trimmed === "") return null;
+  const parsed = Math.trunc(Number(trimmed));
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : null;
 }
 
 const toDraft = (profile: Profile): Draft => ({
   ...profile,
   salary: profile.salary_minor === null ? "" : String(fromMinorUnits(profile.salary_minor) ?? ""),
+  expenses:
+    profile.monthly_expenses_minor === null ? "" : String(fromMinorUnits(profile.monthly_expenses_minor) ?? ""),
+  dependants: profile.dependants_count === null ? "" : String(profile.dependants_count),
   savings:
     profile.monthly_savings_target_minor === null
       ? ""
@@ -126,6 +149,9 @@ export function ProfilePage() {
         salary_minor: values.salary.trim() === "" ? null : toMinorUnits(values.salary),
         monthly_savings_target_minor:
           values.savings.trim() === "" ? null : toMinorUnits(values.savings),
+        monthly_expenses_minor:
+          values.expenses.trim() === "" ? null : toMinorUnits(values.expenses),
+        dependants_count: wholeOrNull(values.dependants),
       }),
     onSuccess: () => {
       refresh();
@@ -224,6 +250,23 @@ export function ProfilePage() {
               />
             </div>
             <div className="col-md-4 mb-3">
+              <label htmlFor="expenses" className="form-label">Monthly Living Expenses</label>
+              <input
+                id="expenses"
+                type="number"
+                step="0.01"
+                min="0"
+                className="form-control"
+                value={draft.expenses}
+                placeholder="0.00"
+                onChange={(e) => setDraft({ ...draft, expenses: e.target.value })}
+              />
+              <div className="form-text">
+                What you actually spend in {draft.currency}, all in. This is what makes a savings
+                rate, a runway and a goal's feasibility computable.
+              </div>
+            </div>
+            <div className="col-md-4 mb-3">
               <label htmlFor="savings" className="form-label">Monthly Savings Target</label>
               <input
                 id="savings"
@@ -249,6 +292,49 @@ export function ProfilePage() {
               <div className="form-text">
                 {age !== null ? `${age} years old — used for advice that depends on your horizon.` : "Optional. Used for age-aware advice."}
               </div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="employment_status" className="form-label">Employment</label>
+              <select
+                id="employment_status"
+                className="form-select"
+                value={draft.employment_status ?? ""}
+                onChange={(e) => setDraft({ ...draft, employment_status: e.target.value || null })}
+              >
+                {EMPLOYMENT_CHOICES.map((choice) => (
+                  <option key={choice.value} value={choice.value}>{choice.label}</option>
+                ))}
+              </select>
+              <div className="form-text">
+                A variable or self-employed income needs a longer emergency buffer than a permanent one.
+              </div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="dependants" className="form-label">Dependants</label>
+              <input
+                id="dependants"
+                type="number"
+                min="0"
+                max="20"
+                step="1"
+                className="form-control"
+                value={draft.dependants}
+                placeholder="0"
+                onChange={(e) => setDraft({ ...draft, dependants: e.target.value })}
+              />
+              <div className="form-text">People who rely on this income. Empty means "not stated".</div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="dependant_ages" className="form-label">Their Ages</label>
+              <input
+                id="dependant_ages"
+                className="form-control"
+                maxLength={40}
+                value={draft.dependant_ages ?? ""}
+                placeholder="4, 7"
+                onChange={(e) => setDraft({ ...draft, dependant_ages: e.target.value || null })}
+              />
+              <div className="form-text">Optional. Ages change the horizon: school fees now, university in ten years.</div>
             </div>
             <div className="col-md-4 mb-3">
               <label htmlFor="tax_residence" className="form-label">Country of Tax Residence</label>

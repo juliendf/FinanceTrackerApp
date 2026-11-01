@@ -115,6 +115,45 @@ describe("ProfilePage", () => {
     });
   });
 
+  it("saves monthly expenses, dependants and employment", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+
+    const expenses = (await screen.findByLabelText("Monthly Living Expenses")) as HTMLInputElement;
+    await user.clear(expenses);
+    await user.type(expenses, "4200.50");
+    const dependants = screen.getByLabelText("Dependants") as HTMLInputElement;
+    await user.clear(dependants);
+    await user.type(dependants, "2");
+    const ages = screen.getByLabelText("Their Ages") as HTMLInputElement;
+    await user.type(ages, "4, 7");
+    await user.selectOptions(screen.getByLabelText("Employment"), "self_employed");
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => expect(repo.saveProfile).toHaveBeenCalledTimes(1));
+    const saved = repo.saveProfile.mock.calls[0][0] as Record<string, unknown>;
+    expect(saved).toMatchObject({
+      monthly_expenses_minor: 420050,
+      dependants_count: 2,
+      dependant_ages: "4, 7",
+      employment_status: "self_employed",
+    });
+  });
+
+  it("leaves an empty planning field as null, not zero", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+
+    const dependants = (await screen.findByLabelText("Dependants")) as HTMLInputElement;
+    await user.clear(dependants);
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    await waitFor(() => expect(repo.saveProfile).toHaveBeenCalledTimes(1));
+    const saved = repo.saveProfile.mock.calls[0][0] as Record<string, unknown>;
+    expect(saved.dependants_count).toBeNull();
+    expect(saved.monthly_expenses_minor).toBeNull();
+  });
+
   it("shows the age derived from the birth date", async () => {
     renderProfile();
     await screen.findByLabelText("Job Title");

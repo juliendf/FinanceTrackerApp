@@ -32,6 +32,10 @@ const ROW: Profile = {
   financial_goals: "Buy a house; learn to sail",
   birth_date: "1988-04-12",
   tax_residence: "CH",
+  monthly_expenses_minor: 420000,
+  dependants_count: 2,
+  dependant_ages: "4, 7",
+  employment_status: "self_employed",
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "DD.MM.YYYY",
@@ -67,6 +71,8 @@ describe("getProfile", () => {
     expect(profile.financial_goals).toBe("Buy a house; learn to sail");
     expect(profile.birth_date).toBe("1988-04-12");
     expect(profile.tax_residence).toBe("CH");
+    expect(profile.monthly_expenses_minor).toBe(420000);
+    expect(profile.dependants_count).toBe(2);
   });
 
   it("falls back to the empty profile when no row exists", async () => {

@@ -12,6 +12,14 @@ export interface Profile {
   birth_date: string | null;
   /** ISO 3166-1 alpha-2, e.g. `CH`. The assistant uses it for tax-aware answers. */
   tax_residence: string | null;
+  /** Monthly living costs, in the profile currency. Nothing else gives a savings rate. */
+  monthly_expenses_minor: number | null;
+  /** How many people depend on this income; `0` means an explicit "none". */
+  dependants_count: number | null;
+  /** Their ages as typed, e.g. `4, 7`. Free text because ages are not amounts. */
+  dependant_ages: string | null;
+  /** `employed`, `self_employed`, `retired`, `student`, `between_jobs`, `other`. */
+  employment_status: string | null;
   currency: string;
   timezone: string;
   date_format: string;
@@ -30,6 +38,10 @@ export const EMPTY_PROFILE: Profile = {
   financial_goals: null,
   birth_date: null,
   tax_residence: null,
+  monthly_expenses_minor: null,
+  dependants_count: null,
+  dependant_ages: null,
+  employment_status: null,
   currency: "EUR",
   timezone: "UTC",
   date_format: "%Y-%m-%d",
@@ -56,6 +68,7 @@ export async function getProfile(): Promise<Profile> {
   const db = await getDb();
   const rows = await db.select<Profile[]>(
     `SELECT first_name, last_name, job_title, financial_goals, birth_date, tax_residence,
+            monthly_expenses_minor, dependants_count, dependant_ages, employment_status,
             currency, timezone, date_format, salary_minor,
             monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise
        FROM profile WHERE id = 1`,
@@ -66,10 +79,13 @@ export async function getProfile(): Promise<Profile> {
 export async function saveProfile(input: Profile): Promise<void> {
   await runTransaction([
     `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence,
+                         monthly_expenses_minor, dependants_count, dependant_ages, employment_status,
                          currency, timezone, date_format, salary_minor, monthly_savings_target_minor,
                          risk_profile, ai_tone, ai_verbosity, ai_expertise)
      VALUES (1, ${sqlText(input.first_name)}, ${sqlText(input.last_name)}, ${sqlText(input.job_title)},
              ${sqlText(input.financial_goals)}, ${sqlText(input.birth_date)}, ${sqlText(input.tax_residence)},
+             ${sqlInt(input.monthly_expenses_minor)}, ${sqlInt(input.dependants_count)},
+             ${sqlText(input.dependant_ages)}, ${sqlText(input.employment_status)},
              ${sqlText(input.currency)},
              ${sqlText(input.timezone)}, ${sqlText(input.date_format)}, ${sqlInt(input.salary_minor)},
              ${sqlInt(input.monthly_savings_target_minor)}, ${sqlText(input.risk_profile)},
@@ -78,6 +94,9 @@ export async function saveProfile(input: Profile): Promise<void> {
        first_name = excluded.first_name, last_name = excluded.last_name,
        job_title = excluded.job_title, financial_goals = excluded.financial_goals,
        birth_date = excluded.birth_date, tax_residence = excluded.tax_residence,
+       monthly_expenses_minor = excluded.monthly_expenses_minor,
+       dependants_count = excluded.dependants_count, dependant_ages = excluded.dependant_ages,
+       employment_status = excluded.employment_status,
        currency = excluded.currency,
        timezone = excluded.timezone, date_format = excluded.date_format, salary_minor = excluded.salary_minor,
        monthly_savings_target_minor = excluded.monthly_savings_target_minor,

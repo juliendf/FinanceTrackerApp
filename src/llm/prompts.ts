@@ -31,6 +31,11 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "for future conversations, use the `remember_fact` tool. Be concise. " +
   // Money is where small models improvise: a CHF portfolio came back as
   // "₫ 578’865", a symbol and a digit grouping nothing in the app produces.
+  "Planning facts: when the profile gives monthly living expenses, use them for " +
+  "savings rates, runway and affordability instead of the savings target, which " +
+  "is an intention rather than a measurement. A dependant or a self-employed " +
+  "income means a longer emergency buffer than the usual three to six months. " +
+  "Never assume a figure the profile does not give. " +
   "Tax residence: the profile above gives the country the user pays tax in. Use " +
   "it when an answer depends on jurisdiction — tax-advantaged accounts, " +
   "contribution limits, withholding tax, products that only exist in some " +
@@ -52,6 +57,18 @@ function formatWhole(minor: number): string {
 /** `"12,345.67"` — the `{:,.2f}` the source builds its salary line with. */
 const money = (minor: number | null): string =>
   formatNumber(new Decimal(minor ?? 0).dividedBy(100));
+
+/** `self_employed` → `self-employed`, and the same for the rest of the list. */
+const EMPLOYMENT_LABELS: Record<string, string> = {
+  employed: "employed",
+  self_employed: "self-employed",
+  retired: "retired",
+  student: "student",
+  between_jobs: "between jobs",
+  other: "other",
+};
+
+const employmentLabel = (value: string): string => EMPLOYMENT_LABELS[value] ?? value;
 
 /** `_build_profile_context`: one paragraph plus a structured goals list. */
 export function buildProfileContext(profile: Profile, goals: readonly Goal[], today = todayIso()): string {
@@ -80,6 +97,22 @@ export function buildProfileContext(profile: Profile, goals: readonly Goal[], to
   }
   if (profile.monthly_savings_target_minor !== null) {
     parts.push(`monthly savings target: ${money(profile.monthly_savings_target_minor)}`);
+  }
+  // `!= null`, not `!== null`: an undefined value (an older row shape, or a test
+  // fixture) is "not set", not "zero".
+  if (profile.monthly_expenses_minor != null) {
+    parts.push(`monthly living expenses: ${money(profile.monthly_expenses_minor)} ${profile.currency}`);
+  }
+  if (profile.employment_status) {
+    parts.push(`employment: ${employmentLabel(profile.employment_status)}`);
+  }
+  if (profile.dependants_count != null) {
+    const ages = (profile.dependant_ages ?? "").trim();
+    parts.push(
+      profile.dependants_count === 0
+        ? "dependants: none"
+        : `dependants: ${profile.dependants_count}${ages ? ` (ages ${ages})` : ""}`,
+    );
   }
 
   const sections: string[] = [];

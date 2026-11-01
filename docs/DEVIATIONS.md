@@ -493,6 +493,12 @@ and changeable there.
   given to the assistant as `tax residence: Switzerland (CH)` so it can reason
   about jurisdiction while saying plainly that local rules vary. When it is unset
   the line is simply absent.
+- **The profile carries three planning facts the source never asked for:** monthly
+  living expenses, the number of dependants (and optionally their ages), and the
+  employment status. Without spending there is no savings rate and no runway;
+  without dependants or a stable salary the emergency buffer cannot be sized. All
+  three are optional and absent from the assistant's context when unset. Expenses
+  are stored in the profile currency's minor units, like every other amount.
 - **Memory keys are derived, not typed.** `user_memories.key` is a short label;
   the form builds it from the memory's text (`deriveMemoryKey`) and keeps the
   existing key when editing.

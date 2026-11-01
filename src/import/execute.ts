@@ -38,6 +38,13 @@ export class ImportBlockedError extends Error {
   }
 }
 
+/** A whole count from a backup, or NULL when it is missing or unusable. */
+function countOrNull(value: number | string | null | undefined): string {
+  if (value === null || value === undefined || value === "") return "NULL";
+  const parsed = Math.trunc(Number(value));
+  return Number.isFinite(parsed) && parsed >= 0 ? String(parsed) : "NULL";
+}
+
 /** Build the SQL statements for the whole dataset, in foreign-key order. */
 export function buildImportStatements(backup: ParsedBackup): string[] {
   const { data } = backup;
@@ -154,7 +161,7 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
   const profile = data.profile ?? {};
   if (Object.keys(profile).length > 0) {
     statements.push(
-      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
+      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence, monthly_expenses_minor, dependants_count, dependant_ages, employment_status, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
         [
           sqlInt(1),
           sqlText(profile.first_name ?? null),
@@ -163,6 +170,12 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
           sqlText(profile.financial_goals ?? null),
           sqlText(profile.birth_date ?? null),
           sqlText(profile.tax_residence ?? null),
+          profile.monthly_expenses === null || profile.monthly_expenses === undefined
+            ? "NULL"
+            : amountMinor(profile.monthly_expenses),
+          countOrNull(profile.dependants_count),
+          sqlText(profile.dependant_ages ?? null),
+          sqlText(profile.employment_status ?? null),
           sqlText(profile.default_currency ?? "EUR"),
           sqlText(profile.timezone ?? "UTC"),
           sqlText(profile.date_format ?? "%Y-%m-%d"),
