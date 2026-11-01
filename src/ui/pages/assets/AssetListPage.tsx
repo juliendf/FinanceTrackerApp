@@ -471,6 +471,14 @@ function AssetTableRow({ asset, onDelete }: { asset: AssetRow; onDelete: (row: A
       <td><span className={`badge bg-${status.variant}`}>{status.label}</span></td>
       <td>
         <div className="row-actions d-none d-md-inline-flex">
+          <Link
+            to={`/snapshots/new?asset_id=${asset.id}`}
+            className="btn btn-icon"
+            title="Record a snapshot"
+            aria-label={`Record a snapshot for ${name}`}
+          >
+            <i className="bi bi-camera" aria-hidden="true" />
+          </Link>
           <Link to={`/assets/${asset.id}`} className="btn btn-icon btn-icon-accent" title="View details" aria-label={`View ${name}`}>
             <i className="bi bi-eye" aria-hidden="true" />
           </Link>
@@ -492,6 +500,9 @@ function AssetTableRow({ asset, onDelete }: { asset: AssetRow; onDelete: (row: A
             <i className="bi bi-three-dots-vertical" aria-hidden="true" />
           </Dropdown.Toggle>
           <Dropdown.Menu>
+            <Dropdown.Item as={Link} to={`/snapshots/new?asset_id=${asset.id}`}>
+              <i className="bi bi-camera me-2" aria-hidden="true" />Record Snapshot
+            </Dropdown.Item>
             <Dropdown.Item as={Link} to={`/assets/${asset.id}`}>
               <i className="bi bi-eye me-2" aria-hidden="true" />View Details
             </Dropdown.Item>

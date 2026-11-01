@@ -178,6 +178,12 @@ describe("AssetListPage", () => {
     expect(screen.getByText("No assets")).toBeTruthy();
   });
 
+  it("offers a per-row shortcut to record a snapshot", async () => {
+    renderList();
+    const link = await screen.findByRole("link", { name: /record a snapshot for Boursorama - PEA \(Investments\)/i });
+    expect(link.getAttribute("href")).toBe("/snapshots/new?asset_id=2");
+  });
+
   it("shows the first-asset prompt when there are no assets at all", async () => {
     listAssets.mockResolvedValue([]);
     renderList();

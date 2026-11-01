@@ -390,6 +390,9 @@ and changeable there.
   answer is written out as it arrives or held back behind a spinner and shown
   whole. Either way a tool round clears the preamble text, so the final answer
   no longer accumulates on top of "let me look that up…".
+- **The asset list has a per-row "record a snapshot" shortcut** (camera icon, and
+  an entry in the narrow-width actions menu). It links to
+  `/snapshots/new?asset_id=…`, which the snapshot form already preselects.
 - **Toasts are a fixed stack under the toolbar.** They used to render in page
   flow at the bottom, so "Settings saved" sat on the form's own buttons and
   scrolled away with it.
