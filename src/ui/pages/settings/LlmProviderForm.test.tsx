@@ -96,6 +96,37 @@ describe("LlmProviderFormPage", () => {
     expect(byLabel("ministral-3:8b").checked).toBe(true);
   });
 
+  it("asks the provider's own endpoint, not the form default", async () => {
+    // The regression: the automatic load on open ran before the draft was seeded
+    // and queried the default localhost URL, pulling one provider's models into
+    // another provider's form.
+    repo.getProvider.mockResolvedValue({
+      ...PROVIDER,
+      id: 2,
+      name: "Gemini",
+      base_url: "https://generativelanguage.googleapis.com/v1beta/openai",
+      model: "gemini-3.8-flash",
+    });
+    renderForm();
+    await waitFor(() =>
+      expect(invoke).toHaveBeenCalledWith("list_models", {
+        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+        apiKey: null,
+      }),
+    );
+    // And the default model stays the provider's own, not the first fetched.
+    expect((screen.getByLabelText("Default model") as HTMLSelectElement).value).toBe("gemini-3.8-flash");
+  });
+
+  it("keeps the list when the endpoint answers with nothing", async () => {
+    invoke.mockImplementation(async (command: string) => (command === "list_models" ? [] : "reachable"));
+    renderForm();
+    const group = await screen.findByRole("group", { name: "Available models" });
+    // The saved rows survive an empty answer.
+    expect(within(group).getByText("qwen3.5:4b")).toBeTruthy();
+    expect(within(group).getByText("llama3.1:8b")).toBeTruthy();
+  });
+
   it("saves the enabled selection with the provider", async () => {
     const user = userEvent.setup();
     renderForm();

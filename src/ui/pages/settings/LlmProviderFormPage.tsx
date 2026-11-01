@@ -74,6 +74,8 @@ export function LlmProviderFormPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /** False until the stored provider has been copied into the draft. */
+  const [seeded, setSeeded] = useState(false);
   const autoLoaded = useRef(false);
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export function LlmProviderFormPage() {
       is_active: existing.data.is_active === 1,
       is_default: existing.data.is_default === 1,
     });
+    setSeeded(true);
   }, [existing.data]);
 
   // Show what is saved before (or without) asking the endpoint again.
@@ -127,14 +130,29 @@ export function LlmProviderFormPage() {
     }
   };
 
-  /** Ask the endpoint for its models and merge them with what is saved. */
-  const loadModels = async ({ silent = false }: { silent?: boolean } = {}) => {
+  /**
+   * Ask an endpoint for its models and merge them with what is saved.
+   *
+   * `url` is explicit: the automatic load on open runs before the draft has been
+   * seeded from the stored row, so reading `draft.base_url` there asked the
+   * *default* endpoint (localhost Ollama) on behalf of the provider being
+   * edited, and merged Ollama's catalogue into a Gemini provider.
+   */
+  const loadModels = async ({ url, silent = false }: { url?: string; silent?: boolean } = {}) => {
+    const target = (url ?? draft.base_url).trim();
+    if (!target) return;
     setBusy("models");
     try {
       const fetched = await invoke<string[]>("list_models", {
-        baseUrl: draft.base_url,
+        baseUrl: target,
         apiKey: await keyForCheck(),
       });
+      if (fetched.length === 0) {
+        // An empty answer is not evidence that nothing is available; keep what is
+        // there rather than wiping the list.
+        if (!silent) toast.warning("That endpoint advertises no models.");
+        return;
+      }
       const saved = (savedModels.data ?? []).map((row) => ({ model: row.model, enabled: row.enabled === 1 }));
       const merged = mergeModelChoices(fetched, choices.length > 0 ? choices : saved, draft.model);
       setChoices(merged);
@@ -142,10 +160,7 @@ export function LlmProviderFormPage() {
       if (!draft.model && merged.some((choice) => choice.enabled)) {
         setDraft((current) => ({ ...current, model: merged.find((choice) => choice.enabled)!.model }));
       }
-      if (!silent) {
-        if (fetched.length === 0) toast.warning("That endpoint advertises no models.");
-        else toast.success(`Loaded ${fetched.length} model${fetched.length === 1 ? "" : "s"}.`);
-      }
+      if (!silent) toast.success(`Loaded ${fetched.length} model${fetched.length === 1 ? "" : "s"}.`);
     } catch (error) {
       if (silent) return; // opening the form should not shout when offline
       toast.error(error instanceof Error ? error.message : String(error));
@@ -154,13 +169,14 @@ export function LlmProviderFormPage() {
     }
   };
 
-  // On an existing provider, ask once so the list is there without a click.
+  // On an existing provider, ask once so the list is there without a click —
+  // but only after the draft holds that provider's own URL.
   useEffect(() => {
-    if (id === null || !existing.data || autoLoaded.current) return;
+    if (id === null || !seeded || !existing.data || autoLoaded.current) return;
     autoLoaded.current = true;
-    void loadModels({ silent: true });
+    void loadModels({ url: existing.data.base_url, silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, existing.data]);
+  }, [id, seeded, existing.data]);
 
   const setAll = (value: boolean) => setChoices(choices.map((choice) => ({ ...choice, enabled: value })));
 
