@@ -4,10 +4,11 @@ What was changed in response to
 [`code-review-claude-2026-11-01.md`](./code-review-claude-2026-11-01.md), why,
 and how each fix is proved.
 
-**Result:** all 10 findings addressed. Two of them were **reopened by a second
-review** — my first attempt at #1 and #2 did not close the hole, and my claim
-about #8 was wrong. Those are corrected below, and the corrections are the part
-worth reading.
+**Result:** all 10 findings addressed. **#1 was reopened twice**: a second review
+found the text guard bypassable, and a third found the remaining hole — the SQL
+plugin's `select`, which skipped both the guard and the authorizer entirely. #2 and
+#8 were also corrected after the second review. The corrections are the part worth
+reading.
 
 **Not covered:** the review looked only at security and correctness. Code quality
 and performance have not been reviewed at all, before or after these fixes. See
@@ -23,10 +24,13 @@ The first version of this report said #1 and #2 were fixed and that #8's suggest
 | "The text guard closes #1" | It scanned only `'…'`. A `'` inside a `"…"` identifier desynchronised it, a `;` hid a second statement, and **sqlx runs the tail**: `DELETE FROM t WHERE (SELECT 1 AS "'") = 0; DROP TABLE t; SELECT 1 AS "'"` passed the guard and dropped the table. Reproduced against the app's own `write_statement`. |
 | "Moving to provider ids closes #2" | It stopped the *key* from crossing IPC, not the *destination*. `provider_connection` reads `base_url` from `llm_providers`, and the webview could `UPDATE` that row through `execute_write`, then ask for a connection: the key went out in the `Authorization` header to the new host. |
 | "`Builder::on_navigation` does not exist in Tauri v2" | It does — on `tauri::plugin::Builder` (`plugin.rs:459`) and `WebviewWindowBuilder` (`webview_window.rs:266`). Only `tauri::Builder` lacks it, and an inline plugin provides it. |
+| "The authorizer closes #1" (second attempt) | Only for statements that reach it. `sql:allow-select` was still granted, and the plugin's `select` runs `pool.fetch_all(sqlx::query(sql))` on its own pool: `SELECT 1; DROP TABLE snapshots` returned `Ok` with the table gone, the provider row rewriteable, and no authorizer in sight. |
 
-Both security fixes are now structural rather than textual: a SQLite
-**authorizer** at the engine level, and a **Keychain item bound to the origin it
-was entered for**, with the provider tables removed from the generic write path.
+The security fixes are now structural rather than textual: a SQLite
+**authorizer** at the engine level on every connection that runs webview SQL, no
+plugin command granted at all (so there is no unguarded pool), and a **Keychain
+item bound to the origin it was entered for**, with the provider tables removed from
+the generic write path.
 
 ## Commits
 
@@ -80,7 +84,7 @@ single quotes.
    the same connection; a smuggled `COMMIT` cannot grant anything, since each
    operation inside it is authorised separately.
 
-**Proof** (`src-tauri/tests/sql_guard.rs`, 9 tests):
+**Proof** (`src-tauri/tests/sql_guard.rs`, 14 tests):
 
 - the reported payload, and the same trick with backticks and brackets, are
   refused by the scanner;
@@ -95,6 +99,34 @@ single quotes.
 
 The reported bypass was reproduced against `write_statement` **before** the fix
 (`DROP TABLE t` dropped the table) and is refused **after**.
+
+**Reopened again (third review, 2026-11-01): reads were unguarded.**
+`sql:allow-select` was still granted. `tauri-plugin-sql` runs a select as
+`pool.fetch_all(sqlx::query(sql))` on **its own pool**, so `SELECT 1; DROP TABLE
+snapshots` ran both statements and returned `Ok` — past the scanner and past the
+authorizer, which only ever sat on the connections this module opens. The same
+trick rewrote a provider's `base_url`, which is how chat content (not the key) could
+have been pointed at another host.
+
+**Closed by taking the plugin away from the webview:**
+
+- **`db_select`** (`db.rs`) is the only way the webview reads. It opens the file
+  with `read_only(true)`, installs a **read-only authorizer** (only `SELECT`,
+  `READ`, `FUNCTION`, `RECURSIVE`), binds parameters, and returns rows as JSON keyed
+  by column name — decoded from each *value's* own type, so `COUNT(*)` is a number
+  rather than `NULL`.
+- **No `sql:*` permission is granted.** The plugin stays registered in Rust to own
+  the schema migrations; the webview cannot call `load`, `select` or `close`, so
+  there is no pool it can reach.
+- `src/db/client.ts` keeps the `db.select(sql, params)` shape the repositories
+  already used, so no repository changed.
+
+Five more tests (`sql_guard.rs`, now 14): `SELECT 1 AS x; DROP TABLE t` is refused
+and the table survives; `SELECT 1; UPDATE llm_providers SET base_url =
+'https://attacker.tld'` is refused and the row still points where the user put it;
+a single write, `PRAGMA` and `ATTACH` are refused on the reader; rows come back with
+names, bound parameters and `NULL`; and a read-only read works while a writer holds
+the WAL open.
 
 ### 2. A stored API key could be sent to any URL
 
@@ -247,7 +279,7 @@ value **on that date**, not the asset's latest.
 ```
 npx vitest run        # 508 passed, 5 skipped (45 files)
 npm run typecheck     # no errors
-cargo test            # 60 passed, 9 ignored
+cargo test            # 65 passed, 9 ignored
 ```
 
 The ignored Rust tests need a live provider or the login Keychain. The Keychain
@@ -262,6 +294,10 @@ cargo test --test live keychain_round_trip -- --ignored
 - **The renderer can still change a provider through `provider_save`.** That is not
   an escalation: the renderer already renders the portfolio it would be protecting,
   and moving the endpoint drops the key. What it cannot do is read a key or move one.
+- **`db_select` returns whatever the query asks for**, including any table's rows —
+  it is a read path for the app's own SQL, not a filter on *what* is read. A
+  compromised renderer could read anything in the database, which it can already
+  render.
 - **`run_transaction` still has no table allow-list** beyond the provider tables:
   any other table can be modified, so a compromised renderer can rewrite or delete
   portfolio rows. The authorizer limits *what kind* of statement, not *which table*

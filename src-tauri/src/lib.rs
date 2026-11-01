@@ -59,11 +59,14 @@ fn navigation_guard() -> tauri::plugin::TauriPlugin<tauri::Wry> {
         .on_navigation(|_webview, url| match url.scheme() {
             // The app itself, its assets and its IPC.
             "tauri" | "asset" | "about" => true,
-            // The dev server, and the IPC endpoint Tauri uses on some platforms.
-            "http" | "https" => matches!(
-                url.host_str(),
-                Some("localhost") | Some("127.0.0.1") | Some("ipc.localhost")
-            ),
+            // The IPC endpoint Tauri uses on some platforms, and — in a dev build
+            // only — the Vite server. A release build never serves the app over
+            // http, so localhost navigation is not allowed there.
+            "http" | "https" => {
+                url.host_str() == Some("ipc.localhost")
+                    || (cfg!(dev)
+                        && matches!(url.host_str(), Some("localhost") | Some("127.0.0.1")))
+            }
             _ => false,
         })
         .build()
@@ -85,6 +88,7 @@ pub fn run() {
             commands::db::run_transaction,
             commands::db::run_transaction_returning_id,
             commands::db::execute_write,
+            commands::db::db_select,
             commands::db::database_path,
             commands::files::pick_and_read_text_file,
             commands::files::save_text_file,

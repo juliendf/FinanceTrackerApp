@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Security:** all SQL now goes through Rust. The SQL plugin's `select` executed
+  the whole string on its own pool (`SELECT 1; DROP TABLE snapshots` worked, past
+  the guard and the authorizer), so **no `sql:*` permission is granted any more**.
+  Reads go through a new `db_select` command on a read-only connection with a
+  read-only authorizer; the plugin is kept only to own the migrations.
 - **Security:** SQL writes are now enforced by a SQLite authorizer, not only by a
   text filter. The filter was bypassable (a quote inside a double-quoted identifier
   hid a second statement, which sqlx then ran). `PRAGMA`, `ATTACH`, `DETACH`,

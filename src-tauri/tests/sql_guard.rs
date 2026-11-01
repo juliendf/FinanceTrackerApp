@@ -188,3 +188,109 @@ async fn the_guarded_write_path_refuses_the_bypass_before_touching_the_database(
     assert!(error.contains("multiple statements"), "unexpected error: {error}");
     assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 1, "the delete ran anyway");
 }
+
+// ---------------------------------------------------------------------------
+// The reader: `db_select`
+// ---------------------------------------------------------------------------
+
+use financetrackerapp_lib::commands::db::select_rows;
+
+#[tokio::test]
+async fn the_reader_refuses_a_stacked_drop() {
+    let (_file, url) = fresh("read-drop").await;
+
+    // The hole this closes: `sql:allow-select` ran this through the plugin's pool,
+    // which executed the whole string and returned Ok.
+    let error = select_rows(&url, "SELECT 1 AS x; DROP TABLE t", &[]).await.unwrap_err();
+    assert!(error.contains("not authorized") || error.contains("authorization"), "{error}");
+
+    assert_eq!(
+        count(&url, "SELECT COUNT(*) FROM t").await.unwrap(),
+        1,
+        "the table must still be there"
+    );
+}
+
+#[tokio::test]
+async fn the_reader_cannot_rewrite_a_provider_base_url() {
+    let (_file, url) = fresh("read-provider").await;
+    // A row to attack.
+    let mut connection = SqliteConnection::connect(&url).await.unwrap();
+    sqlx::raw_sql("INSERT INTO llm_providers (id, base_url) VALUES (1, 'http://localhost:11434/v1')")
+        .execute(&mut connection)
+        .await
+        .unwrap();
+
+    let payload = "SELECT 1 AS x; UPDATE llm_providers SET base_url = 'https://attacker.tld/v1' WHERE id = 1";
+    assert!(select_rows(&url, payload, &[]).await.is_err());
+
+    let base_url: Option<String> = {
+        let mut connection = SqliteConnection::connect(&url).await.unwrap();
+        let row: (Option<String>,) = sqlx::query_as("SELECT base_url FROM llm_providers WHERE id = 1")
+            .fetch_one(&mut connection)
+            .await
+            .unwrap();
+        row.0
+    };
+    assert_eq!(
+        base_url.as_deref(),
+        Some("http://localhost:11434/v1"),
+        "the provider must still point where the user put it"
+    );
+}
+
+#[tokio::test]
+async fn the_reader_refuses_any_write_even_a_single_one() {
+    let (_file, url) = fresh("read-write").await;
+
+    for sql in [
+        "INSERT INTO t (name) VALUES ('x')",
+        "UPDATE t SET name = 'x'",
+        "DELETE FROM t",
+        "PRAGMA foreign_keys = OFF",
+        "ATTACH DATABASE ':memory:' AS mem",
+    ] {
+        assert!(select_rows(&url, sql, &[]).await.is_err(), "accepted: {sql}");
+    }
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 1);
+}
+
+#[tokio::test]
+async fn the_reader_returns_rows_with_names_and_bound_parameters() {
+    let (_file, url) = fresh("read-rows").await;
+
+    let rows = select_rows(
+        &url,
+        "SELECT id, name FROM t WHERE name = ?",
+        &[json!("first")],
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(rows.len(), 1);
+    assert_eq!(rows[0]["id"], json!(1));
+    assert_eq!(rows[0]["name"], json!("first"));
+
+    // A query with no rows is an empty list, not an error, and NULL survives.
+    let empty = select_rows(&url, "SELECT id FROM t WHERE id = ?", &[json!(99)])
+        .await
+        .unwrap();
+    assert!(empty.is_empty());
+    let nulls = select_rows(&url, "SELECT NULL AS empty", &[]).await.unwrap();
+    assert!(nulls[0]["empty"].is_null());
+}
+
+#[tokio::test]
+async fn the_reader_works_on_a_wal_database_that_is_being_written() {
+    let (_file, url) = fresh("read-wal").await;
+    let mut writer = SqliteConnection::connect(&url).await.unwrap();
+    sqlx::raw_sql("PRAGMA journal_mode=WAL; INSERT INTO t (name) VALUES ('second');")
+        .execute(&mut writer)
+        .await
+        .unwrap();
+
+    // The app keeps a writer open while the UI reads; read-only must not choke on
+    // the -wal/-shm files that leaves behind.
+    let rows = select_rows(&url, "SELECT COUNT(*) AS n FROM t", &[]).await.unwrap();
+    assert_eq!(rows[0]["n"], json!(2));
+}

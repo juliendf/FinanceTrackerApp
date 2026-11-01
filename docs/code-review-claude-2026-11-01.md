@@ -82,6 +82,29 @@ sent as raw SQL with no scanning at all, the DDL/PRAGMA/ATTACH/VACUUM refusals,
 the provider-table refusal, and ordinary DML (including an `AUTOINCREMENT` table)
 still working.
 
+**Reopened again (third review, 2026-11-01): reads bypassed both layers.**
+`sql:allow-select` was still granted, and `tauri-plugin-sql` runs a select as
+`pool.fetch_all(sqlx::query(sql))` on its own pool, so `SELECT 1; DROP TABLE
+snapshots` executed both statements and returned `Ok`. The scanner and the
+authorizer never saw it: they only guard the connections this app opens.
+
+**Closed (2026-11-01) by removing the webview's access to the plugin:**
+
+- **`db_select`** — the only read path. Opens the file `read_only(true)`, installs a
+  read-only authorizer (`SELECT`, `READ`, `FUNCTION`, `RECURSIVE` only), binds
+  parameters, and returns rows as JSON keyed by column name.
+- **No `sql:*` permission is granted.** The plugin remains registered in Rust for
+  the schema migrations only.
+- `src/db/client.ts` keeps the `db.select(sql, params)` shape, so repositories and
+  their tests were untouched.
+
+Fourteen tests now: the reported payload and its variants, the authorizer refusing
+a hidden second statement sent as raw SQL, DDL/PRAGMA/ATTACH/VACUUM refusals, the
+provider-table refusal, ordinary DML still working, `SELECT 1; DROP TABLE t`
+refused on the reader with the table surviving, `SELECT 1; UPDATE llm_providers …`
+refused with the row unchanged, single writes refused on the reader, rows returned
+with names and bound parameters, and a read-only read during a live WAL write.
+
 ### 2. High — API key and base URL come from the webview
 
 **Where:** `src-tauri/src/commands/llm.rs:385`, and `secret_get`
