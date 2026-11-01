@@ -188,6 +188,17 @@ export function ProfilePage() {
               </select>
             </div>
             <div className="col-md-4 mb-3">
+              <label htmlFor="job_title" className="form-label">Job Title</label>
+              <input
+                id="job_title"
+                className="form-control"
+                maxLength={100}
+                value={draft.job_title ?? ""}
+                placeholder="Senior SRE"
+                onChange={(e) => setDraft({ ...draft, job_title: e.target.value || null })}
+              />
+            </div>
+            <div className="col-md-4 mb-3">
               <label htmlFor="salary" className="form-label">Annual Salary</label>
               <input
                 id="salary"
@@ -234,6 +245,21 @@ export function ProfilePage() {
                 value={draft.timezone}
                 onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}
               />
+            </div>
+          </div>
+          <div className="mb-1">
+            <label htmlFor="financial_goals" className="form-label">Other Aspirations</label>
+            <textarea
+              id="financial_goals"
+              className="form-control"
+              rows={4}
+              maxLength={2000}
+              value={draft.financial_goals ?? ""}
+              placeholder="Anything that does not fit in a structured goal: life aspirations, vague plans, ideas you are exploring."
+              onChange={(e) => setDraft({ ...draft, financial_goals: e.target.value || null })}
+            />
+            <div className="form-text">
+              Free text, shared with the assistant alongside the structured goals below.
             </div>
           </div>
         </Section>

@@ -118,6 +118,8 @@ export function buildBackup(
       ? {
           first_name: p.first_name,
           last_name: p.last_name,
+          job_title: p.job_title,
+          financial_goals: p.financial_goals,
           default_currency: p.currency,
           currency: p.currency,
           timezone: p.timezone,

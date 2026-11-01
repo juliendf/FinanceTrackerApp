@@ -433,9 +433,10 @@ and changeable there.
   (`DeleteConfirmModal`), and `src/ui/no-browser-confirm.test.ts` enforces it.
 - **Markdown is sanitised.** The source trusted its own converter; here
   `react-markdown` + `rehype-sanitize` strip anything executable.
-- **The profile has no account fields.** Email, phone and password are gone;
-  `job_title` and `financial_goals` have no column in this schema, so they are
-  dropped (see IMPORT_FORMAT.md).
+- **The profile has no account fields.** Email, phone and password are gone.
+  The job title and the free-text aspirations are kept: they were missing until
+  migration 5 (the v2 export carries them but the first schema had nowhere to
+  put them), and both are now part of the assistant's profile section.
 - **Per-provider model choice is remembered** in localStorage, so switching back
   to a provider restores the model you last used with it.
 

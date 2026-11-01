@@ -107,11 +107,15 @@ describe("buildImportPlan", () => {
   });
 
   it("lists what the backup cannot carry", () => {
-    expect(plan.notImported.join(" ")).toMatch(/memories/);
-    expect(plan.notImported.join(" ")).toMatch(/goals/);
-    expect(plan.notImported.join(" ")).toMatch(/financial goals note/);
-    expect(plan.notImported.join(" ")).toMatch(/job title/);
-    expect(plan.notImported.join(" ")).toMatch(/username and email/);
+    // A v2 export has no memories or goals arrays, and the account fields have no
+    // column. The profile's job title and free-text aspirations *are* carried now
+    // (migration 5), so they must not be listed as lost.
+    const lost = plan.notImported.join(" ");
+    expect(lost).toMatch(/memories/);
+    expect(lost).toMatch(/goals/);
+    expect(lost).toMatch(/username and email/);
+    expect(lost).not.toMatch(/job title/);
+    expect(lost).not.toMatch(/financial goals/);
   });
 
   it("blocks an asset pointing at a missing institution", () => {
@@ -268,10 +272,11 @@ describe("buildImportStatements", () => {
     expect(joined).toContain("150000"); // savings target 1500
   });
 
-  it("drops profile fields that have no column", () => {
+  it("keeps the profile's free text but drops the account fields", () => {
+    expect(joined).toContain("Engineer"); // job title
+    expect(joined).toContain("Buy a house"); // free-text aspirations
     expect(joined).not.toContain("test@example.com");
     expect(joined).not.toContain("testuser");
-    expect(joined).not.toContain("Buy a house");
   });
 
   it("keeps apostrophes in French text intact", () => {

@@ -7,6 +7,8 @@ import { sqlInt, sqlText } from "../literals";
 export interface Profile {
   first_name: string | null;
   last_name: string | null;
+  job_title: string | null;
+  financial_goals: string | null;
   currency: string;
   timezone: string;
   date_format: string;
@@ -21,6 +23,8 @@ export interface Profile {
 export const EMPTY_PROFILE: Profile = {
   first_name: null,
   last_name: null,
+  job_title: null,
+  financial_goals: null,
   currency: "EUR",
   timezone: "UTC",
   date_format: "%Y-%m-%d",
@@ -44,14 +48,18 @@ export async function getProfile(): Promise<Profile> {
 
 export async function saveProfile(input: Profile): Promise<void> {
   await runTransaction([
-    `INSERT INTO profile (id, first_name, last_name, currency, timezone, date_format, salary_minor,
-                         monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise)
-     VALUES (1, ${sqlText(input.first_name)}, ${sqlText(input.last_name)}, ${sqlText(input.currency)},
+    `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, currency, timezone,
+                         date_format, salary_minor, monthly_savings_target_minor, risk_profile,
+                         ai_tone, ai_verbosity, ai_expertise)
+     VALUES (1, ${sqlText(input.first_name)}, ${sqlText(input.last_name)}, ${sqlText(input.job_title)},
+             ${sqlText(input.financial_goals)}, ${sqlText(input.currency)},
              ${sqlText(input.timezone)}, ${sqlText(input.date_format)}, ${sqlInt(input.salary_minor)},
              ${sqlInt(input.monthly_savings_target_minor)}, ${sqlText(input.risk_profile)},
              ${sqlText(input.ai_tone)}, ${sqlText(input.ai_verbosity)}, ${sqlText(input.ai_expertise)})
      ON CONFLICT(id) DO UPDATE SET
-       first_name = excluded.first_name, last_name = excluded.last_name, currency = excluded.currency,
+       first_name = excluded.first_name, last_name = excluded.last_name,
+       job_title = excluded.job_title, financial_goals = excluded.financial_goals,
+       currency = excluded.currency,
        timezone = excluded.timezone, date_format = excluded.date_format, salary_minor = excluded.salary_minor,
        monthly_savings_target_minor = excluded.monthly_savings_target_minor,
        risk_profile = excluded.risk_profile, ai_tone = excluded.ai_tone,

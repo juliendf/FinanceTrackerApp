@@ -182,10 +182,6 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
   const notImported: string[] = [];
   if (data.memories.length === 0) notImported.push("memories (not present in a v2 backup)");
   if (data.goals.length === 0) notImported.push("goals (not present in a v2 backup)");
-  if (data.profile?.financial_goals) {
-    notImported.push("the free-text financial goals note (no matching field)");
-  }
-  if (data.profile?.job_title) notImported.push("job title (no matching field)");
   if (data.profile?.username || data.profile?.email) {
     notImported.push("account username and email (there is no account any more)");
   }

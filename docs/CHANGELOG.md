@@ -6,6 +6,10 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Profile: **Job Title** and **Other Aspirations** are back (migration 5). A v2
+  backup carries both; the first schema dropped them, so imports lost them and
+  the assistant never saw them. Both now feed the profile section of its prompt.
+
 - The AI opt-in and the streaming switch moved from General settings to **LLM
   Providers**, above the provider list: they govern where chat sends data, so
   they belong with the endpoints.

@@ -5,6 +5,8 @@ import type { Profile } from "../db/repositories/profile";
 const profile: Profile = {
   first_name: "Julien",
   last_name: "Doe",
+  job_title: null,
+  financial_goals: null,
   currency: "CHF",
   timezone: "Europe/Zurich",
   date_format: "%d.%m.%Y",
@@ -21,6 +23,24 @@ describe("prompt sections", () => {
     expect(buildProfileContext(profile, [])).toBe(
       "## User financial context\nname: Julien Doe; annual salary: 120,000.00 CHF; risk profile: growth; monthly savings target: 1,500.00\n",
     );
+  });
+
+  it("includes the job title and the free-text aspirations", () => {
+    const text = buildProfileContext(
+      {
+        ...profile,
+        salary_minor: null,
+        monthly_savings_target_minor: null,
+        risk_profile: null,
+        job_title: "Senior SRE",
+        financial_goals: "Retire comfortably, buy a house.",
+      },
+      [],
+    );
+    expect(text).toContain("job: Senior SRE");
+    expect(text).toContain("financial goals: Retire comfortably, buy a house.");
+    // Source order: name, job, salary, risk profile, financial goals, savings.
+    expect(text.indexOf("job:")).toBeLessThan(text.indexOf("financial goals:"));
   });
 
   it("lists goals with amount, date and extras", () => {

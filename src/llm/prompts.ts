@@ -46,11 +46,17 @@ export function buildProfileContext(profile: Profile, goals: readonly Goal[]): s
     const name = profile.last_name ? `${profile.first_name} ${profile.last_name}` : profile.first_name;
     parts.push(`name: ${name}`);
   }
+  if (profile.job_title) {
+    parts.push(`job: ${profile.job_title}`);
+  }
   if (profile.salary_minor !== null) {
     parts.push(`annual salary: ${money(profile.salary_minor)} ${profile.currency}`);
   }
   if (profile.risk_profile) {
     parts.push(`risk profile: ${profile.risk_profile}`);
+  }
+  if (profile.financial_goals) {
+    parts.push(`financial goals: ${profile.financial_goals}`);
   }
   if (profile.monthly_savings_target_minor !== null) {
     parts.push(`monthly savings target: ${money(profile.monthly_savings_target_minor)}`);
