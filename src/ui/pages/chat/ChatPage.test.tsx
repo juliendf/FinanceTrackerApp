@@ -297,6 +297,31 @@ describe("ChatPage", () => {
     release();
   });
 
+  it("lists sessions with a header and a search box", async () => {
+    renderChat();
+    expect(await screen.findByText("Sessions")).toBeTruthy();
+    expect(screen.getByPlaceholderText("Search")).toBeTruthy();
+    // The single mocked conversation is the active one.
+    expect(await screen.findByRole("button", { name: "Portfolio question" })).toBeTruthy();
+  });
+
+  it("filters the session list by title", async () => {
+    const user = userEvent.setup();
+    repo.listConversations.mockResolvedValue([
+      CONVERSATION,
+      { id: 6, provider_id: 2, model_override: null, title: "Allocation check", created_at: "", updated_at: "" },
+    ]);
+    renderChat();
+    await screen.findByText("Allocation check");
+    await user.type(screen.getByPlaceholderText("Search"), "alloc");
+    await waitFor(() => expect(screen.queryByText("Portfolio question")).toBeNull());
+    expect(screen.getByText("Allocation check")).toBeTruthy();
+
+    await user.clear(screen.getByPlaceholderText("Search"));
+    await user.type(screen.getByPlaceholderText("Search"), "zzz");
+    expect(await screen.findByText("No session matches.")).toBeTruthy();
+  });
+
   it("offers the suggested prompts", async () => {
     renderChat();
     expect(await screen.findByText("Portfolio review")).toBeTruthy();

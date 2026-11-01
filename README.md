@@ -8,7 +8,7 @@ Contents: [Status](#status) · [Requirements](#requirements) · [Run](#run) · [
 
 ## Status
 
-Version 0.2.7. Phases 0 to 8 of the plan are done: backup import and export,
+Version 0.2.8. Phases 0 to 8 of the plan are done: backup import and export,
 institutions, categories and tags, assets, snapshots, dashboards, settings, the AI
 assistant (providers, chat with tools and confirm-before-write, profile, memories,
 goals), and packaging (icon, About, ad-hoc signing, updater wiring, release

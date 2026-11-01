@@ -408,6 +408,10 @@ and changeable there.
 - **The asset list has a per-row "record a snapshot" shortcut** (camera icon, and
   an entry in the narrow-width actions menu). It links to
   `/snapshots/new?asset_id=…`, which the snapshot form already preselects.
+- **The chat session list is a sessions rail.** The source renders a bare list of
+  conversation titles. Here it has a header with a new-session button, a search
+  field, "This week" / "Earlier" groups and a timestamp per row (hour today,
+  weekday within the week, date beyond), with the delete control on hover only.
 - **Toasts are a fixed stack under the toolbar.** They used to render in page
   flow at the bottom, so "Settings saved" sat on the form's own buttons and
   scrolled away with it.

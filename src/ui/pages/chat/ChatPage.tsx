@@ -43,6 +43,7 @@ import {
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
 import { toolStatusLabel } from "../../../llm/tools";
+import { filterSessions, groupSessions } from "./sessionList";
 import { useRememberedModel } from "../../../llm/modelChoice";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
@@ -97,6 +98,7 @@ export function ChatPage() {
   >(null);
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
+  const [sessionQuery, setSessionQuery] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [pendingDelete, setPendingDelete] = useState<
     { kind: "conversation"; id: number; title: string } | { kind: "message"; id: number } | null
@@ -105,6 +107,11 @@ export function ChatPage() {
   const requestIdRef = useRef<string>("");
   const abortRef = useRef<(() => Promise<void>) | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  const visibleGroups = useMemo(
+    () => groupSessions(filterSessions(conversations.data ?? [], sessionQuery)),
+    [conversations.data, sessionQuery],
+  );
 
   const providerList = providers.data ?? [];
   const activeProvider: LlmProvider | null = useMemo(
@@ -347,45 +354,75 @@ export function ChatPage() {
 
       <div className="chat-layout">
         <div className="chat-sidebar">
-          <div className="chat-sidebar-label">Conversations</div>
+          <div className="chat-sidebar-header">
+            <span className="chat-sidebar-title">Sessions</span>
+            <button
+              type="button"
+              className="btn-icon-action"
+              title="New session"
+              aria-label="New session"
+              onClick={() => newChat.mutate()}
+              disabled={!aiEnabled}
+            >
+              <i className="bi bi-plus-lg" aria-hidden="true" />
+            </button>
+          </div>
+
+          <div className="chat-sidebar-search">
+            <input
+              type="search"
+              className="form-control form-control-sm"
+              placeholder="Search"
+              aria-label="Search sessions"
+              value={sessionQuery}
+              onChange={(event) => setSessionQuery(event.target.value)}
+            />
+          </div>
+
           <div className="chat-sidebar-list">
-            {(conversations.data ?? []).length === 0 ? (
-              <p className="text-muted small px-2">No conversations yet.</p>
+            {visibleGroups.length === 0 ? (
+              <p className="chat-sidebar-empty">{sessionQuery ? "No session matches." : "No sessions yet."}</p>
             ) : null}
-            {(conversations.data ?? []).map((conv) => (
-              <div
-                key={conv.id}
-                className={`chat-sidebar-item${id === conv.id ? " active" : ""}`}
-                onDoubleClick={() => startRename(conv.id, conv.title)}
-                title="Double-click to rename"
-              >
-                {renaming === conv.id ? (
-                  <input
-                    className="item-title-edit form-control form-control-sm"
-                    value={renameValue}
-                    autoFocus
-                    maxLength={100}
-                    onChange={(event) => setRenameValue(event.target.value)}
-                    onBlur={() => void commitRename()}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") void commitRename();
-                      if (event.key === "Escape") setRenaming(null);
-                    }}
-                  />
-                ) : (
-                  <button type="button" className="item-title" onClick={() => navigate(`/chat/${conv.id}`)}>
-                    {conv.title}
-                  </button>
-                )}
-                <button
-                  type="button"
-                  className="btn-delete-conv"
-                  title="Delete conversation"
-                  aria-label={`Delete ${conv.title}`}
-                  onClick={() => setPendingDelete({ kind: "conversation", id: conv.id, title: conv.title })}
-                >
-                  <i className="bi bi-x" aria-hidden="true" />
-                </button>
+            {visibleGroups.map((group) => (
+              <div className="chat-sidebar-group" key={group.title}>
+                <div className="chat-sidebar-label">{group.title}</div>
+                {group.items.map((conv) => (
+                  <div
+                    key={conv.id}
+                    className={`chat-sidebar-item${id === conv.id ? " active" : ""}`}
+                    onDoubleClick={() => startRename(conv.id, conv.title)}
+                    title="Double-click to rename"
+                  >
+                    {renaming === conv.id ? (
+                      <input
+                        className="item-title-edit form-control form-control-sm"
+                        value={renameValue}
+                        autoFocus
+                        maxLength={100}
+                        onChange={(event) => setRenameValue(event.target.value)}
+                        onBlur={() => void commitRename()}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void commitRename();
+                          if (event.key === "Escape") setRenaming(null);
+                        }}
+                      />
+                    ) : (
+                      <button type="button" className="item-title" onClick={() => navigate(`/chat/${conv.id}`)}>
+                        {conv.title}
+                      </button>
+                    )}
+                    <span className="item-meta">{conv.meta.label}</span>
+                    <button
+                      type="button"
+                      className="btn-delete-conv"
+                      title="Delete session"
+                      aria-label={`Delete ${conv.title}`}
+                      onClick={() => setPendingDelete({ kind: "conversation", id: conv.id, title: conv.title })}
+                    >
+                      <i className="bi bi-x" aria-hidden="true" />
+                    </button>
+                  </div>
+                ))}
               </div>
             ))}
           </div>

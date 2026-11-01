@@ -3493,3 +3493,140 @@ body {
 .msg-assistant li + li {
     margin-top: 0.2rem;
 }
+
+/* ==========================================================================
+   Chat session list
+   --------------------------------------------------------------------------
+   A sessions rail: header with a new-session button, a search field, recency
+   groups, and rows carrying a right-aligned timestamp. The active row gets a
+   quiet fill and a left accent bar, and the delete control only appears on
+   hover so the timestamps stay readable.
+   ========================================================================== */
+
+.chat-sidebar {
+    width: 17rem;
+    min-width: 17rem;
+}
+
+.chat-sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 0.75rem 0.5rem;
+    border-bottom: 0;
+}
+
+.chat-sidebar-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.chat-sidebar-header .btn-icon-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 1rem;
+    line-height: 1;
+}
+
+.chat-sidebar-header .btn-icon-action:hover:not(:disabled) {
+    background: var(--surface-3);
+    color: var(--text-primary);
+}
+
+.chat-sidebar-header .btn-icon-action:disabled {
+    opacity: 0.4;
+}
+
+.chat-sidebar-search {
+    padding: 0 0.75rem 0.5rem;
+}
+
+.chat-sidebar-search .form-control {
+    height: 30px;
+    background: var(--surface-2);
+    border: 1px solid var(--border-color);
+    font-size: 0.8125rem;
+}
+
+.chat-sidebar-search .form-control::placeholder {
+    color: var(--text-muted);
+}
+
+.chat-sidebar-group {
+    padding-bottom: 0.35rem;
+}
+
+.chat-sidebar .chat-sidebar-label {
+    padding: 0.55rem 0.75rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.chat-sidebar .chat-sidebar-item {
+    position: relative;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+}
+
+.chat-sidebar .chat-sidebar-item .item-title {
+    font-size: 0.875rem;
+}
+
+.chat-sidebar .chat-sidebar-item.active {
+    background: var(--surface-3);
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+.chat-sidebar .chat-sidebar-item.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 18%;
+    bottom: 18%;
+    width: 3px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.chat-sidebar .item-meta {
+    flex: 0 0 auto;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.chat-sidebar .chat-sidebar-item:hover .item-meta {
+    display: none;
+}
+
+.chat-sidebar .chat-sidebar-item .btn-delete-conv {
+    display: none;
+}
+
+.chat-sidebar .chat-sidebar-item:hover .btn-delete-conv,
+.chat-sidebar .chat-sidebar-item:focus-within .btn-delete-conv {
+    display: inline-flex;
+    opacity: 0.75;
+}
+
+.chat-sidebar-empty {
+    padding: 0.5rem 0.75rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--text-muted);
+}

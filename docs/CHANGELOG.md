@@ -4,6 +4,13 @@ Every version below is a local build, ad-hoc signed, never notarised and never
 published. Version numbers are bumped in `package.json`, `src-tauri/Cargo.toml`
 and `src-tauri/tauri.conf.json` together.
 
+## 0.2.8
+
+- Chat session list rebuilt: a "Sessions" header with a new-session button, a
+  search field, "This week" / "Earlier" groups, and a right-aligned timestamp
+  (hour today, weekday this week, date beyond). The active session gets a left
+  accent bar; the delete control appears on hover only.
+
 ## 0.2.7
 
 - Sidebar order: Dashboard, Assets, Snapshots, Résumé.
