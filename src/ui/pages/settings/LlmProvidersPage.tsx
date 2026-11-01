@@ -104,14 +104,11 @@ export function LlmProvidersPage() {
       ) : (
         <div className="table-container mb-4">
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
+            <table className="table table-hover align-middle mb-0 providers-table">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Endpoint</th>
+                  <th>Provider</th>
                   <th>Model</th>
-                  <th>Key</th>
-                  <th>Status</th>
                   <th className="text-end">Actions</th>
                 </tr>
               </thead>
@@ -119,25 +116,21 @@ export function LlmProvidersPage() {
                 {(providers.data ?? []).map((provider) => (
                   <tr key={provider.id}>
                     <td>
-                      <span className="cell-title">{provider.name}</span>
-                      {provider.is_default === 1 ? <span className="badge bg-primary ms-2">default</span> : null}
+                      <div className="d-flex flex-wrap align-items-center gap-2">
+                        <span className="cell-title">{provider.name}</span>
+                        {provider.is_default === 1 ? <span className="badge bg-primary">default</span> : null}
+                        {provider.keychain_ref ? (
+                          <span className="badge bg-success" title="API key stored in the macOS Keychain">
+                            key
+                          </span>
+                        ) : null}
+                        {provider.is_active === 1 ? null : <span className="badge bg-secondary">inactive</span>}
+                      </div>
+                      <div className="provider-endpoint font-monospace" title={provider.base_url}>
+                        {provider.base_url}
+                      </div>
                     </td>
-                    <td><span className="font-monospace small">{provider.base_url}</span></td>
-                    <td>{provider.model}</td>
-                    <td>
-                      {provider.keychain_ref ? (
-                        <span className="badge bg-success">Keychain</span>
-                      ) : (
-                        <span className="text-muted">none</span>
-                      )}
-                    </td>
-                    <td>
-                      {provider.is_active === 1 ? (
-                        <span className="badge bg-success">active</span>
-                      ) : (
-                        <span className="badge bg-secondary">inactive</span>
-                      )}
-                    </td>
+                    <td className="provider-model font-monospace">{provider.model}</td>
                     <td className="text-end">
                       <div className="row-actions d-inline-flex">
                         <button

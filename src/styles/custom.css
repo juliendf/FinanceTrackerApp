@@ -3699,3 +3699,46 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* ==========================================================================
+   Provider list
+   --------------------------------------------------------------------------
+   Long endpoints used to widen the table past its container, which pushed the
+   row actions out of sight behind a horizontal scroll. Fixed layout plus an
+   ellipsised endpoint keeps the Actions column on screen at any window width.
+   ========================================================================== */
+
+.providers-table {
+    table-layout: fixed;
+    width: 100%;
+}
+
+/* Model and Actions are fixed; Provider absorbs the rest, so the endpoint
+   ellipsises instead of pushing the buttons off screen. Key and active state are
+   badges in the provider cell rather than columns of their own. */
+.providers-table th:nth-child(2),
+.providers-table td:nth-child(2) {
+    width: 170px;
+}
+
+.providers-table th:nth-child(3),
+.providers-table td:nth-child(3) {
+    width: 136px;
+    white-space: nowrap;
+}
+
+.provider-endpoint {
+    margin-top: 0.15rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.provider-model {
+    font-size: 0.8125rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
