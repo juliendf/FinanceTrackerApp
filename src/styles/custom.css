@@ -3458,9 +3458,16 @@ body {
 }
 
 /* Markdown the model returns: tables, code and lists sized for a bubble. */
+/*
+ * No `display: block` and no `white-space: nowrap` here.
+ *
+ * A table with `display: block` stops being a table box: its rows lay out in an
+ * anonymous table that is as wide as its content, `table-layout` no longer
+ * applies, and `overflow-x` on the block does not contain it. That is what made a
+ * model-written table wider than the conversation and forced a sideways drag.
+ * The scroll container is the wrapper element (`.md-table-scroll`).
+ */
 .msg-assistant table {
-    display: block;
-    overflow-x: auto;
     width: 100%;
     margin: 0.6rem 0;
     border-collapse: collapse;
@@ -3472,7 +3479,6 @@ body {
     padding: 0.3rem 0.6rem;
     border-bottom: 1px solid var(--border-color);
     text-align: left;
-    white-space: nowrap;
 }
 
 .msg-assistant th {
