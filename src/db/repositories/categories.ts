@@ -1,6 +1,6 @@
 /** Reference data: categories. Typed SQL only, no business logic. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 
 export interface Category {
   id: number;
@@ -44,8 +44,7 @@ export async function createCategory(
   systemRole: string | null = null,
   description: string | null = null,
 ): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO categories (name, description, color, system_role) VALUES (?, ?, ?, ?)`,
     [name.trim(), description, color, systemRole],
   );
@@ -59,8 +58,7 @@ export async function updateCategory(
   systemRole: string | null,
   description: string | null,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE categories
         SET name = ?, color = ?, system_role = ?, description = ?,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
@@ -71,8 +69,7 @@ export async function updateCategory(
 
 /** `assets.category_id` is `ON DELETE RESTRICT`, so this fails while in use. */
 export async function deleteCategory(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM categories WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM categories WHERE id = ?`, [id]);
 }
 
 export async function countAssetsForCategory(id: number): Promise<number> {
@@ -109,8 +106,7 @@ export async function updateCategoryRole(
   id: number,
   systemRole: string | null,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE categories SET system_role = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE id = ?`,
     [systemRole, id],

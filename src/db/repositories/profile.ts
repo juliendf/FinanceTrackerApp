@@ -1,6 +1,6 @@
 /** Profile (single row), memories and goals. Typed SQL only. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlInt, sqlText } from "../literals";
 
@@ -121,8 +121,7 @@ export interface MemoryInput {
 }
 
 export async function createMemory(input: MemoryInput): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO user_memories (category, key, content, source, conversation_id, importance)
      VALUES (?, ?, ?, ?, ?, ?)`,
     [
@@ -138,8 +137,7 @@ export async function createMemory(input: MemoryInput): Promise<number> {
 }
 
 export async function updateMemory(id: number, input: Omit<MemoryInput, "source" | "conversationId">): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE user_memories SET category = ?, key = ?, content = ?, importance = ?,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [input.category, input.key, input.content, input.importance, id],
@@ -147,8 +145,7 @@ export async function updateMemory(id: number, input: Omit<MemoryInput, "source"
 }
 
 export async function deleteMemory(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM user_memories WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM user_memories WHERE id = ?`, [id]);
 }
 
 // --- goals ----------------------------------------------------------------------
@@ -198,8 +195,7 @@ export interface GoalInput {
 }
 
 export async function createGoal(input: GoalInput): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO user_goals (label, target_amount_minor, target_date, priority, category)
      VALUES (?, ?, ?, ?, ?)`,
     [input.label, input.target_amount_minor, input.target_date, input.priority, input.category],
@@ -208,8 +204,7 @@ export async function createGoal(input: GoalInput): Promise<number> {
 }
 
 export async function updateGoal(id: number, input: GoalInput): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE user_goals SET label = ?, target_amount_minor = ?, target_date = ?, priority = ?, category = ?,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [input.label, input.target_amount_minor, input.target_date, input.priority, input.category, id],
@@ -217,6 +212,5 @@ export async function updateGoal(id: number, input: GoalInput): Promise<void> {
 }
 
 export async function deleteGoal(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM user_goals WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM user_goals WHERE id = ?`, [id]);
 }

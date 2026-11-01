@@ -6,6 +6,10 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Security: the webview can no longer run arbitrary SQL. `sql:allow-execute` is
+  removed and every write goes through a guarded Rust command (`execute_write`
+  for one statement with bound parameters, `run_transaction` for batches).
+
 - Profile: **Date of Birth**, with the age derived from it (not stored, so it
   never goes stale). The assistant's profile section now starts with `age: N`.
 - Profile: fixed a save that silently kept the old values — the form reseeded

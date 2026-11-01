@@ -1,6 +1,6 @@
 /** Tags and their asset links. Typed SQL only. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 
 export interface Tag {
   id: number;
@@ -37,8 +37,7 @@ export async function listTagsWithCounts(): Promise<TagWithCount[]> {
 }
 
 export async function createTag(name: string, color: string | null): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO tags (name, color) VALUES (?, ?)`,
     [name.trim(), color],
   );
@@ -50,8 +49,7 @@ export async function updateTag(
   name: string,
   color: string | null,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE tags SET name = ?, color = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE id = ?`,
     [name.trim(), color, id],
@@ -64,8 +62,7 @@ export async function updateTag(
  * the association from every asset first.
  */
 export async function deleteTag(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM tags WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM tags WHERE id = ?`, [id]);
 }
 
 export async function countTags(): Promise<number> {
@@ -95,10 +92,9 @@ export async function listTagIdsForAsset(assetId: number): Promise<number[]> {
 
 /** Replace an asset's tags in one shot. */
 export async function setAssetTags(assetId: number, tagIds: number[]): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM asset_tags WHERE asset_id = ?`, [assetId]);
+  await executeWrite(`DELETE FROM asset_tags WHERE asset_id = ?`, [assetId]);
   for (const tagId of tagIds) {
-    await db.execute(
+    await executeWrite(
       `INSERT INTO asset_tags (asset_id, tag_id) VALUES (?, ?)`,
       [assetId, tagId],
     );

@@ -1,6 +1,6 @@
 /** Snapshots: typed SQL only. Multi-row writes go through `run_transaction`. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlInt, sqlText } from "../literals";
 import type { SnapshotListRow } from "../../domain/snapshots";
@@ -132,8 +132,7 @@ export async function createSnapshot(
   date: string,
   amountMinor: number,
 ): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (?, ?, ?)`,
     [assetId, date, amountMinor],
   );
@@ -145,8 +144,7 @@ export async function updateSnapshot(
   date: string,
   amountMinor: number,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE snapshots
         SET date = ?, amount_minor = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE id = ?`,
@@ -155,8 +153,7 @@ export async function updateSnapshot(
 }
 
 export async function deleteSnapshot(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM snapshots WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM snapshots WHERE id = ?`, [id]);
 }
 
 /** Delete several snapshots atomically. Returns how many ids were requested. */

@@ -1,6 +1,6 @@
 /** Reference data: institutions. Typed SQL only, no business logic. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 
 export interface Institution {
   id: number;
@@ -40,8 +40,7 @@ export async function createInstitution(
   name: string,
   description: string | null = null,
 ): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO institutions (name, description) VALUES (?, ?)`,
     [name.trim(), description],
   );
@@ -53,8 +52,7 @@ export async function updateInstitution(
   name: string,
   description: string | null,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE institutions
         SET name = ?, description = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE id = ?`,
@@ -70,8 +68,7 @@ export async function updateInstitution(
  * readable message; this is the backstop.
  */
 export async function deleteInstitution(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM institutions WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM institutions WHERE id = ?`, [id]);
 }
 
 export async function countAssetsForInstitution(id: number): Promise<number> {

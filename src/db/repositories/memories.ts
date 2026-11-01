@@ -1,6 +1,6 @@
 /** Memories and goals. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 
 export type MemoryCategory =
   | "personal"
@@ -37,8 +37,7 @@ export async function createMemory(input: {
   source?: "manual" | "ai_extracted";
   conversation_id?: number | null;
 }): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO user_memories
        (category, key, content, importance, source, conversation_id)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -55,8 +54,7 @@ export async function createMemory(input: {
 }
 
 export async function deleteMemory(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM user_memories WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM user_memories WHERE id = ?`, [id]);
 }
 
 export type GoalPriority = "low" | "medium" | "high";
@@ -88,8 +86,7 @@ export async function createGoal(input: {
   priority?: GoalPriority;
   category?: string | null;
 }): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO user_goals (label, target_amount_minor, target_date, priority, category)
      VALUES (?, ?, ?, ?, ?)`,
     [
@@ -104,6 +101,5 @@ export async function createGoal(input: {
 }
 
 export async function deleteGoal(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM user_goals WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM user_goals WHERE id = ?`, [id]);
 }

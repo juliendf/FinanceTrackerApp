@@ -57,6 +57,7 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             commands::db::run_transaction,
+            commands::db::execute_write,
             commands::db::database_path,
             commands::files::pick_and_read_text_file,
             commands::files::save_text_file,

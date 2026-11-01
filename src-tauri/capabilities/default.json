@@ -10,7 +10,6 @@
     "sql:default",
     "sql:allow-load",
     "sql:allow-select",
-    "sql:allow-execute",
     "sql:allow-close",
     "updater:default",
     "core:window:allow-start-dragging",

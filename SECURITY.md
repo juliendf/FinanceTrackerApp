@@ -27,7 +27,7 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 - All assets are bundled (Bootstrap, icons and fonts from npm); there are no CDN or remote scripts.
 - **Content Security Policy** (`tauri.conf.json`): `default-src 'self'`, `script-src 'self'`, `connect-src ipc: http://ipc.localhost`, `object-src 'none'`, `frame-ancestors 'none'`. `style-src` allows `'unsafe-inline'` because React, Bootstrap and Chart.js set inline styles. A separate `devCsp` adds the Vite dev server and its websocket, and applies only to `tauri dev`.
-- Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default`, the SQL plugin's load/select/execute/close, `updater:default`, and `core:window:allow-start-dragging` / `allow-internal-toggle-maximize` (the window uses an overlay title bar, so the toolbar and the sidebar's top strip drag it). The `fs` and `dialog` plugin permissions are **not** granted; the `fs` plugin is not installed, and `window.confirm`/`alert` do not work — the app uses its own modals.
+- Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default`, the SQL plugin's **load/select/close only** (`sql:allow-execute` is deliberately absent), `updater:default`, and `core:window:allow-start-dragging` / `allow-internal-toggle-maximize` (the window uses an overlay title bar, so the toolbar and the sidebar's top strip drag it). The `fs` and `dialog` plugin permissions are **not** granted; the `fs` plugin is not installed, and `window.confirm`/`alert` do not work — the app uses its own modals.
 - Custom commands: `run_transaction`, `database_path`, `pick_and_read_text_file`, `save_text_file`, `secret_set/get/delete`, `chat_completion`, `cancel_chat`, `list_models`, `test_connection`.
 
 ## File access
@@ -38,7 +38,8 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 
 - Single-statement queries use bind parameters.
 - Multi-statement transactions must inline values (the plugin offers no transaction handle). Every value goes through `src/db/literals.ts`: text is escaped by doubling quotes, integers are validated, and the builders are unit-tested against quotes, newlines, semicolons and an injection attempt. New code must not concatenate raw strings into SQL.
-- `run_transaction` guards every statement in Rust (`check_statement`): it must start with `INSERT`, `UPDATE` or `DELETE`, contain no second statement and no SQL comment outside a quoted literal. `DROP`, `ATTACH`, `PRAGMA`, `CREATE` and `SELECT` are refused. The guard is tested, including against all 196 statements generated from a real backup. It does not restrict *which tables* may be modified.
+- **Every write goes through Rust.** The SQL plugin's `execute` is not granted to the webview, so a compromised renderer cannot run arbitrary SQL: single statements use `execute_write`, multi-statement batches `run_transaction`, and both call the same guard.
+- `check_statement` requires the statement to start with `INSERT`, `UPDATE` or `DELETE`, contain no second statement and no SQL comment outside a quoted literal. `DROP`, `ATTACH`, `PRAGMA`, `CREATE` and `SELECT` are refused. It is tested, including against all 196 statements generated from a real backup, and against `execute_write` directly. It does not restrict *which tables* may be modified.
 
 ## Distribution
 

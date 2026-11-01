@@ -7,7 +7,7 @@
  * Phase 1 replaces this with the "Load sample data" action in Settings.
  */
 
-import { getDb } from "../db/client";
+import { executeWrite } from "../db/client";
 import { toMinorUnits } from "../domain/money";
 
 /** Deterministic LCG — no Math.random, so repeated runs are identical. */
@@ -71,7 +71,6 @@ const SAMPLE_ASSETS: SampleAsset[] = [
 
 /** Insert sample reference data, assets and 12 monthly snapshots each. */
 export async function loadSampleData(): Promise<void> {
-  const db = await getDb();
   const random = seeded(20_250_808);
   const dates = monthsAgo(12);
 
@@ -80,7 +79,7 @@ export async function loadSampleData(): Promise<void> {
 
   const institutionIds = new Map<string, number>();
   for (const name of institutions) {
-    const result = await db.execute(
+    const result = await executeWrite(
       `INSERT INTO institutions (name) VALUES (?)`,
       [name],
     );
@@ -93,7 +92,7 @@ export async function loadSampleData(): Promise<void> {
     Investments: "#2563eb",
   };
   for (const name of categories) {
-    const result = await db.execute(
+    const result = await executeWrite(
       `INSERT INTO categories (name, color, system_role) VALUES (?, ?, ?)`,
       [name, categoryColors[name] ?? "#6c757d", name === "Savings" ? "cash" : "stocks"],
     );
@@ -101,7 +100,7 @@ export async function loadSampleData(): Promise<void> {
   }
 
   for (const sample of SAMPLE_ASSETS) {
-    const result = await db.execute(
+    const result = await executeWrite(
       `INSERT INTO assets (institution_id, category_id, currency, product_name, name, notes)
        VALUES (?, ?, ?, ?, ?, ?)`,
       [
@@ -120,7 +119,7 @@ export async function loadSampleData(): Promise<void> {
       // A little noise so the line is not perfectly straight.
       const wobble = 1 + (random() - 0.5) * 0.04;
       value = Math.round(value * wobble + sample.monthlyChange);
-      await db.execute(
+      await executeWrite(
         `INSERT INTO snapshots (asset_id, date, amount_minor) VALUES (?, ?, ?)`,
         [assetId, date, toMinorUnits(String(value))],
       );
@@ -130,9 +129,8 @@ export async function loadSampleData(): Promise<void> {
 
 /** Remove everything, for repeated spike runs. */
 export async function resetData(): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM snapshots`);
-  await db.execute(`DELETE FROM assets`);
-  await db.execute(`DELETE FROM categories`);
-  await db.execute(`DELETE FROM institutions`);
+  await executeWrite(`DELETE FROM snapshots`);
+  await executeWrite(`DELETE FROM assets`);
+  await executeWrite(`DELETE FROM categories`);
+  await executeWrite(`DELETE FROM institutions`);
 }

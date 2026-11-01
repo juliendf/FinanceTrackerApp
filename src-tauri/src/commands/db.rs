@@ -15,9 +15,12 @@
 //!
 //! SQL is still generated in TypeScript; Rust only executes the list.
 
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Connection, SqliteConnection};
 use std::str::FromStr;
+use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 const DB_FILE: &str = "financetracker.db";
@@ -124,6 +127,77 @@ pub fn check_statement(statement: &str) -> Result<(), String> {
         return Err("unterminated string literal".to_string());
     }
     Ok(())
+}
+
+/// Result of one write, shaped like the SQL plugin's so call sites do not care
+/// which path they went through.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WriteResult {
+    pub last_insert_id: i64,
+    pub rows_affected: u64,
+}
+
+/// One guarded statement with bound parameters, against any database URL.
+///
+/// Shared by the command below and by `tests/import_sql.rs`, which is why it
+/// takes a URL instead of an `AppHandle`.
+pub async fn write_statement(
+    db_url: &str,
+    sql: &str,
+    params: &[Value],
+) -> Result<WriteResult, String> {
+    check_statement(sql)?;
+
+    let options = SqliteConnectOptions::from_str(db_url)
+        .map_err(|e| format!("invalid database URL: {e}"))?
+        .busy_timeout(Duration::from_secs(5))
+        .foreign_keys(true);
+    let mut connection = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|e| format!("cannot open the database: {e}"))?;
+
+    let mut query = sqlx::query(sql);
+    for param in params.to_vec() {
+        query = match param {
+            Value::Null => query.bind(Option::<String>::None),
+            Value::Bool(flag) => query.bind(i64::from(flag)),
+            Value::Number(number) => match number.as_i64() {
+                Some(value) => query.bind(value),
+                None => query.bind(number.as_f64().unwrap_or_default()),
+            },
+            Value::String(text) => query.bind(text),
+            other => return Err(format!("unsupported parameter: {other}")),
+        };
+    }
+
+    let result = query
+        .execute(&mut connection)
+        .await
+        .map_err(|e| format!("write failed: {e}"))?;
+
+    Ok(WriteResult {
+        last_insert_id: result.last_insert_rowid(),
+        rows_affected: result.rows_affected(),
+    })
+}
+
+/// Run one guarded statement with bound parameters against the app database.
+///
+/// This replaces the SQL plugin's own `execute` for writes: the plugin accepted
+/// any SQL from the webview and bypassed `check_statement`, so its execute
+/// permission is not granted. Values stay bound rather than inlined.
+#[tauri::command]
+pub async fn execute_write(
+    app: AppHandle,
+    sql: String,
+    params: Vec<Value>,
+) -> Result<WriteResult, String> {
+    let file = database_file(&app)?;
+    if !file.exists() {
+        return Err(format!("database not found at {}", file.display()));
+    }
+    write_statement(&format!("sqlite://{}", file.display()), &sql, &params).await
 }
 
 /// Run a list of statements atomically against the app database.

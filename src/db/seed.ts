@@ -9,7 +9,7 @@
  * to the Keychain, never to SQLite.
  */
 
-import { getDb } from "./client";
+import { executeWrite, getDb } from "./client";
 import { getProfile } from "./repositories/profile";
 import { serializeSettingValue, DEFAULT_SETTINGS } from "../domain/settings";
 
@@ -63,7 +63,7 @@ export async function seedFirstRun(): Promise<SeedCounts> {
   );
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
     if (existingSettings.has(key)) continue;
-    await db.execute(`INSERT INTO settings (key, value) VALUES (?, ?)`, [
+    await executeWrite(`INSERT INTO settings (key, value) VALUES (?, ?)`, [
       key,
       serializeSettingValue(value),
     ]);
@@ -80,7 +80,7 @@ export async function seedFirstRun(): Promise<SeedCounts> {
   );
   for (const [from, to, rate] of ratePairs()) {
     if (existingRates.has(`${from}->${to}`)) continue;
-    await db.execute(
+    await executeWrite(
       `INSERT INTO exchange_rates (from_currency, to_currency, rate) VALUES (?, ?, ?)`,
       [from, to, rate],
     );
@@ -92,7 +92,7 @@ export async function seedFirstRun(): Promise<SeedCounts> {
     `SELECT COUNT(*) AS n FROM llm_providers`,
   );
   if ((providerRows[0]?.n ?? 0) === 0) {
-    await db.execute(
+    await executeWrite(
       `INSERT INTO llm_providers (name, base_url, model, provider_type, is_default, is_active)
        VALUES (?, ?, ?, ?, 1, 1)`,
       [
@@ -111,7 +111,7 @@ export async function seedFirstRun(): Promise<SeedCounts> {
   );
   if ((profileRows[0]?.n ?? 0) === 0) {
     const profile = await getProfile();
-    await db.execute(
+    await executeWrite(
       `INSERT INTO profile (id, currency, timezone, date_format, ai_tone, ai_verbosity, ai_expertise)
        VALUES (1, ?, ?, ?, ?, ?, ?)`,
       [

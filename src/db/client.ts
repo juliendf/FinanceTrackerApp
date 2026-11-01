@@ -13,16 +13,16 @@
  */
 
 import Database from "@tauri-apps/plugin-sql";
+import { invoke } from "@tauri-apps/api/core";
 
 const DB_NAME = "sqlite:financetracker.db";
 
 let connection: Promise<Database> | null = null;
 
 async function open(): Promise<Database> {
-  const db = await Database.load(DB_NAME);
-  await db.execute("PRAGMA journal_mode = WAL;");
-  await db.execute("PRAGMA foreign_keys = ON;");
-  return db;
+  // WAL is persistent in the database header and foreign keys are enforced by
+  // the Rust write paths, so nothing needs to be set on this pooled connection.
+  return Database.load(DB_NAME);
 }
 
 /** Lazily open (and memoise) the database connection. */
@@ -40,4 +40,21 @@ export function getDb(): Promise<Database> {
 /** Absolute path of the database file, for the Diagnostics panel. */
 export function databaseName(): string {
   return DB_NAME.replace("sqlite:", "");
+}
+
+/**
+ * One guarded write with bound parameters.
+ *
+ * `tauri-plugin-sql`'s own `execute` is not granted to the webview: it accepted
+ * any SQL and bypassed the Rust statement guard. This command validates the
+ * statement (INSERT/UPDATE/DELETE only, no stacked statements or comments) and
+ * keeps the values bound rather than inlined.
+ */
+export interface WriteResult {
+  lastInsertId: number;
+  rowsAffected: number;
+}
+
+export async function executeWrite(sql: string, params: unknown[] = []): Promise<WriteResult> {
+  return invoke<WriteResult>("execute_write", { sql, params });
 }

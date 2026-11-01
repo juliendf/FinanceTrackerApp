@@ -1,6 +1,6 @@
 /** Exchange rates. Stored as TEXT decimals, both directions seeded explicitly. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlText } from "../literals";
 
@@ -27,8 +27,7 @@ export async function upsertExchangeRate(
   toCurrency: string,
   rate: string,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `INSERT INTO exchange_rates (from_currency, to_currency, rate) VALUES (?, ?, ?)
      ON CONFLICT(from_currency, to_currency)
      DO UPDATE SET rate = excluded.rate,

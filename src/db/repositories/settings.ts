@@ -1,6 +1,6 @@
 /** Settings key/value storage. Typed SQL only. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlText } from "../literals";
 import {
@@ -44,8 +44,7 @@ export async function setSetting(
   key: string,
   value: SettingValue,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `INSERT INTO settings (key, value) VALUES (?, ?)
      ON CONFLICT(key) DO UPDATE SET value = excluded.value,
                                     updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`,

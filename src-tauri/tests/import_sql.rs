@@ -460,3 +460,81 @@ fn the_guard_refuses_everything_else() {
         assert!(check_statement(sql).is_err(), "should refuse: {sql}");
     }
 }
+
+// ---------------------------------------------------------------------------
+// execute_write: the guarded single-statement path
+// ---------------------------------------------------------------------------
+
+use financetrackerapp_lib::commands::db::write_statement;
+use serde_json::json;
+
+#[tokio::test]
+async fn a_guarded_write_binds_parameters_and_reports_the_insert_id() {
+    let (_file, url) = fresh_database("write-bind").await;
+    seed_reference_rows(&url).await;
+
+    let result = write_statement(
+        &url,
+        "INSERT INTO assets (institution_id, category_id, currency, product_name, name) VALUES (?, ?, ?, ?, ?)",
+        &[json!(1), json!(1), json!("CHF"), json!("Compte"), json!("L'épargne d'abord; -- non")],
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(result.rows_affected, 1);
+    // First row in an empty table gets id 1, and the name round-trips verbatim.
+    assert_eq!(result.last_insert_id, 1);
+    assert_eq!(
+        scalar(&url, "SELECT COUNT(*) FROM assets WHERE name = 'L''épargne d''abord; -- non'").await,
+        1
+    );
+
+    // A second write to the same table gets the next id.
+    let again = write_statement(
+        &url,
+        "INSERT INTO assets (institution_id, category_id, currency, product_name) VALUES (?, ?, ?, ?)",
+        &[json!(1), json!(1), json!("EUR"), json!("Second")],
+    )
+    .await
+    .unwrap();
+    assert_eq!(again.last_insert_id, 2);
+}
+
+#[tokio::test]
+async fn a_guarded_write_refuses_anything_that_is_not_dml() {
+    let (_file, url) = fresh_database("write-guard").await;
+    seed_reference_rows(&url).await;
+
+    for sql in [
+        "PRAGMA foreign_keys = OFF",
+        "DROP TABLE assets",
+        "ATTACH DATABASE '/tmp/x.db' AS x",
+        "SELECT 1",
+        "DELETE FROM assets; DROP TABLE assets",
+    ] {
+        assert!(write_statement(&url, sql, &[]).await.is_err(), "accepted: {sql}");
+    }
+}
+
+#[tokio::test]
+async fn a_guarded_write_updates_and_deletes() {
+    let (_file, url) = fresh_database("write-update").await;
+    seed_reference_rows(&url).await;
+
+    write_statement(
+        &url,
+        "INSERT INTO tags (id, name) VALUES (?, ?)",
+        &[json!(9), json!("Temp")],
+    )
+    .await
+    .unwrap();
+
+    let updated = write_statement(&url, "UPDATE tags SET name = ? WHERE id = ?", &[json!("Kept"), json!(9)])
+        .await
+        .unwrap();
+    assert_eq!(updated.rows_affected, 1);
+
+    let deleted = write_statement(&url, "DELETE FROM tags WHERE id = ?", &[json!(9)]).await.unwrap();
+    assert_eq!(deleted.rows_affected, 1);
+    assert_eq!(scalar(&url, "SELECT COUNT(*) FROM tags WHERE id = 9").await, 0);
+}

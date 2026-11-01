@@ -1,6 +1,6 @@
 /** Conversations, messages and pending actions. Typed SQL only. */
 
-import { getDb } from "../client";
+import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlInt, sqlText } from "../literals";
 
@@ -55,8 +55,7 @@ export async function getConversation(id: number): Promise<Conversation | null> 
 
 /** New conversation, pre-bound to the default provider (`create_conversation`). */
 export async function createConversation(providerId: number | null): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO conversations (provider_id, title) VALUES (?, 'New conversation')`,
     [providerId],
   );
@@ -64,8 +63,7 @@ export async function createConversation(providerId: number | null): Promise<num
 }
 
 export async function setConversationProvider(id: number, providerId: number | null): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE conversations SET provider_id = ?, model_override = NULL,
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [providerId, id],
@@ -73,32 +71,28 @@ export async function setConversationProvider(id: number, providerId: number | n
 }
 
 export async function setConversationModel(id: number, model: string | null): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE conversations SET model_override = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [model, id],
   );
 }
 
 export async function renameConversation(id: number, title: string): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE conversations SET title = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [title, id],
   );
 }
 
 export async function touchConversation(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE conversations SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
     [id],
   );
 }
 
 export async function deleteConversation(id: number): Promise<void> {
-  const db = await getDb();
-  await db.execute(`DELETE FROM conversations WHERE id = ?`, [id]);
+  await executeWrite(`DELETE FROM conversations WHERE id = ?`, [id]);
 }
 
 export async function listMessages(conversationId: number): Promise<Message[]> {
@@ -129,8 +123,7 @@ export async function appendMessage(input: {
   toolCalls?: string | null;
   toolCallId?: string | null;
 }): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO messages (conversation_id, role, content, tool_calls, tool_call_id)
      VALUES (?, ?, ?, ?, ?)`,
     [
@@ -190,8 +183,7 @@ export async function createPendingAction(input: {
   actionType: PendingActionType;
   payload: unknown;
 }): Promise<number> {
-  const db = await getDb();
-  const result = await db.execute(
+  const result = await executeWrite(
     `INSERT INTO pending_actions (conversation_id, action_type, payload, status) VALUES (?, ?, ?, 'pending')`,
     [input.conversationId, input.actionType, JSON.stringify(input.payload)],
   );
@@ -203,8 +195,7 @@ export async function resolvePendingAction(
   status: Exclude<PendingActionStatus, "pending">,
   resultMessage: string,
 ): Promise<void> {
-  const db = await getDb();
-  await db.execute(
+  await executeWrite(
     `UPDATE pending_actions
         SET status = ?, result_message = ?, resolved_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now'),
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
