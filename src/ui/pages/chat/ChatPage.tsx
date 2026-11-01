@@ -129,6 +129,8 @@ export function ChatPage() {
   /** Show whatever has arrived so far. */
   const flushStream = useCallback(() => {
     const text = streamTextRef.current;
+    // After a conversation switch the buffer is empty; do not leave a blank bubble.
+    if (text === "") return;
     setBubbles((current) => {
       const next = [...current];
       const last = next[next.length - 1];
@@ -182,8 +184,30 @@ export function ChatPage() {
     [providerList, conversation.data?.provider_id],
   );
 
+  /**
+   * The conversation the page is showing, read from inside the async send.
+   *
+   * A turn belongs to the conversation it started in. Without this, switching
+   * chat mid-answer left the spinner and the Stop button on the new page and
+   * poured the old answer's text into it.
+   */
+  const activeIdRef = useRef<number | null>(id);
+
   useEffect(() => {
+    activeIdRef.current = id;
     setBubbles([]);
+    streamTextRef.current = "";
+    stopFlushing();
+    showActivity(null);
+    setStreaming(false);
+
+    const cancel = abortRef.current;
+    abortRef.current = null;
+    // Leaving a conversation stops its request: nothing arrives for a page that
+    // is no longer on screen.
+    if (cancel) void cancel();
+    // `stopFlushing`, `showActivity` and `cancel` are stable identities.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   useEffect(() => {
@@ -280,6 +304,8 @@ export function ChatPage() {
 
     const requestId = `chat-${Date.now()}`;
     requestIdRef.current = requestId;
+    /** The conversation this turn belongs to, for the guards below. */
+    const sendingFor = id;
 
     try {
       const transport = rustTransport({ provider_id: selected.id }, model || null);
@@ -293,6 +319,9 @@ export function ChatPage() {
         modelOverride: model || null,
         requestId,
         onEvent: (event) => {
+          // Events from a turn whose conversation is no longer on screen: the
+          // request is cancelled, but a chunk already in flight may still arrive.
+          if (activeIdRef.current !== sendingFor) return;
           // A tool round starts a fresh answer: the text before the call was
           // preamble, and appending the final answer to it produced a jumble.
           if (event.type === "toolCall") {
@@ -315,12 +344,21 @@ export function ChatPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
-      // Show the last token before the transcript is refetched over it.
-      stopFlushing();
-      flushStream();
-      setStreaming(false);
-      showActivity(null);
+      // Show the last token before the transcript is refetched over it — but only
+      // if this conversation is still the one on screen.
+      if (activeIdRef.current === sendingFor) {
+        stopFlushing();
+        flushStream();
+        setStreaming(false);
+        showActivity(null);
+      }
       abortRef.current = null;
+    }
+
+    // The answer was saved regardless; only the view is conditional.
+    if (activeIdRef.current !== sendingFor) {
+      await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      return;
     }
 
     // Refetch the transcript first, then drop the local bubbles, so the text

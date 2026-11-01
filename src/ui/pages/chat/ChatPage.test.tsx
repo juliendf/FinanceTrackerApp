@@ -4,7 +4,7 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const repo = vi.hoisted(() => ({
@@ -63,12 +63,23 @@ import { ToastProvider } from "../../layout/Toasts";
 const PROVIDER = { id: 2, name: "Ollama", base_url: "http://localhost:11434/v1", model: "qwen", provider_type: "openai", keychain_ref: null, is_default: 1, is_active: 1, created_at: "", updated_at: "" };
 const CONVERSATION = { id: 5, provider_id: 2, model_override: null, title: "Portfolio question", created_at: "", updated_at: "" };
 
-function renderChat() {
+/** Test-only: lets a test walk to another conversation without a real router. */
+function GoTo({ to }: { to: string }) {
+  const navigate = useNavigate();
+  return (
+    <button type="button" onClick={() => navigate(to)}>
+      go to {to}
+    </button>
+  );
+}
+
+function renderChat(start = "/chat/5") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
       <ToastProvider>
-        <MemoryRouter initialEntries={["/chat/5"]}>
+        <MemoryRouter initialEntries={[start]}>
+          <GoTo to="/chat/6" />
           <Routes>
             <Route path="/chat/:conversationId" element={<ChatPage />} />
           </Routes>
@@ -273,6 +284,45 @@ describe("ChatPage", () => {
     expect(container.textContent?.match(/w0 /g)).toHaveLength(1);
     // Plain text while streaming, so nothing re-parses markdown per flush.
     expect(streaming.querySelector("p")).toBeNull();
+
+    release();
+  });
+
+  it("does not carry a running answer into another conversation", async () => {
+    // The bug: a turn belongs to the conversation it started in, but its spinner,
+    // its Stop button and its text followed the user into whichever chat they
+    // opened next.
+    const user = userEvent.setup();
+    let release!: () => void;
+    let emit!: (event: unknown) => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      emit = options.onEvent;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Old answer", pendingActions: [], cancelled: true, rounds: 1 };
+    });
+
+    const { container } = renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    emit({ type: "delta", content: "Old answer" });
+    await waitFor(() => expect(container.textContent).toContain("Old answer"));
+
+    await user.click(screen.getByRole("button", { name: /go to \/chat\/6/ }));
+
+    // The new conversation shows neither the spinner nor the previous text.
+    await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+    expect(container.textContent).not.toContain("Old answer");
+    expect(screen.getByRole("button", { name: "Send" })).toBeTruthy();
+
+    // Late deltas from the abandoned turn do not appear here either.
+    emit({ type: "delta", content: "still arriving" });
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    expect(container.textContent).not.toContain("still arriving");
 
     release();
   });

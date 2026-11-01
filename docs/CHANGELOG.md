@@ -6,6 +6,12 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** a running answer no longer follows you into another conversation.
+  Opening or switching to a chat during a generation showed the spinner, the Stop
+  button and then the old answer's text in the new chat. The turn now belongs to
+  the conversation it started in: switching cancels it, and late chunks are
+  ignored.
+
 - The profile gains three optional **planning facts**: monthly living expenses,
   dependants (count, optionally their ages) and employment status. The assistant
   uses them for savings rates, runway, affordability and emergency-buffer sizing,
