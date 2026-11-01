@@ -6,7 +6,15 @@ Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LL
 
 ## Status
 
-Phases 0 to 8 are done: backup import and export, institutions, categories and tags, assets, snapshots, dashboards, settings, the AI assistant (providers, streaming chat, tools with confirm-before-write, profile, memories, goals), and packaging (icon, About, signing setup, updater wiring, release workflow). The optional MCP server is not built. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
+Version 0.2.7. Phases 0 to 8 of the plan are done: backup import and export,
+institutions, categories and tags, assets, snapshots, dashboards, settings, the AI
+assistant (providers, chat with tools and confirm-before-write, profile, memories,
+goals), and packaging (icon, About, ad-hoc signing, updater wiring, release
+workflow). After Phase 8 the shell was rebuilt as a desktop app — sidebar
+navigation, overlay title bar, fixed-height content and chat, toasts out of the
+page flow — and the bugs found in daily use were fixed. See
+[docs/CHANGELOG.md](docs/CHANGELOG.md). The optional MCP server (Phase 9) is not
+built. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
 
 ## Requirements
 
@@ -29,8 +37,8 @@ Two things to know:
 
 - **It uses the same database as the installed app** (same bundle identifier,
   same `~/Library/Application Support/ch.julien.financetrackerapp/`). Testing
-  writes to your real data; take a backup from the Data page first if that
-  matters.
+  writes to your real data; take a backup from Settings → Data & Backup first if
+  that matters.
 - **Running the UI alone with `npm run dev` in a browser only works for static
   screens.** SQLite, dialogs, the Keychain and the updater are Tauri commands and
   are absent outside the webview.
@@ -40,7 +48,7 @@ Two things to know:
 ```sh
 npm run tauri build
 # src-tauri/target/release/bundle/macos/FinanceTracker.app
-# src-tauri/target/release/bundle/dmg/FinanceTracker_0.1.0_aarch64.dmg
+# src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
 ```
 
 The build is ad-hoc signed (no Developer ID on this machine yet), so the first
@@ -79,7 +87,7 @@ Chat is off until you enable it under Settings → AI assistant. For a local mod
 
 1. Settings → LLM Providers → New Provider: base URL `http://localhost:11434/v1`, model as listed by `ollama list` (a tool-capable one, e.g. `qwen3.5:4b`), no key.
 2. Tick Enable AI features on the Settings page.
-3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject.
+3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject. Settings → AI assistant also has *Stream answers as they arrive*; turn it off to get a spinner (which names the tool it is running) and the whole reply at once.
 
 Keys live in the macOS Keychain, never in the database or a backup.
 
@@ -87,7 +95,7 @@ Keys live in the macOS Keychain, never in the database or a backup.
 
 - Database: `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`
 - Provider API keys: macOS Keychain, service `ch.julien.financetrackerapp`
-- Import a Flask backup (JSON v2) from the first-run screen or the Data page; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
+- Import a Flask backup (JSON v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
 
 ## Documentation
 
@@ -101,3 +109,4 @@ Keys live in the macOS Keychain, never in the database or a backup.
 | [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Every intentional difference from the source |
 | [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md) | Screen-by-screen status |
 | [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md) | Backup file format |
+| [docs/CHANGELOG.md](docs/CHANGELOG.md) | Release-by-release summary |

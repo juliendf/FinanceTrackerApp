@@ -21,7 +21,7 @@ The UI and all business logic are TypeScript. Rust does only what a webview cann
 ```
 src/ui/pages/*        screens (one folder per area)
 src/ui/components/*   ports of the Jinja macros (FormCard, DataTable, modals, StatCard)
-src/ui/layout/*       AppShell, navbar, sidebar, toasts, theme toggle
+src/ui/layout/*       AppShell, sidebar, toolbar, toasts, theme toggle
         |
         v  (TanStack Query for reads and invalidation)
 src/db/repositories/* typed SQL -> tauri-plugin-sql  /  run_transaction
@@ -31,6 +31,16 @@ src/llm/*             chat loop, tools, pending actions (TypeScript)
 src/import/*          backup importer: parse -> plan -> SQL statements
 src-tauri/src/commands/{db,files,llm,secrets}.rs
 ```
+
+## Shell
+
+The window is a desktop app, not a page: a collapsible sidebar holds the
+navigation, a 52 px toolbar carries the account menu and acts as the drag region
+for the overlay title bar (the traffic lights sit over the sidebar's top strip),
+and only the content area scrolls. `html`, `body` and `#root` are pinned to 100%
+in `custom.css`; `.app-content` is a flex column so a page can fill the window
+(the chat does) while everything else keeps its natural height. Toasts are a
+fixed stack under the toolbar, outside the page flow.
 
 Rules the code follows:
 - `domain` imports nothing from `ui` or `db`. It is what the tests and the oracles exercise.

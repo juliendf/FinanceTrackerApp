@@ -12,7 +12,7 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 - Provider API keys are stored in the **macOS Keychain** (`keyring` with the Apple native store), service `ch.julien.financetrackerapp`, account `provider:<id>`.
 - SQLite stores only the reference (`keychain_ref`), never the key. Imports that carry a plaintext key in the source backup move it to the Keychain and drop it from the database; the app's own exports never contain keys.
-- **Known limit:** `secret_get` returns the key to the webview, which then passes it to `chat_completion`. The key therefore lives briefly in JavaScript memory. A tighter design is for Rust to read the Keychain itself from the provider id; this is planned with the chat work in Phase 7.
+- **Known limit:** `secret_get` returns the key to the webview, which then passes it to `chat_completion`. The key therefore lives briefly in JavaScript memory. A tighter design is for Rust to read the Keychain itself from the provider id; it is not done, and it is listed under open issues below.
 
 ## Network
 
@@ -20,13 +20,14 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 - Chat sends conversation content, and any portfolio data the tools return, **to the configured provider**. With a hosted provider that means financial data leaves the machine. Use a local model for fully offline use.
 - **AI is opt-in**: `ai_enabled` defaults to false, and chat, the prompt rail and memory extraction are disabled until you turn it on in Settings.
 - Write tools (record a snapshot, save a memory) never execute from the model's call; they stage a pending action that only the confirm card can resolve.
-- No analytics, crash reporting or auto-update channel exists yet. Phase 8 must decide on update delivery before shipping.
+- **No analytics and no crash reporting.** The only outbound requests are to the provider.
+- **Updates are opt-in checks.** `tauri-plugin-updater` reads a static `latest.json` from GitHub Releases when you press *Check for updates*; it never downloads or installs on its own. The endpoint in `tauri.conf.json` still says `OWNER` and must be pointed at the real repository before a release can be found — see `docs/RELEASE.md`.
 
 ## Webview and IPC
 
 - All assets are bundled (Bootstrap, icons and fonts from npm); there are no CDN or remote scripts.
 - **Content Security Policy** (`tauri.conf.json`): `default-src 'self'`, `script-src 'self'`, `connect-src ipc: http://ipc.localhost`, `object-src 'none'`, `frame-ancestors 'none'`. `style-src` allows `'unsafe-inline'` because React, Bootstrap and Chart.js set inline styles. A separate `devCsp` adds the Vite dev server and its websocket, and applies only to `tauri dev`.
-- Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default` and the SQL plugin's load/select/execute/close. The `fs` and `dialog` plugin permissions are not granted; the `fs` plugin is not installed.
+- Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default`, the SQL plugin's load/select/execute/close, `updater:default`, and `core:window:allow-start-dragging` / `allow-internal-toggle-maximize` (the window uses an overlay title bar, so the toolbar and the sidebar's top strip drag it). The `fs` and `dialog` plugin permissions are **not** granted; the `fs` plugin is not installed, and `window.confirm`/`alert` do not work — the app uses its own modals.
 - Custom commands: `run_transaction`, `database_path`, `pick_and_read_text_file`, `save_text_file`, `secret_set/get/delete`, `chat_completion`, `cancel_chat`, `list_models`, `test_connection`.
 
 ## File access
