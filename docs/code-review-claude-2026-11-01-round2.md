@@ -22,7 +22,7 @@ Previous rounds: [`code-review-claude-2026-11-01.md`](./code-review-claude-2026-
 | R2 | Medium | Robustness | `src/db/reset.ts:13`, `src/import/execute.ts:13` | Import and reset are four separate commits, but documented as atomic — **import fixed, reset still separate** |
 | R3 | Medium | Robustness / data loss | `providers.rs:267` | A transient Keychain error during an edit deletes the key |
 | R4 | Medium | Correctness | `LlmProviderFormPage.tsx:117` | Test connection checks the saved URL, not the edited one |
-| S1 | Medium | Security (design) | `providers.rs` | A compromised webview can point a keyless default provider at any URL |
+| S1 | Medium | Security (design) | `providers.rs` | A compromised webview can point a keyless default provider at any URL — **fixed** |
 | P2 | Medium | Performance | `src-tauri/src/commands/db.rs` | A new SQLite connection per call, about 40 times slower than a pool |
 | P3 | Medium | Performance | `src/App.tsx:15` | `staleTime: 0` refetches the whole snapshots table on every navigation |
 | P4 | Medium | Performance | `src/llm/tools.ts:277` | Chat tools load the whole portfolio to answer about one asset |
@@ -178,6 +178,15 @@ The two DELETEs run without a transaction, and the Keychain loop stops at the fi
 These are legitimate commands, so a compromised renderer can create a provider without a key that points at attacker.tld and make it the default. From then on, chat content, including portfolio data from tool results, goes there. The origin binding protects the key, but not that data.
 
 **Fix:** whenever an origin is new or changed, or becomes the default, show a native confirmation from Rust (the dialog plugin is already registered) that the webview cannot answer for the user.
+
+**Status: done (2026-11-01).** The confirmation is raised by Rust and its answer is a value returned to the command, so a compromised renderer can trigger the question but never answer it.
+
+- **`provider_save`** asks when the endpoint is remote and either changes (`http://x` → `https://attacker.tld`) or is new while other providers already exist. A fresh install's first provider does not ask; nothing has been sent anywhere yet.
+- **`provider_set_default`** asks when the provider has no usable key for its origin — that is the moment a silent endpoint starts receiving every chat.
+- **`import_all`** asks if the backup's default provider is keyless and remote, because a fabricated "backup" reaches the same place.
+- A **loopback** endpoint (`localhost`, `127.0.0.1`, `::1`) never asks: a local model cannot receive the data elsewhere, and asking on every save would train the user to click through.
+
+The three decisions are pure functions (`endpoint_needs_confirmation`, `default_needs_confirmation`, `backup_default_needs_confirmation`) with unit tests covering loopback, same-origin, moved origin, new origin on an empty versus populated install, keyed versus keyless default, and an empty backup. The dialog itself is not automated.
 
 **Verified clean in this round:**
 - The `unsafe` authorizer FFI is sound, and every connection that runs webview SQL installs it.

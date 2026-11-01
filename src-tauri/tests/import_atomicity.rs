@@ -227,3 +227,31 @@ async fn a_statement_the_guard_refuses_is_rejected_before_anything_runs() {
 
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM assets").await, 1);
 }
+
+#[test]
+fn an_import_asks_only_for_a_keyless_remote_default() {
+    use financetrackerapp_lib::commands::import::backup_default_needs_confirmation;
+
+    let mut remote = provider(5, "Remote");
+    remote.is_default = true;
+    // Keyless and remote: chat would go there without the user ever agreeing.
+    assert_eq!(
+        backup_default_needs_confirmation(std::slice::from_ref(&remote)),
+        Some("https://api.openai.com:443".to_string())
+    );
+
+    // With a key the origin was typed into the form, so it was agreed to.
+    let mut keyed = provider(5, "Remote");
+    keyed.is_default = true;
+    keyed.api_key = Some("sk-test".to_string());
+    assert_eq!(backup_default_needs_confirmation(&[keyed]), None);
+
+    // A local model is not going anywhere.
+    let mut local = provider(6, "Local");
+    local.is_default = true;
+    local.base_url = "http://localhost:11434/v1".to_string();
+    assert_eq!(backup_default_needs_confirmation(&[local]), None);
+
+    // No providers at all: nothing to ask.
+    assert_eq!(backup_default_needs_confirmation(&[]), None);
+}

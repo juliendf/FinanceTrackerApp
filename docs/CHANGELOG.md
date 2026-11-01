@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Security:** a provider pointed at a new remote endpoint, or a keyless one made
+  the default, now asks for confirmation in a native dialog raised by Rust. A
+  compromised webview can trigger the prompt but cannot answer it. Local endpoints
+  (`localhost`, `127.0.0.1`) never ask.
+
 - **Fixed:** importing a backup is one transaction. It used to be four separate
   commits, so a failure in the last one left the portfolio imported and every
   provider and API key gone. The wipe, the rows, the providers and their keys now

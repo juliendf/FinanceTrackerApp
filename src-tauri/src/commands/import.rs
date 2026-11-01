@@ -17,8 +17,11 @@ use sqlx::{Connection, Sqlite};
 use tauri::AppHandle;
 
 use super::db::check_statement;
-use super::providers::{connect, replace_providers, PendingKey, RestoreInput};
-use super::secrets::{delete_key, store_key};
+use super::providers::{
+    confirm_endpoint, connect, default_needs_confirmation, replace_providers, PendingKey,
+    RestoreInput,
+};
+use super::secrets::{delete_key, origin_of, store_key};
 
 /// Tables an import empties, children before parents so the foreign keys hold.
 ///
@@ -77,6 +80,31 @@ pub async fn import_into(
     replace_providers(transaction, &request.providers).await
 }
 
+/// The origin to confirm before an import, if the file's default provider is one
+/// the user has not implicitly agreed to.
+///
+/// A backup is a file the user picked, but the same command can be called by a
+/// compromised renderer with a fabricated one, and the default provider receives
+/// every chat afterwards. The rule is the same as for `provider_set_default`: a
+/// keyless, non-loopback endpoint has to be confirmed natively.
+pub fn backup_default_needs_confirmation(providers: &[RestoreInput]) -> Option<String> {
+    // The row `replace_providers` will mark as default: the first with the flag,
+    // or the lowest id when the file has none.
+    let default = providers
+        .iter()
+        .find(|row| row.is_default)
+        .or_else(|| providers.iter().min_by_key(|row| row.id))?;
+
+    let has_key = default
+        .api_key
+        .as_deref()
+        .map(str::trim)
+        .is_some_and(|key| !key.is_empty());
+    let origin = origin_of(&default.base_url).ok()?;
+
+    default_needs_confirmation(&origin, has_key).then_some(origin)
+}
+
 /// Replace the whole database with a backup, in one transaction.
 ///
 /// Returns how many API keys were written to the Keychain.
@@ -97,6 +125,21 @@ pub async fn import_all(app: AppHandle, request: ImportRequest) -> Result<usize,
             return Err(error);
         }
     };
+
+    // A fabricated "backup" could point the default provider anywhere. Ask before
+    // the rows become visible, and roll back if the user says no.
+    if let Some(origin) = backup_default_needs_confirmation(&request.providers) {
+        if let Err(error) = confirm_endpoint(
+            &app,
+            &origin,
+            "This backup's default provider points at an endpoint you have not used.",
+        )
+        .await
+        {
+            let _ = transaction.rollback().await;
+            return Err(error);
+        }
+    }
 
     // Keys before the commit. A refusal here (a locked Keychain, "Deny" on the
     // access prompt) aborts everything: the transaction is dropped uncommitted and

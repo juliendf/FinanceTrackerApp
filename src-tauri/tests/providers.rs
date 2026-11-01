@@ -482,3 +482,46 @@ fn a_restore_payload_accepts_booleans_numbers_and_missing_fields() {
     assert_eq!(row.is_active, None);
     assert_eq!(row.provider_type, None);
 }
+
+// ---------------------------------------------------------------------------
+// S1: an endpoint the user has not agreed to
+// ---------------------------------------------------------------------------
+//
+// The webview can call these commands with any URL. A stored key cannot follow it,
+// but the chat content can, so a new endpoint (or a keyless default) asks the user
+// through a native dialog that only Rust can answer.
+
+use financetrackerapp_lib::commands::providers::{
+    default_needs_confirmation, endpoint_needs_confirmation,
+};
+
+#[test]
+fn a_loopback_endpoint_never_asks() {
+    for origin in ["http://localhost:11434", "http://127.0.0.1:1234", "http://[::1]:8080"] {
+        assert!(!endpoint_needs_confirmation(Some("https://api.openai.com:443"), origin, 5));
+        assert!(!endpoint_needs_confirmation(None, origin, 5));
+        assert!(!default_needs_confirmation(origin, false));
+    }
+}
+
+#[test]
+fn a_new_or_moved_remote_endpoint_asks() {
+    let openai = "https://api.openai.com:443";
+    let attacker = "https://attacker.tld:443";
+
+    // Moving an existing provider to another host: the data path changed.
+    assert!(endpoint_needs_confirmation(Some(openai), attacker, 1));
+    // A second provider on a new host: it can receive data as soon as chat uses it.
+    assert!(endpoint_needs_confirmation(None, attacker, 1));
+    // The first provider on a fresh install has no data to leak yet.
+    assert!(!endpoint_needs_confirmation(None, attacker, 0));
+    // The same origin, a different path: nothing to ask.
+    assert!(!endpoint_needs_confirmation(Some(openai), openai, 3));
+}
+
+#[test]
+fn a_keyless_remote_default_asks_and_a_keyed_one_does_not() {
+    assert!(default_needs_confirmation("https://attacker.tld:443", false));
+    assert!(!default_needs_confirmation("https://api.openai.com:443", true));
+    assert!(!default_needs_confirmation("http://localhost:11434", false));
+}

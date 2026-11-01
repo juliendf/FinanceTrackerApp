@@ -21,10 +21,12 @@
 
 use serde::Deserialize;
 use sqlx::sqlite::SqliteConnectOptions;
-use sqlx::{Connection, SqliteConnection};
+use sqlx::{Connection, Row, SqliteConnection};
 use std::str::FromStr;
 use std::time::Duration;
 use tauri::AppHandle;
+
+use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
 use super::db::database_file;
 use super::secrets::{account_for, delete_key, origin_of, read_key, store_key};
@@ -119,6 +121,83 @@ pub struct PendingKey {
     pub account: String,
     pub key: String,
     pub base_url: String,
+}
+
+/// Whether a loopback endpoint can skip the confirmation.
+///
+/// A local model cannot receive the data anywhere else, and the user runs it
+/// themselves, so asking would be noise on every save.
+fn is_loopback(origin: &str) -> bool {
+    url::Url::parse(origin)
+        .ok()
+        .and_then(|url| url.host_str().map(|host| {
+            host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "::1"
+        }))
+        .unwrap_or(false)
+}
+
+/// Whether saving this provider must ask the user before it takes effect.
+///
+/// The webview can call `provider_save` with any URL. A stored key cannot follow it
+/// (it is bound to its origin), but **the chat content can**: answers, tool results
+/// and portfolio figures go wherever `base_url` points. So a change of endpoint — or
+/// the first endpoint, when other providers already exist — is confirmed natively.
+pub fn endpoint_needs_confirmation(
+    existing_origin: Option<&str>,
+    new_origin: &str,
+    other_providers: i64,
+) -> bool {
+    if is_loopback(new_origin) {
+        return false;
+    }
+    match existing_origin {
+        Some(previous) => previous != new_origin,
+        // A brand-new endpoint: worth asking unless this is the very first
+        // provider (a fresh install has no data to send yet).
+        None => other_providers > 0,
+    }
+}
+
+/// Whether making this provider the default must ask the user.
+///
+/// A provider with a key cannot have been configured silently: the key was typed
+/// into the form for that origin. A keyless endpoint that becomes the default
+/// receives every chat, which is exactly what a compromised renderer would set up.
+pub fn default_needs_confirmation(origin: &str, has_key: bool) -> bool {
+    !has_key && !is_loopback(origin)
+}
+
+/// Ask the user, natively, before data starts flowing to a new endpoint.
+///
+/// The dialog is raised by Rust, so a compromised renderer can trigger the
+/// question but cannot answer it: the answer is a value returned to this command.
+pub async fn confirm_endpoint(app: &AppHandle, origin: &str, question: &str) -> Result<(), String> {
+    let handle = app.clone();
+    let message = format!(
+        "{question}\n\nEndpoint: {origin}\n\nYour questions, and the portfolio figures the \
+         assistant looks up, are sent there. Only continue if you set this endpoint up yourself."
+    );
+
+    let approved = tokio::task::spawn_blocking(move || {
+        handle
+            .dialog()
+            .message(message)
+            .title("Confirm the LLM endpoint")
+            .kind(MessageDialogKind::Warning)
+            .buttons(MessageDialogButtons::OkCancelCustom(
+                "Send data there".to_string(),
+                "Cancel".to_string(),
+            ))
+            .blocking_show()
+    })
+    .await
+    .map_err(|e| format!("cannot ask for confirmation: {e}"))?;
+
+    if approved {
+        Ok(())
+    } else {
+        Err("cancelled: the endpoint was not confirmed, nothing was saved".to_string())
+    }
 }
 
 pub async fn connect(app: &AppHandle) -> Result<SqliteConnection, String> {
@@ -310,6 +389,34 @@ pub async fn provider_save(app: AppHandle, input: ProviderInput) -> Result<i64, 
     };
 
     let mut connection = connect(&app).await?;
+
+    // Before anything is written: an endpoint the user has not agreed to.
+    let new_origin = origin_of(&input.base_url)?;
+    let existing_origin: Option<String> = match input.id {
+        Some(id) => sqlx::query_scalar("SELECT base_url FROM llm_providers WHERE id = ?")
+            .bind(id)
+            .fetch_optional(&mut connection)
+            .await
+            .map_err(|e| format!("cannot read provider {id}: {e}"))?
+            .map(|base_url: String| origin_of(&base_url))
+            .transpose()?,
+        None => None,
+    };
+    let other_providers: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM llm_providers WHERE id IS NOT ?")
+            .bind(input.id)
+            .fetch_one(&mut connection)
+            .await
+            .map_err(|e| format!("cannot count the providers: {e}"))?;
+
+    if endpoint_needs_confirmation(existing_origin.as_deref(), &new_origin, other_providers) {
+        let question = match existing_origin {
+            Some(_) => "This provider's endpoint has changed.",
+            None => "This is a new endpoint.",
+        };
+        confirm_endpoint(&app, &new_origin, question).await?;
+    }
+
     let id = save_row(&mut connection, &input, typed.is_some(), keep).await?;
     let account = account_for(id);
 
@@ -383,6 +490,27 @@ pub async fn delete_row(connection: &mut SqliteConnection, id: i64) -> Result<()
 #[tauri::command]
 pub async fn provider_set_default(app: AppHandle, id: i64) -> Result<(), String> {
     let mut connection = connect(&app).await?;
+
+    // Becoming the default is when a keyless endpoint starts receiving everything,
+    // so that is where the user is asked.
+    let row = sqlx::query("SELECT base_url, keychain_ref FROM llm_providers WHERE id = ?")
+        .bind(id)
+        .fetch_optional(&mut connection)
+        .await
+        .map_err(|e| format!("cannot read provider {id}: {e}"))?;
+    if let Some(row) = row {
+        let base_url: String = Row::get(&row, 0);
+        let keychain_ref: Option<String> = Row::get(&row, 1);
+        let has_key = keychain_ref
+            .as_deref()
+            .map(|account| matches!(read_key(account, &base_url), Ok(Some(_))))
+            .unwrap_or(false);
+        let origin = origin_of(&base_url)?;
+        if default_needs_confirmation(&origin, has_key) {
+            confirm_endpoint(&app, &origin, "This provider is about to become your default.").await?;
+        }
+    }
+
     set_default_row(&mut connection, id).await
 }
 
