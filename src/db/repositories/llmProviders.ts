@@ -198,11 +198,6 @@ export async function setDefaultProvider(id: number): Promise<void> {
   ]);
 }
 
-export async function getProviderKey(provider: LlmProvider): Promise<string | null> {
-  if (!provider.keychain_ref) return null;
-  return invoke<string | null>("secret_get", { account: provider.keychain_ref });
-}
-
 export async function countProviders(): Promise<number> {
   const db = await getDb();
   const rows = await db.select<{ n: number }[]>(`SELECT COUNT(*) AS n FROM llm_providers`);

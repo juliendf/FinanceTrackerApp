@@ -36,7 +36,6 @@ import {
   confirmAction,
   extractMemories,
   loadPendingActions,
-  providerApiKey,
   rejectAction,
   sendMessage,
   type PendingActionView,
@@ -218,8 +217,7 @@ export function ChatPage() {
     requestIdRef.current = requestId;
 
     try {
-      const key = await providerApiKey(selected);
-      const transport = rustTransport({ base_url: selected.base_url, api_key: key, model: selected.model }, model || null);
+      const transport = rustTransport({ provider_id: selected.id }, model || null);
       abortRef.current = transport.cancel;
 
       const result = await sendMessage({
@@ -302,8 +300,7 @@ export function ChatPage() {
     const selected = activeProvider ?? (await getDefaultProvider());
     if (!selected) return;
     try {
-      const key = await providerApiKey(selected);
-      const transport = rustTransport({ base_url: selected.base_url, api_key: key, model: selected.model }, model || null);
+      const transport = rustTransport({ provider_id: selected.id }, model || null);
       const proposals = await extractMemories(id, transport, `extract-${Date.now()}`);
       if (proposals.length === 0) {
         toast.info("No new facts found.");

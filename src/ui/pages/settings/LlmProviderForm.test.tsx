@@ -15,7 +15,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const repo = vi.hoisted(() => ({
   getProvider: vi.fn(),
   listProviderModels: vi.fn(),
-  getProviderKey: vi.fn(),
   createProvider: vi.fn(),
   updateProvider: vi.fn(),
   deleteProvider: vi.fn(),
@@ -24,7 +23,6 @@ const repo = vi.hoisted(() => ({
 vi.mock("../../../db/repositories/llmProviders", () => ({
   getProvider: () => repo.getProvider(),
   listProviderModels: () => repo.listProviderModels(),
-  getProviderKey: () => repo.getProviderKey(),
   createProvider: (...args: unknown[]) => repo.createProvider(...args),
   updateProvider: (...args: unknown[]) => repo.updateProvider(...args),
   deleteProvider: () => repo.deleteProvider(),
@@ -70,14 +68,15 @@ afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
   repo.getProvider.mockResolvedValue(PROVIDER);
-  repo.getProviderKey.mockResolvedValue(null);
   repo.updateProvider.mockResolvedValue(undefined);
   repo.listProviderModels.mockResolvedValue([
     { provider_id: 2, model: "qwen3.5:4b", enabled: 1 },
     { provider_id: 2, model: "llama3.1:8b", enabled: 0 },
   ]);
   invoke.mockImplementation(async (command: string) => {
-    if (command === "list_models") return ["qwen3.5:4b", "llama3.1:8b", "ministral-3:8b"];
+    if (command === "provider_models" || command === "probe_models") {
+      return ["qwen3.5:4b", "llama3.1:8b", "ministral-3:8b"];
+    }
     return "reachable";
   });
 });
@@ -108,18 +107,17 @@ describe("LlmProviderFormPage", () => {
       model: "gemini-3.8-flash",
     });
     renderForm();
-    await waitFor(() =>
-      expect(invoke).toHaveBeenCalledWith("list_models", {
-        baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-        apiKey: null,
-      }),
-    );
+    // A saved provider is asked through its own row: Rust reads the URL and the
+    // Keychain entry, and no credential crosses the IPC boundary.
+    await waitFor(() => expect(invoke).toHaveBeenCalledWith("provider_models", { providerId: 2 }), { timeout: 2000 });
     // And the default model stays the provider's own, not the first fetched.
     expect((screen.getByLabelText("Default model") as HTMLSelectElement).value).toBe("gemini-3.8-flash");
   });
 
   it("keeps the list when the endpoint answers with nothing", async () => {
-    invoke.mockImplementation(async (command: string) => (command === "list_models" ? [] : "reachable"));
+    invoke.mockImplementation(async (command: string) =>
+      command === "provider_models" || command === "probe_models" ? [] : "reachable",
+    );
     renderForm();
     const group = await screen.findByRole("group", { name: "Available models" });
     // The saved rows survive an empty answer.

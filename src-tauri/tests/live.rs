@@ -228,25 +228,25 @@ fn keychain_round_trip() {
     // Start from a known state, then prove the round trip.
     secrets::secret_delete(account.clone()).expect("delete is idempotent");
     assert_eq!(
-        secrets::secret_get(account.clone()).expect("get on a missing item"),
+        secrets::read_secret(&account).expect("get on a missing item"),
         None,
         "a missing secret reads as None, not an error"
     );
 
     secrets::secret_set(account.clone(), "sk-test-123".into()).expect("set");
     assert_eq!(
-        secrets::secret_get(account.clone()).expect("get"),
+        secrets::read_secret(&account).expect("get"),
         Some("sk-test-123".to_string())
     );
 
     secrets::secret_set(account.clone(), "sk-test-456".into()).expect("overwrite");
     assert_eq!(
-        secrets::secret_get(account.clone()).expect("get after overwrite"),
+        secrets::read_secret(&account).expect("get after overwrite"),
         Some("sk-test-456".to_string())
     );
 
     secrets::secret_delete(account.clone()).expect("delete");
-    assert_eq!(secrets::secret_get(account).expect("get after delete"), None);
+    assert_eq!(secrets::read_secret(&account).expect("get after delete"), None);
 }
 
 /// Gemini 3 refuses a follow-up request that drops the `thought_signature` it

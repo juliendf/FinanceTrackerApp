@@ -12,6 +12,7 @@
 //! wrapper that owns cancellation registration and the IPC channel.
 
 use std::collections::HashMap;
+use std::str::FromStr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
@@ -19,7 +20,13 @@ use std::time::Duration;
 use futures_util::StreamExt;
 use serde::Serialize;
 use serde_json::{json, Value};
+use sqlx::sqlite::SqliteConnectOptions;
+use sqlx::{Connection, Row, SqliteConnection};
 use tauri::ipc::Channel;
+use tauri::AppHandle;
+
+use crate::commands::db::database_file;
+use crate::commands::secrets::read_secret;
 
 /// Events pushed to the webview while a completion streams.
 #[derive(Clone, Serialize)]
@@ -381,23 +388,68 @@ where
 
 /// IPC wrapper around [`stream_completion`]: owns cancellation registration and
 /// forwards events onto the channel.
+/// Everything a request needs, read from the provider row rather than accepted
+/// from the webview.
+struct ProviderConfig {
+    base_url: String,
+    model: String,
+    keychain_ref: Option<String>,
+}
+
+async fn provider_config(app: &AppHandle, provider_id: i64) -> Result<ProviderConfig, String> {
+    let file = database_file(app)?;
+    let options = SqliteConnectOptions::from_str(&format!("sqlite://{}", file.display()))
+        .map_err(|e| format!("invalid database URL: {e}"))?
+        .busy_timeout(Duration::from_secs(5));
+
+    let mut connection = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|e| format!("cannot open the database: {e}"))?;
+
+    let row = sqlx::query("SELECT base_url, model, keychain_ref FROM llm_providers WHERE id = ?")
+        .bind(provider_id)
+        .fetch_optional(&mut connection)
+        .await
+        .map_err(|e| format!("cannot read provider {provider_id}: {e}"))?;
+
+    let Some(row) = row else {
+        return Err(format!("provider {provider_id} not found"));
+    };
+
+    Ok(ProviderConfig {
+        base_url: row.get(0),
+        model: row.get(1),
+        keychain_ref: row.get(2),
+    })
+}
+
+fn provider_key(config: &ProviderConfig) -> Result<Option<String>, String> {
+    match config.keychain_ref.as_deref() {
+        Some(account) => read_secret(account),
+        None => Ok(None),
+    }
+}
+
 #[tauri::command]
 pub async fn chat_completion(
+    app: AppHandle,
     request_id: String,
-    base_url: String,
-    api_key: Option<String>,
-    model: String,
+    provider_id: i64,
+    model: Option<String>,
     messages: Value,
     tools: Option<Value>,
     on_event: Channel<ChatEvent>,
 ) -> Result<(), String> {
-    let cancel = register(&request_id);
+    let config = provider_config(&app, provider_id).await?;
+    let api_key = provider_key(&config)?;
+    let effective_model = model.unwrap_or_else(|| config.model.clone());
 
+    let cancel = register(&request_id);
     let result = stream_completion(
         CompletionRequest {
-            base_url: &base_url,
+            base_url: &config.base_url,
             api_key: api_key.as_deref(),
-            model: &model,
+            model: &effective_model,
             messages: &messages,
             tools: tools.as_ref(),
         },
@@ -423,17 +475,9 @@ pub fn cancel_chat(request_id: String) {
     }
 }
 
-/// `GET {base_url}/models`, returning the model ids. Used by the provider form
-/// and the model picker.
-#[tauri::command]
-pub async fn list_models(
-    base_url: String,
-    api_key: Option<String>,
-) -> Result<Vec<String>, String> {
-    let request = auth(
-        client()?.get(endpoint(&base_url, "models")),
-        api_key.as_deref(),
-    );
+/// `GET {base_url}/models`, returning the model ids.
+async fn fetch_models(base_url: &str, api_key: Option<&str>) -> Result<Vec<String>, String> {
+    let request = auth(client()?.get(endpoint(base_url, "models")), api_key);
 
     let response = request
         .send()
@@ -465,15 +509,49 @@ pub async fn list_models(
     Ok(ids)
 }
 
-/// Cheap reachability + auth probe for the provider form.
-#[tauri::command]
-pub async fn test_connection(base_url: String, api_key: Option<String>) -> Result<String, String> {
-    let models = list_models(base_url.clone(), api_key).await?;
-    Ok(match models.len() {
+fn probe_message(base_url: &str, models: usize) -> String {
+    match models {
         0 => format!("{base_url} reachable, but it advertises no models"),
         1 => format!("{base_url} reachable, 1 model available"),
         n => format!("{base_url} reachable, {n} models available"),
-    })
+    }
+}
+
+/// Model list for a saved provider. The key and the URL come from the app, not
+/// from the webview.
+#[tauri::command]
+pub async fn provider_models(app: AppHandle, provider_id: i64) -> Result<Vec<String>, String> {
+    let config = provider_config(&app, provider_id).await?;
+    let api_key = provider_key(&config)?;
+    fetch_models(&config.base_url, api_key.as_deref()).await
+}
+
+/// Reachability check for a saved provider.
+#[tauri::command]
+pub async fn provider_connection(app: AppHandle, provider_id: i64) -> Result<String, String> {
+    let config = provider_config(&app, provider_id).await?;
+    let api_key = provider_key(&config)?;
+    let models = fetch_models(&config.base_url, api_key.as_deref()).await?;
+    Ok(probe_message(&config.base_url, models.len()))
+}
+
+/// Model list for an endpoint the user is still editing.
+///
+/// The key here is one the user just typed into the form, not one read from the
+/// Keychain, so there is nothing to exfiltrate: it is only used for this request.
+#[tauri::command]
+pub async fn probe_models(base_url: String, api_key: Option<String>) -> Result<Vec<String>, String> {
+    fetch_models(&base_url, api_key.as_deref()).await
+}
+
+/// Reachability check for an endpoint the user is still editing.
+#[tauri::command]
+pub async fn probe_connection(
+    base_url: String,
+    api_key: Option<String>,
+) -> Result<String, String> {
+    let models = fetch_models(&base_url, api_key.as_deref()).await?;
+    Ok(probe_message(&base_url, models.len()))
 }
 
 #[cfg(test)]

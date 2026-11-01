@@ -17,7 +17,7 @@ import {
   renameConversation,
   resolvePendingAction,
 } from "../db/repositories/chat";
-import { getDefaultProvider, getProviderKey, type LlmProvider } from "../db/repositories/llmProviders";
+import { getDefaultProvider, type LlmProvider } from "../db/repositories/llmProviders";
 import { createMemory, getProfile, listGoals, listTopMemories } from "../db/repositories/profile";
 import { createSnapshot, getSnapshotOn, updateSnapshot } from "../db/repositories/snapshots";
 import { getAllSettings } from "../db/repositories/settings";
@@ -328,9 +328,4 @@ export async function extractMemories(
   } catch {
     return [];
   }
-}
-
-/** Provider key for the transport, or null when it needs none (local Ollama). */
-export async function providerApiKey(provider: LlmProvider): Promise<string | null> {
-  return getProviderKey(provider);
 }

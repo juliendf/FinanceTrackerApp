@@ -10,9 +10,10 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 ## Secrets
 
-- Provider API keys are stored in the **macOS Keychain** (`keyring` with the Apple native store), service `ch.julien.financetrackerapp`, account `provider:<id>`.
+- Provider API keys are stored in the **macOS Keychain** (`keyring` with the Apple native store), service `ch.julien.financetrackerapp`, account `provider:<id>`. Only `provider:<id>` accounts can be written or deleted; anything else is refused.
 - SQLite stores only the reference (`keychain_ref`), never the key. Imports that carry a plaintext key in the source backup move it to the Keychain and drop it from the database; the app's own exports never contain keys.
-- **Known limit:** `secret_get` returns the key to the webview, which then passes it to `chat_completion`. The key therefore lives briefly in JavaScript memory. A tighter design is for Rust to read the Keychain itself from the provider id; it is not done, and it is listed under open issues below.
+- **The webview cannot read a key.** There is no `secret_get`. `chat_completion`, `provider_models` and `provider_connection` take a **provider id**; Rust reads the base URL from SQLite and the secret from the Keychain, then makes the request. A compromised renderer can neither read a stored key nor redirect one to another URL.
+- The two `probe_*` commands do accept a base URL and a key, because the provider form must test an endpoint before it is saved. That key is the one the user just typed, not a stored one, so nothing is exposed that the user did not hand over.
 
 ## Network
 
@@ -56,9 +57,8 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 
 ## Open issues (to fix before shipping)
 
-1. **`run_transaction` has no table allow-list.** The verb guard stops schema changes and stacked statements, but a compromised webview could still delete or rewrite rows. Replace with named, parameterised operations as the write set stabilises.
-2. **Keys pass through JS.** `secret_get` hands the key to the webview, which passes it to `chat_completion`. The planned fix is for Rust to read the Keychain from the provider id; it is not done yet. Note that `test_connection` and `list_models` also take the key from JS for the same reason.
-3. **Database is unencrypted** (see Data at rest).
+1. **`run_transaction` has no table allow-list.** Statements are validated (DML only, no stacking, no comments) but not restricted to particular tables, so a compromised webview could still delete or rewrite rows. Replace with named, parameterised operations as the write set stabilises.
+2. **Database is unencrypted** (see Data at rest).
 
 Personal data is git-ignored: `finance_tracker_data_*.json`, `snapshots_export_*.csv`, `*.db`, `*.db-wal`, `*.db-shm`.
 

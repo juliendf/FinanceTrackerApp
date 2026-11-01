@@ -188,7 +188,7 @@ fn stores_the_provider_key_in_the_keychain() {
 
     let account = "provider:2".to_string();
     secrets::secret_set(account.clone(), key.to_string()).expect("set");
-    let read_back = secrets::secret_get(account.clone()).expect("get");
+    let read_back = secrets::read_secret(&account).expect("get");
     assert_eq!(read_back.as_deref(), Some(key));
     println!("stored {} chars under account {account}", key.len());
 }

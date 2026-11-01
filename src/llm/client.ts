@@ -44,9 +44,10 @@ export type StreamEvent =
 
 export interface CompletionRequest {
   requestId: string;
-  baseUrl: string;
-  apiKey?: string | null;
-  model: string;
+  /** The provider row whose endpoint and key Rust should use. */
+  providerId: number;
+  /** Overrides the provider's default model for this request. */
+  model?: string | null;
   messages: ChatMessage[];
   tools?: ToolDefinition[];
   onEvent: (event: StreamEvent) => void;
@@ -89,9 +90,8 @@ export async function chatCompletion(
 
   await invoke("chat_completion", {
     requestId: request.requestId,
-    baseUrl: request.baseUrl,
-    apiKey: request.apiKey ?? null,
-    model: request.model,
+    providerId: request.providerId,
+    model: request.model ?? null,
     messages: request.messages,
     tools: request.tools ?? null,
     onEvent: channel,
@@ -104,16 +104,26 @@ export function cancelChat(requestId: string): Promise<void> {
   return invoke("cancel_chat", { requestId });
 }
 
-export function listModels(
-  baseUrl: string,
-  apiKey?: string | null,
-): Promise<string[]> {
-  return invoke<string[]>("list_models", { baseUrl, apiKey: apiKey ?? null });
+/**
+ * Models and reachability for a **saved** provider: Rust reads its URL from
+ * SQLite and its key from the Keychain. No credential crosses the IPC boundary.
+ */
+export function providerModels(providerId: number): Promise<string[]> {
+  return invoke<string[]>("provider_models", { providerId });
 }
 
-export function testConnection(
-  baseUrl: string,
-  apiKey?: string | null,
-): Promise<string> {
-  return invoke<string>("test_connection", { baseUrl, apiKey: apiKey ?? null });
+export function providerConnection(providerId: number): Promise<string> {
+  return invoke<string>("provider_connection", { providerId });
+}
+
+/**
+ * The same, for an endpoint the user is still editing. The key is the one just
+ * typed into the form, so nothing stored is exposed.
+ */
+export function probeModels(baseUrl: string, apiKey?: string | null): Promise<string[]> {
+  return invoke<string[]>("probe_models", { baseUrl, apiKey: apiKey ?? null });
+}
+
+export function probeConnection(baseUrl: string, apiKey?: string | null): Promise<string> {
+  return invoke<string>("probe_connection", { baseUrl, apiKey: apiKey ?? null });
 }

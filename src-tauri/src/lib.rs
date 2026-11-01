@@ -62,12 +62,13 @@ pub fn run() {
             commands::files::pick_and_read_text_file,
             commands::files::save_text_file,
             commands::secrets::secret_set,
-            commands::secrets::secret_get,
             commands::secrets::secret_delete,
             commands::llm::chat_completion,
             commands::llm::cancel_chat,
-            commands::llm::list_models,
-            commands::llm::test_connection,
+            commands::llm::provider_models,
+            commands::llm::provider_connection,
+            commands::llm::probe_models,
+            commands::llm::probe_connection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

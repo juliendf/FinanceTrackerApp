@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Security: the webview can no longer read a provider key. Chat and the provider
+  checks take a provider id; Rust reads the endpoint from SQLite and the key from
+  the Keychain. `secret_get` is removed, and key writes are limited to
+  `provider:<id>` accounts.
+
 - Security: the webview can no longer run arbitrary SQL. `sql:allow-execute` is
   removed and every write goes through a guarded Rust command (`execute_write`
   for one statement with bound parameters, `run_transaction` for batches).

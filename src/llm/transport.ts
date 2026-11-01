@@ -11,9 +11,8 @@ import { cancelChat, chatCompletion } from "./client";
 import type { ChatTransport, TransportResponse } from "./chatLoop";
 
 export interface ProviderEndpoint {
-  base_url: string;
-  api_key?: string | null;
-  model: string;
+  /** The saved provider. Rust resolves its URL and key. */
+  provider_id: number;
 }
 
 export interface CancellableTransport extends ChatTransport {
@@ -35,9 +34,8 @@ export function rustTransport(
     try {
       const result = await chatCompletion({
         requestId: input.requestId,
-        baseUrl: endpoint.base_url,
-        apiKey: endpoint.api_key,
-        model: modelOverride || endpoint.model,
+        providerId: endpoint.provider_id,
+        model: modelOverride,
         messages: input.messages,
         tools: input.tools,
         onEvent: input.onEvent,

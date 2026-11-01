@@ -18,7 +18,7 @@ vi.mock("./client", () => ({
 
 import { rustTransport } from "./transport";
 
-const endpoint = { base_url: "http://localhost:11434/v1", api_key: null, model: "qwen" };
+const endpoint = { provider_id: 2 };
 
 const call = (requestId: string) => ({
   requestId,
@@ -74,9 +74,11 @@ describe("rustTransport", () => {
     expect(result.cancelled).toBe(true);
   });
 
-  it("uses the model override when one is remembered", async () => {
+  it("names the provider and passes the model override through", async () => {
     const transport = rustTransport(endpoint, "qwen3.5:4b");
     await transport(call("chat-5:0"));
-    expect(client.chatCompletion).toHaveBeenCalledWith(expect.objectContaining({ model: "qwen3.5:4b" }));
+    expect(client.chatCompletion).toHaveBeenCalledWith(
+      expect.objectContaining({ providerId: 2, model: "qwen3.5:4b" }),
+    );
   });
 });

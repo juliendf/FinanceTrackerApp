@@ -20,7 +20,6 @@ import {
   createProvider,
   deleteProvider,
   getProvider,
-  getProviderKey,
   listProviderModels,
   setDefaultProvider,
   updateProvider,
@@ -109,19 +108,23 @@ export function LlmProviderFormPage() {
     }
   };
 
-  const keyForCheck = async (): Promise<string | null> => {
-    if (apiKey.trim()) return apiKey.trim();
-    if (existing.data) return getProviderKey(existing.data);
-    return null;
-  };
+  /**
+   * A saved provider is tested through its own row, so Rust uses the stored key
+   * and the stored URL. Only a key typed into the form — which the user is
+   * handing over anyway — travels from the webview.
+   */
+  const typedKey = () => (apiKey.trim() ? apiKey.trim() : null);
+  const canProbeSaved = id !== null && !typedKey();
 
   const testConnection = async () => {
     setBusy("test");
     try {
-      const message = await invoke<string>("test_connection", {
-        baseUrl: draft.base_url,
-        apiKey: await keyForCheck(),
-      });
+      const message = canProbeSaved
+        ? await invoke<string>("provider_connection", { providerId: id })
+        : await invoke<string>("probe_connection", {
+            baseUrl: draft.base_url,
+            apiKey: typedKey(),
+          });
       toast.success(message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -143,10 +146,10 @@ export function LlmProviderFormPage() {
     if (!target) return;
     setBusy("models");
     try {
-      const fetched = await invoke<string[]>("list_models", {
-        baseUrl: target,
-        apiKey: await keyForCheck(),
-      });
+      const fetched =
+        id !== null && target === existing.data?.base_url && !typedKey()
+          ? await invoke<string[]>("provider_models", { providerId: id })
+          : await invoke<string[]>("probe_models", { baseUrl: target, apiKey: typedKey() });
       if (fetched.length === 0) {
         // An empty answer is not evidence that nothing is available; keep what is
         // there rather than wiping the list.

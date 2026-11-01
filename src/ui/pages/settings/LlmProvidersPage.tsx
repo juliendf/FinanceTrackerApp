@@ -12,7 +12,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 import {
   deleteProvider,
-  getProviderKey,
   listProviders,
   setDefaultProvider,
 } from "../../../db/repositories/llmProviders";
@@ -70,8 +69,8 @@ export function LlmProvidersPage() {
     if (!provider) return;
     setTesting(id);
     try {
-      const key = await getProviderKey(provider);
-      const message = await invoke<string>("test_connection", { baseUrl: provider.base_url, apiKey: key });
+      // Rust reads the endpoint and the Keychain entry itself.
+      const message = await invoke<string>("provider_connection", { providerId: provider.id });
       toast.success(message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
