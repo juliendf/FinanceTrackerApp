@@ -166,6 +166,16 @@ export function buildImportStatements(
     );
   }
 
+  for (const row of data.provider_models) {
+    statements.push(
+      `INSERT OR IGNORE INTO provider_models (provider_id, model, enabled) VALUES (${[
+        sqlInt(row.provider_id),
+        sqlText(row.model),
+        sqlBool(row.enabled ?? true),
+      ].join(", ")})`,
+    );
+  }
+
   for (const row of data.settings) {
     statements.push(
       `INSERT INTO settings (key, value, created_at, updated_at) VALUES (${[

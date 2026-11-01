@@ -97,6 +97,13 @@ export const providerSchema = z.object({
   updated_at: timestamp,
 });
 
+/** v3 addition: the models a provider offers, and whether chat may use them. */
+export const providerModelSchema = z.object({
+  provider_id: z.number().int(),
+  model: z.string(),
+  enabled: z.union([z.boolean(), z.number()]).optional(),
+});
+
 export const settingSchema = z.object({
   id: z.number().int().optional(),
   key: z.string(),
@@ -156,6 +163,7 @@ export const backupDataSchema = z.object({
   snapshots: z.array(snapshotSchema).optional().default([]),
   exchange_rates: z.array(exchangeRateSchema).optional().default([]),
   llm_providers: z.array(providerSchema).optional().default([]),
+  provider_models: z.array(providerModelSchema).optional().default([]),
   settings: z.array(settingSchema).optional().default([]),
   profile: profileSchema.optional().default({}),
   memories: z.array(memorySchema).optional().default([]),

@@ -358,9 +358,10 @@ and changeable there.
   false) on the Settings page. Chat, the prompt rail and memory extraction stay
   disabled until then, because using them sends your questions and portfolio
   facts to a provider. The source has no such switch.
-- **Gemini uses its OpenAI-compatible surface.** The app speaks the OpenAI
-  schema everywhere, so `gemini` providers are pointed at
-  `.../v1beta/openai` and migration 3 rewrites imported rows.
+- **Gemini is detected, not chosen.** The form used to offer a provider type; the
+  only difference was Gemini needing its OpenAI-compatible path. The type is now
+  derived from the host (`isGeminiEndpoint`) and the URL is normalised, so
+  `.../v1beta` becomes `.../v1beta/openai`. Migration 3 rewrote imported rows.
 - **Gemini's thought signature is carried, not dropped.** The brief said not to
   port litellm's special case unless a test proved it necessary. It is: Gemini 3
   returns `extra_content.google.thought_signature` inside each streamed tool
@@ -398,6 +399,12 @@ and changeable there.
   current month only: on the 31st, "90 days of history" means "since the 1st".
   `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
   real days instead.
+- **Models are a curated list per provider.** The endpoint is asked what it
+  serves (`GET {base}/models`), the form keeps a checkbox per model, and chat's
+  picker offers only the enabled ones. A model the user turned off stays off
+  across reloads; a fetched model that is new arrives enabled; the provider's
+  default is kept even if the endpoint stops advertising it. Stored in
+  `provider_models` and exported with the provider.
 - **The spinner names the work.** While a tool runs, the status line reads
   "Looking up your portfolio…" and so on (`toolStatusLabel`), rather than a bare
   "Generating…" for ten seconds. The transcript itself stays free of tool chatter.

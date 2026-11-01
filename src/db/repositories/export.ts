@@ -20,6 +20,7 @@ export interface ExportProvider {
   id: number; name: string; base_url: string; model: string; provider_type: string;
   keychain_ref: string | null; is_default: number; is_active: number; created_at: string; updated_at: string;
 }
+export interface ExportProviderModel { provider_id: number; model: string; enabled: number }
 export interface ExportSetting { id: number; key: string; value: string; created_at: string; updated_at: string }
 export interface ExportProfile {
   first_name: string | null; last_name: string | null; currency: string; timezone: string; date_format: string;
@@ -37,6 +38,7 @@ export interface ExportRows {
   snapshots: ExportSnapshot[];
   exchange_rates: ExportRate[];
   llm_providers: ExportProvider[];
+  provider_models: ExportProviderModel[];
   settings: ExportSetting[];
   profile: ExportProfile | null;
   memories: ExportMemory[];
@@ -45,7 +47,7 @@ export interface ExportRows {
 
 export async function readExportRows(): Promise<ExportRows> {
   const db = await getDb();
-  const [institutions, categories, tags, assets, tagLinks, snapshots, exchange_rates, llm_providers, settings, profile, memories, goals] =
+  const [institutions, categories, tags, assets, tagLinks, snapshots, exchange_rates, llm_providers, provider_models, settings, profile, memories, goals] =
     await Promise.all([
       db.select<ExportInstitution[]>(`SELECT id, name, description, created_at, updated_at FROM institutions ORDER BY id`),
       db.select<ExportCategory[]>(`SELECT id, name, description, color, system_role, created_at, updated_at FROM categories ORDER BY id`),
@@ -78,6 +80,9 @@ export async function readExportRows(): Promise<ExportRows> {
         `SELECT id, name, base_url, model, provider_type, keychain_ref, is_default, is_active, created_at, updated_at
            FROM llm_providers ORDER BY id`,
       ),
+      db.select<ExportProviderModel[]>(
+        `SELECT provider_id, model, enabled FROM provider_models ORDER BY provider_id, model`,
+      ),
       db.select<ExportSetting[]>(`SELECT id, key, value, created_at, updated_at FROM settings ORDER BY key`),
       db
         .select<ExportProfile[]>(
@@ -105,6 +110,7 @@ export async function readExportRows(): Promise<ExportRows> {
     snapshots,
     exchange_rates,
     llm_providers,
+    provider_models,
     settings,
     profile,
     memories,

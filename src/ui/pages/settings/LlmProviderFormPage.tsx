@@ -1,12 +1,18 @@
 /**
- * New / edit LLM provider: port of `settings/llm_provider_form.html`.
+ * New / edit LLM provider.
  *
- * The endpoint is the thing people get wrong, so it is shown first and large,
- * with the common URLs spelled out. The API key is write-only: it goes to the
- * Keychain, is never read back into the field, and is never written to SQLite.
+ * The endpoint is the thing people get wrong, so it comes first and large, with
+ * the common URLs spelled out. The API key is write-only: it goes to the
+ * Keychain, never to SQLite, and is never read back into the field.
+ *
+ * Models are a list, not a text field: "Load models" asks the endpoint what it
+ * serves, and each one can be switched on or off. Only the enabled ones appear
+ * in the chat's model picker. The provider type is derived from the URL — Gemini
+ * differs only in needing its OpenAI-compatible path, which is not a decision
+ * worth asking a user to make.
  */
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
@@ -15,10 +21,11 @@ import {
   deleteProvider,
   getProvider,
   getProviderKey,
+  listProviderModels,
   setDefaultProvider,
   updateProvider,
-  PROVIDER_TYPES,
 } from "../../../db/repositories/llmProviders";
+import { detectProviderType, enabledModels, mergeModelChoices, type ModelChoice } from "../../../domain/providerModels";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../layout/Toasts";
 import { SettingsLayout } from "./SettingsLayout";
@@ -27,7 +34,6 @@ const DEFAULT_BASE_URL = "http://localhost:11434/v1";
 
 interface Draft {
   name: string;
-  provider_type: string;
   base_url: string;
   model: string;
   is_active: boolean;
@@ -36,7 +42,6 @@ interface Draft {
 
 const EMPTY: Draft = {
   name: "",
-  provider_type: "openai",
   base_url: DEFAULT_BASE_URL,
   model: "",
   is_active: true,
@@ -55,19 +60,26 @@ export function LlmProviderFormPage() {
     queryFn: () => getProvider(id as number),
     enabled: id !== null,
   });
+  const savedModels = useQuery({
+    queryKey: ["llm-provider-models", id],
+    queryFn: () => listProviderModels(id as number),
+    enabled: id !== null,
+  });
 
   const [draft, setDraft] = useState<Draft>(EMPTY);
   const [apiKey, setApiKey] = useState("");
-  const [models, setModels] = useState<string[]>([]);
+  const [choices, setChoices] = useState<ModelChoice[]>([]);
+  /** True once the endpoint has been asked at least once on this visit. */
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const autoLoaded = useRef(false);
 
   useEffect(() => {
     if (!existing.data) return;
     setDraft({
       name: existing.data.name,
-      provider_type: existing.data.provider_type,
       base_url: existing.data.base_url,
       model: existing.data.model,
       is_active: existing.data.is_active === 1,
@@ -75,8 +87,21 @@ export function LlmProviderFormPage() {
     });
   }, [existing.data]);
 
+  // Show what is saved before (or without) asking the endpoint again.
+  useEffect(() => {
+    if (!savedModels.data || loaded) return;
+    if (savedModels.data.length === 0) return;
+    setChoices(
+      savedModels.data.map((row) => ({ model: row.model, enabled: row.enabled === 1 })),
+    );
+  }, [savedModels.data, loaded]);
+
+  const gemini = useMemo(() => detectProviderType(draft.base_url) === "gemini", [draft.base_url]);
+  const providerType = gemini ? "gemini" : "openai";
+  const enabled = enabledModels(choices);
+
   const refresh = () => {
-    for (const key of ["llm-providers", "llm-provider", "settings"]) {
+    for (const key of ["llm-providers", "llm-provider", "llm-provider-models", "settings"]) {
       void queryClient.invalidateQueries({ queryKey: [key] });
     }
   };
@@ -102,22 +127,42 @@ export function LlmProviderFormPage() {
     }
   };
 
-  const fetchModels = async () => {
+  /** Ask the endpoint for its models and merge them with what is saved. */
+  const loadModels = async ({ silent = false }: { silent?: boolean } = {}) => {
     setBusy("models");
     try {
-      const list = await invoke<string[]>("list_models", {
+      const fetched = await invoke<string[]>("list_models", {
         baseUrl: draft.base_url,
         apiKey: await keyForCheck(),
       });
-      setModels(list);
-      if (list.length === 0) toast.warning("That endpoint advertises no models.");
-      else if (!draft.model) setDraft({ ...draft, model: list[0] });
+      const saved = (savedModels.data ?? []).map((row) => ({ model: row.model, enabled: row.enabled === 1 }));
+      const merged = mergeModelChoices(fetched, choices.length > 0 ? choices : saved, draft.model);
+      setChoices(merged);
+      setLoaded(true);
+      if (!draft.model && merged.some((choice) => choice.enabled)) {
+        setDraft((current) => ({ ...current, model: merged.find((choice) => choice.enabled)!.model }));
+      }
+      if (!silent) {
+        if (fetched.length === 0) toast.warning("That endpoint advertises no models.");
+        else toast.success(`Loaded ${fetched.length} model${fetched.length === 1 ? "" : "s"}.`);
+      }
     } catch (error) {
+      if (silent) return; // opening the form should not shout when offline
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setBusy(null);
     }
   };
+
+  // On an existing provider, ask once so the list is there without a click.
+  useEffect(() => {
+    if (id === null || !existing.data || autoLoaded.current) return;
+    autoLoaded.current = true;
+    void loadModels({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, existing.data]);
+
+  const setAll = (value: boolean) => setChoices(choices.map((choice) => ({ ...choice, enabled: value })));
 
   const save = (event: FormEvent) => {
     event.preventDefault();
@@ -126,17 +171,19 @@ export function LlmProviderFormPage() {
     else if (draft.name.length > 50) found.name = "Name must be at most 50 characters";
     if (!draft.base_url.trim()) found.base_url = "Base URL is required";
     else if (!/^https?:\/\/\S+$/.test(draft.base_url.trim())) found.base_url = "Must be a valid URL";
-    if (!draft.model.trim()) found.model = "Model name is required";
-    else if (draft.model.length > 100) found.model = "Model name must be at most 100 characters";
+    if (!draft.model.trim()) found.model = "Choose a default model";
+    if (choices.length > 0 && enabled.length === 0) found.model = "Enable at least one model";
     setErrors(found);
     if (Object.keys(found).length > 0) return;
 
     const input = {
       name: draft.name.trim(),
-      base_url: draft.base_url.trim().replace(/\/+$/, ""),
+      base_url: draft.base_url.trim(),
       model: draft.model.trim(),
-      provider_type: draft.provider_type,
+      provider_type: providerType,
       is_active: draft.is_active,
+      // With nothing loaded, keep whatever rows already exist.
+      models: loaded || choices.length > 0 ? choices : undefined,
     };
 
     const mutation = async () => {
@@ -191,75 +238,29 @@ export function LlmProviderFormPage() {
         </Link>
       }
     >
-      <form onSubmit={save} noValidate>
+      <form onSubmit={save} noValidate className="provider-form">
         <div className="form-section">
           <h5 className="mb-3"><i className="bi bi-hdd-network me-2" aria-hidden="true" />Endpoint</h5>
-          <div className="mb-3">
-            <label htmlFor="base_url" className="form-label">Base URL</label>
-            <input
-              id="base_url"
-              type="url"
-              className={`form-control form-control-lg font-monospace${errors.base_url ? " is-invalid" : ""}`}
-              value={draft.base_url}
-              onChange={(event) => setDraft({ ...draft, base_url: event.target.value })}
-              placeholder={DEFAULT_BASE_URL}
-            />
-            {errors.base_url ? <div className="invalid-feedback d-block">{errors.base_url}</div> : null}
-            <div className="form-text">
-              Ollama <code>http://localhost:11434/v1</code> · LM Studio <code>http://localhost:1234/v1</code> · OpenAI{" "}
-              <code>https://api.openai.com/v1</code> · Gemini{" "}
-              <code>https://generativelanguage.googleapis.com/v1beta/openai</code>
-            </div>
-          </div>
           <div className="row">
-            <div className="col-md-6 mb-3">
-              <label htmlFor="provider_type" className="form-label">Provider Type</label>
-              <select
-                id="provider_type"
-                className="form-select"
-                value={draft.provider_type}
-                onChange={(event) => setDraft({ ...draft, provider_type: event.target.value })}
-              >
-                {PROVIDER_TYPES.map((type) => (
-                  <option key={type.value} value={type.value}>{type.label}</option>
-                ))}
-              </select>
-              <div className="form-text">Use OpenAI-compatible for Ollama and LM Studio.</div>
-            </div>
-            <div className="col-md-6 mb-3">
-              <label htmlFor="api_key" className="form-label">API Key</label>
+            <div className="col-lg-8 mb-3">
+              <label htmlFor="base_url" className="form-label">Base URL</label>
               <input
-                id="api_key"
-                type="password"
-                className="form-control"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder={existing.data?.keychain_ref ? "•••••• (stored in Keychain)" : "Not needed for Ollama"}
-                autoComplete="off"
+                id="base_url"
+                type="url"
+                className={`form-control font-monospace${errors.base_url ? " is-invalid" : ""}`}
+                value={draft.base_url}
+                onChange={(event) => setDraft({ ...draft, base_url: event.target.value })}
+                placeholder={DEFAULT_BASE_URL}
               />
+              {errors.base_url ? <div className="invalid-feedback d-block">{errors.base_url}</div> : null}
               <div className="form-text">
-                {existing.data?.keychain_ref
-                  ? "Leave empty to keep the stored key."
-                  : "Goes to the macOS Keychain, never to the database."}
+                Ollama <code>http://localhost:11434/v1</code> · LM Studio <code>http://localhost:1234/v1</code> · OpenAI{" "}
+                <code>https://api.openai.com/v1</code> · Gemini{" "}
+                <code>https://generativelanguage.googleapis.com/v1beta/openai</code>
+                {gemini ? <span className="d-block mt-1">Gemini detected: requests use its OpenAI-compatible path.</span> : null}
               </div>
             </div>
-          </div>
-          <div className="d-flex flex-wrap gap-2">
-            <button type="button" className="btn btn-secondary btn-sm" disabled={busy !== null} onClick={() => void testConnection()}>
-              <i className="bi bi-plug me-2" aria-hidden="true" />
-              Test connection
-            </button>
-            <button type="button" className="btn btn-secondary btn-sm" disabled={busy !== null} onClick={() => void fetchModels()}>
-              <i className="bi bi-cloud-download me-2" aria-hidden="true" />
-              Fetch models
-            </button>
-          </div>
-        </div>
-
-        <div className="form-section">
-          <h5 className="mb-3"><i className="bi bi-cpu me-2" aria-hidden="true" />Model</h5>
-          <div className="row">
-            <div className="col-md-6 mb-3">
+            <div className="col-lg-4 mb-3">
               <label htmlFor="name" className="form-label">Name</label>
               <input
                 id="name"
@@ -270,26 +271,132 @@ export function LlmProviderFormPage() {
                 maxLength={50}
               />
               {errors.name ? <div className="invalid-feedback d-block">{errors.name}</div> : null}
-              <div className="form-text">A friendly name, shown in the chat header.</div>
+              <div className="form-text">Shown in the chat header.</div>
             </div>
-            <div className="col-md-6 mb-3">
+          </div>
+
+          <div className="row">
+            <div className="col-lg-8 mb-3">
+              <label htmlFor="api_key" className="form-label">API Key</label>
+              <input
+                id="api_key"
+                type="password"
+                className="form-control font-monospace"
+                value={apiKey}
+                onChange={(event) => setApiKey(event.target.value)}
+                placeholder={existing.data?.keychain_ref ? "•••••• (stored in Keychain)" : "Not needed for Ollama or LM Studio"}
+                autoComplete="off"
+              />
+              <div className="form-text">
+                {existing.data?.keychain_ref
+                  ? "Leave empty to keep the stored key."
+                  : "Goes to the macOS Keychain, never to the database."}
+              </div>
+            </div>
+            <div className="col-lg-4 mb-3 d-flex align-items-end">
+              <button
+                type="button"
+                className="btn btn-secondary w-100"
+                disabled={busy !== null}
+                onClick={() => void testConnection()}
+              >
+                <i className="bi bi-plug me-2" aria-hidden="true" />
+                Test connection
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="form-section">
+          <div className="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
+            <h5 className="mb-0"><i className="bi bi-cpu me-2" aria-hidden="true" />Models</h5>
+            <div className="d-flex gap-2">
+              {choices.length > 0 ? (
+                <>
+                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setAll(true)}>
+                    Enable all
+                  </button>
+                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => setAll(false)}>
+                    Disable all
+                  </button>
+                </>
+              ) : null}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={busy !== null}
+                onClick={() => void loadModels()}
+              >
+                <i className="bi bi-arrow-repeat me-2" aria-hidden="true" />
+                {choices.length > 0 ? "Reload list" : "Load models"}
+              </button>
+            </div>
+          </div>
+          <p className="form-text mt-0">
+            “Load models” asks <code>{draft.base_url.replace(/\/+$/, "")}/models</code> what it serves. Only the
+            models you enable appear in the chat's model picker; the default below is what it starts on.
+          </p>
+
+          {choices.length === 0 ? (
+            <div className="mb-3">
               <label htmlFor="model" className="form-label">Model</label>
               <input
                 id="model"
                 className={`form-control font-monospace${errors.model ? " is-invalid" : ""}`}
                 value={draft.model}
-                list="model-options"
                 onChange={(event) => setDraft({ ...draft, model: event.target.value })}
-                placeholder="qwen2.5:7b"
+                placeholder="qwen3.5:4b"
                 maxLength={100}
               />
-              <datalist id="model-options">
-                {models.map((model) => <option key={model} value={model} />)}
-              </datalist>
               {errors.model ? <div className="invalid-feedback d-block">{errors.model}</div> : null}
-              <div className="form-text">e.g. <code>qwen2.5:7b</code>, <code>gpt-4o-mini</code>, <code>gemini-2.5-flash</code></div>
+              <div className="form-text">
+                Type the id, or load the list to choose from. Some endpoints (notably proxies) do not advertise models.
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <div className="provider-model-list" role="group" aria-label="Available models">
+                {choices.map((choice) => (
+                  <label className="provider-model-row" key={choice.model}>
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={choice.enabled}
+                      onChange={(event) =>
+                        setChoices(
+                          choices.map((item) =>
+                            item.model === choice.model ? { ...item, enabled: event.target.checked } : item,
+                          ),
+                        )
+                      }
+                    />
+                    <span className="provider-model-id font-monospace">{choice.model}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="form-text">
+                {enabled.length} of {choices.length} enabled.
+              </p>
+              <div className="row">
+                <div className="col-md-6 mb-3">
+                  <label htmlFor="model" className="form-label">Default model</label>
+                  <select
+                    id="model"
+                    className={`form-select font-monospace${errors.model ? " is-invalid" : ""}`}
+                    value={draft.model}
+                    onChange={(event) => setDraft({ ...draft, model: event.target.value })}
+                  >
+                    {enabled.includes(draft.model) ? null : <option value={draft.model}>{draft.model || "—"}</option>}
+                    {enabled.map((model) => (
+                      <option key={model} value={model}>{model}</option>
+                    ))}
+                  </select>
+                  {errors.model ? <div className="invalid-feedback d-block">{errors.model}</div> : null}
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="form-check mb-2">
             <input
               id="is_default"
@@ -299,7 +406,7 @@ export function LlmProviderFormPage() {
               onChange={(event) => setDraft({ ...draft, is_default: event.target.checked })}
             />
             <label htmlFor="is_default" className="form-check-label">Set as default provider</label>
-            <div className="form-text">The default is preselected in the chat.</div>
+            <div className="form-text">New conversations start on the default provider.</div>
           </div>
           <div className="form-check">
             <input
@@ -310,18 +417,20 @@ export function LlmProviderFormPage() {
               onChange={(event) => setDraft({ ...draft, is_active: event.target.checked })}
             />
             <label htmlFor="is_active" className="form-check-label">Active</label>
-            <div className="form-text">Inactive providers are hidden from the chat dropdown.</div>
+            <div className="form-text">Inactive providers are hidden from the chat.</div>
           </div>
         </div>
 
-        <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
-          <button type="submit" className="btn btn-primary">
-            <i className="bi bi-check-lg me-2" aria-hidden="true" />
-            Save Provider
-          </button>
-          <Link to="/settings/llm-providers" className="btn btn-secondary">Cancel</Link>
+        <div className="provider-form-actions">
+          <div className="d-flex flex-wrap gap-2">
+            <button type="submit" className="btn btn-primary">
+              <i className="bi bi-check-lg me-2" aria-hidden="true" />
+              Save Provider
+            </button>
+            <Link to="/settings/llm-providers" className="btn btn-secondary">Cancel</Link>
+          </div>
           {id !== null ? (
-            <button type="button" className="btn btn-outline-danger ms-auto" onClick={() => setConfirmDelete(true)}>
+            <button type="button" className="btn btn-outline-danger" onClick={() => setConfirmDelete(true)}>
               <i className="bi bi-trash me-2" aria-hidden="true" />
               Delete
             </button>

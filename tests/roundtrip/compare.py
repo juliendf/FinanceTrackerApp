@@ -20,6 +20,7 @@ FULL = {
     "snapshots": ("id", "asset_id", "date", "amount_minor", "created_at", "updated_at"),
     "llm_providers": ("id", "name", "base_url", "model", "provider_type", "is_default", "is_active",
                       "created_at", "updated_at"),
+    "provider_models": ("provider_id", "model", "enabled"),
     "profile": ("first_name", "last_name", "currency", "timezone", "date_format", "salary_minor",
                 "monthly_savings_target_minor", "risk_profile", "ai_tone", "ai_verbosity", "ai_expertise"),
     "exchange_rates": ("from_currency", "to_currency", "rate", "created_at", "updated_at"),

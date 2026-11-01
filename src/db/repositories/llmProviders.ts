@@ -82,6 +82,47 @@ export interface ProviderInput {
   model: string;
   provider_type: string;
   is_active: boolean;
+  /** The models this provider offers, and which of them chat may use. */
+  models?: ReadonlyArray<{ model: string; enabled: boolean }>;
+}
+
+export interface ProviderModel {
+  provider_id: number;
+  model: string;
+  enabled: number;
+}
+
+/** Every model row for a provider, enabled or not. */
+export async function listProviderModels(providerId: number): Promise<ProviderModel[]> {
+  const db = await getDb();
+  return db.select<ProviderModel[]>(
+    `SELECT provider_id, model, enabled FROM provider_models WHERE provider_id = ? ORDER BY model`,
+    [providerId],
+  );
+}
+
+/** The models chat may offer for this provider. */
+export async function listEnabledModels(providerId: number): Promise<string[]> {
+  const db = await getDb();
+  const rows = await db.select<{ model: string }[]>(
+    `SELECT model FROM provider_models WHERE provider_id = ? AND enabled = 1 ORDER BY model`,
+    [providerId],
+  );
+  return rows.map((row) => row.model);
+}
+
+/** Statements that replace a provider's model rows; used inside its transaction. */
+function modelStatements(
+  providerId: number,
+  models: ReadonlyArray<{ model: string; enabled: boolean }>,
+): string[] {
+  const statements = [`DELETE FROM provider_models WHERE provider_id = ${sqlInt(providerId)}`];
+  for (const choice of models) {
+    statements.push(
+      `INSERT INTO provider_models (provider_id, model, enabled) VALUES (${sqlInt(providerId)}, ${sqlText(choice.model)}, ${sqlInt(choice.enabled ? 1 : 0)})`,
+    );
+  }
+  return statements;
 }
 
 /**
@@ -103,6 +144,7 @@ export async function createProvider(input: ProviderInput, apiKey?: string): Pro
        VALUES (${sqlInt(id)}, ${sqlText(input.name)}, ${sqlText(normaliseBaseUrl(input.provider_type, input.base_url))},
                ${sqlText(input.model)}, ${sqlText(input.provider_type)}, ${sqlText(account)}, 0,
                ${sqlInt(input.is_active ? 1 : 0)})`,
+      ...(input.models ? modelStatements(id, input.models) : []),
     ]);
     // First provider becomes the default, as a fresh install needs one.
     const all = await listProviders();
@@ -128,6 +170,7 @@ export async function updateProvider(id: number, input: ProviderInput, apiKey?: 
             keychain_ref = ${sqlText(keychainRef)}, is_active = ${sqlInt(input.is_active ? 1 : 0)},
             updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
       WHERE id = ${sqlInt(id)}`,
+    ...(input.models ? modelStatements(id, input.models) : []),
   ]);
 }
 
@@ -137,7 +180,10 @@ export async function deleteProvider(id: number): Promise<void> {
   if (provider?.keychain_ref) {
     await invoke("secret_delete", { account: provider.keychain_ref }).catch(() => undefined);
   }
-  await runTransaction([`DELETE FROM llm_providers WHERE id = ${sqlInt(id)}`]);
+  await runTransaction([
+    `DELETE FROM provider_models WHERE provider_id = ${sqlInt(id)}`,
+    `DELETE FROM llm_providers WHERE id = ${sqlInt(id)}`,
+  ]);
   if (provider?.is_default === 1) {
     const remaining = await listProviders();
     if (remaining.length > 0) await setDefaultProvider(remaining[0].id);

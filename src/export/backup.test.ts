@@ -20,6 +20,10 @@ const rows: ExportRows = {
     id: 2, name: "Gemini", base_url: "https://example.test/v1", model: "gemini-2.0-flash", provider_type: "openai",
     keychain_ref: "provider:2", is_default: 1, is_active: 1, created_at: "a", updated_at: "b",
   }],
+  provider_models: [
+    { provider_id: 2, model: "gemini-2.0-flash", enabled: 1 },
+    { provider_id: 2, model: "gemini-2.5-pro", enabled: 0 },
+  ],
   settings: [{ id: 1, key: "base_currency", value: "CHF", created_at: "a", updated_at: "b" }],
   profile: {
     first_name: "Julien", last_name: null, currency: "CHF", timezone: "Europe/Zurich", date_format: "%d.%m.%Y",
@@ -51,6 +55,14 @@ describe("buildBackup", () => {
     const data = buildBackup(rows, "x").data;
     expect((data.categories as Array<{ system_role: string }>)[0].system_role).toBe("cash");
     expect((data.assets as Array<{ tag_names: string[] }>)[0].tag_names).toEqual(["Liquid"]);
+  });
+
+  it("carries the enabled model list with the provider", () => {
+    const data = buildBackup(rows, "x").data;
+    expect(data.provider_models).toEqual([
+      { provider_id: 2, model: "gemini-2.0-flash", enabled: true },
+      { provider_id: 2, model: "gemini-2.5-pro", enabled: false },
+    ]);
   });
 
   it("leaves out entities that were not selected", () => {

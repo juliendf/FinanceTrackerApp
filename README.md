@@ -8,7 +8,7 @@ Contents: [Status](#status) · [Requirements](#requirements) · [Run](#run) · [
 
 ## Status
 
-Version 0.2.8. Phases 0 to 8 of the plan are done: backup import and export,
+Version 0.3.0. Phases 0 to 8 of the plan are done: backup import and export,
 institutions, categories and tags, assets, snapshots, dashboards, settings, the AI
 assistant (providers, chat with tools and confirm-before-write, profile, memories,
 goals), and packaging (icon, About, ad-hoc signing, updater wiring, release
@@ -98,7 +98,7 @@ See the header of each `*.golden.test.ts` for the exact variables.
 
 Chat is off until you enable it under Settings → AI assistant. For a local model:
 
-1. Settings → LLM Providers → New Provider: base URL `http://localhost:11434/v1`, model as listed by `ollama list` (a tool-capable one, e.g. `qwen3.5:4b`), no key.
+1. Settings → LLM Providers → New Provider: base URL `http://localhost:11434/v1`, no key. Press **Load models**, then enable the ones chat may use (a tool-capable one, e.g. `qwen3.5:4b`) and pick the default.
 2. Tick Enable AI features on the Settings page.
 3. Chat. Write actions (recording a snapshot, saving a memory) always appear as a card you confirm or reject. Settings → AI assistant also has *Stream answers as they arrive*; turn it off to get a spinner (which names the tool it is running) and the whole reply at once.
 

@@ -4,6 +4,17 @@ Every version below is a local build, ad-hoc signed, never notarised and never
 published. Version numbers are bumped in `package.json`, `src-tauri/Cargo.toml`
 and `src-tauri/tauri.conf.json` together.
 
+## 0.3.0
+
+- Provider form: the model is chosen from a list the endpoint advertises. **Load
+  models** fills a checkbox group; only the enabled models appear in the chat's
+  model picker, and one of them is the provider's default. The list is stored per
+  provider (`provider_models`) and travels in backups.
+- The form's actions stick to the bottom of the window, so Save is reachable
+  without resizing.
+- The provider type is gone: Gemini is detected from the URL, since the only
+  difference was its OpenAI-compatible path.
+
 ## 0.2.8
 
 - Chat session list rebuilt: a "Sessions" header with a new-session button, a

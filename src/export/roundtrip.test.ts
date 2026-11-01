@@ -50,6 +50,7 @@ describe("backup round-trip on the real database", () => {
       snapshots: q(`SELECT id, asset_id, date, amount_minor, created_at, updated_at FROM snapshots ORDER BY id`),
       exchange_rates: q(`SELECT id, from_currency, to_currency, rate, created_at, updated_at FROM exchange_rates ORDER BY id`),
       llm_providers: q(`SELECT id, name, base_url, model, provider_type, keychain_ref, is_default, is_active, created_at, updated_at FROM llm_providers ORDER BY id`),
+      provider_models: q(`SELECT provider_id, model, enabled FROM provider_models ORDER BY provider_id, model`),
       settings: q(`SELECT id, key, value, created_at, updated_at FROM settings ORDER BY key`),
       profile: q<ExportRows["profile"]>(`SELECT first_name, last_name, currency, timezone, date_format, salary_minor,
                          monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise FROM profile LIMIT 1`)[0] ?? null,

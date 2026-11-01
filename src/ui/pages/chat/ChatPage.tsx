@@ -26,8 +26,8 @@ import {
 } from "../../../db/repositories/chat";
 import {
   getDefaultProvider,
-  getProviderKey,
   listActiveProviders,
+  listEnabledModels,
   type LlmProvider,
 } from "../../../db/repositories/llmProviders";
 import { getAllSettings } from "../../../db/repositories/settings";
@@ -176,13 +176,16 @@ export function ChatPage() {
     refreshList();
   };
 
+  /**
+   * The picker offers what the provider form enabled, not everything the
+   * endpoint advertises. With nothing configured yet, the provider's own default
+   * is the only option, which keeps chat working before models are curated.
+   */
   const fetchModels = async () => {
     if (!activeProvider) return;
     try {
-      const key = await getProviderKey(activeProvider);
-      const list = await invokeModels(activeProvider.base_url, key);
-      setModels(list);
-      if (list.length === 0) toast.warning("That provider advertises no models.");
+      const list = await listEnabledModels(activeProvider.id);
+      setModels(list.length > 0 ? list : [activeProvider.model]);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     }
@@ -653,9 +656,4 @@ export function ChatPage() {
       />
     </div>
   );
-}
-
-async function invokeModels(baseUrl: string, apiKey: string | null): Promise<string[]> {
-  const { invoke } = await import("@tauri-apps/api/core");
-  return invoke<string[]>("list_models", { baseUrl, apiKey });
 }

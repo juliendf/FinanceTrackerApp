@@ -102,6 +102,12 @@ export function buildBackup(
       const { keychain_ref: _ref, ...rest } = row;
       return { ...rest, is_default: !!row.is_default, is_active: !!row.is_active, api_key: null };
     });
+    // Which models each provider offers, and which the user enabled for chat.
+    data.provider_models = rows.provider_models.map((row) => ({
+      provider_id: row.provider_id,
+      model: row.model,
+      enabled: !!row.enabled,
+    }));
   }
   if (wanted.has("settings")) {
     data.settings = rows.settings.map((row) => ({ ...row }));

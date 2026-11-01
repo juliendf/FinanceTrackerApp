@@ -44,6 +44,7 @@ vi.mock("../../../db/repositories/llmProviders", () => ({
   listActiveProviders: () => repo.listActiveProviders(),
   getDefaultProvider: () => repo.getDefaultProvider(),
   getProviderKey: () => repo.getProviderKey(),
+  listEnabledModels: async () => ["qwen"],
 }));
 vi.mock("../../../db/repositories/settings", () => ({ getAllSettings: () => repo.getAllSettings() }));
 vi.mock("../../../llm/service", () => ({
