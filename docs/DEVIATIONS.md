@@ -383,6 +383,10 @@ and changeable there.
   current month only: on the 31st, "90 days of history" means "since the 1st".
   `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
   real days instead.
+- **Streaming is a choice.** `chat_streaming` (default on) decides whether the
+  answer is written out as it arrives or held back behind a spinner and shown
+  whole. Either way a tool round clears the preamble text, so the final answer
+  no longer accumulates on top of "let me look that up…".
 - **Chat is a fixed frame.** The transcript scrolls inside the window; the page
   no longer grows with the answer. Stop cancels the round actually in flight
   (the loop suffixes request ids per round, so cancelling the base id matched

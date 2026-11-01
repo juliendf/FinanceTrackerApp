@@ -63,6 +63,8 @@ export function ChatPage() {
 
   const settings = useQuery({ queryKey: ["settings"], queryFn: getAllSettings });
   const aiEnabled = settings.data?.ai_enabled === true;
+  /** Off: hold the reply back and show a spinner until the turn finishes. */
+  const streamAnswers = settings.data?.chat_streaming !== false;
   const conversations = useQuery({ queryKey: ["conversations"], queryFn: listConversations });
   const providers = useQuery({ queryKey: ["llm-providers-active"], queryFn: listActiveProviders });
   const conversation = useQuery({
@@ -84,6 +86,7 @@ export function ChatPage() {
   const [input, setInput] = useState("");
   const [bubbles, setBubbles] = useState<PendingBubble[]>([]);
   const [streaming, setStreaming] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [models, setModels] = useState<string[]>([]);
@@ -187,6 +190,7 @@ export function ChatPage() {
 
     setInput("");
     setStreaming(true);
+    setWaiting(!streamAnswers);
     // Only the user's own line shows until the model produces text. No
     // "Thinking…" placeholder and no tool-call chatter: those are plumbing, and
     // they used to flash in and out of the transcript on every turn.
@@ -208,9 +212,14 @@ export function ChatPage() {
         modelOverride: model || null,
         requestId,
         onEvent: (event) => {
-          // Text is the only thing that belongs in the transcript. Tool calls
-          // arrive as events too, and are deliberately ignored here.
-          if (event.type !== "delta") return;
+          // A tool round starts a fresh answer: the text before the call was
+          // preamble, and appending the final answer to it produced a jumble.
+          if (event.type === "toolCall") {
+            setBubbles((current) => current.filter((bubble) => bubble.role === "user"));
+            return;
+          }
+          if (event.type !== "delta" || !streamAnswers) return;
+          setWaiting(false);
           setBubbles((current) => {
             const next = [...current];
             const last = next[next.length - 1];
@@ -229,6 +238,7 @@ export function ChatPage() {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setStreaming(false);
+      setWaiting(false);
       abortRef.current = null;
     }
 
@@ -463,6 +473,13 @@ export function ChatPage() {
                     )}
                   </div>
                 ))}
+
+                {waiting ? (
+                  <div className="msg-bubble msg-assistant" role="status" aria-label="Generating">
+                    <span className="spinner-border spinner-border-sm text-secondary me-2" aria-hidden="true" />
+                    <span className="text-muted">Generating…</span>
+                  </div>
+                ) : null}
 
                 {(actions.data ?? []).map((action) => (
                   <div className="confirm-card" key={action.id}>

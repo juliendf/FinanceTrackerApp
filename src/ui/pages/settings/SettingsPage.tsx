@@ -30,6 +30,7 @@ type Draft = {
   theme: string;
   enable_animations: boolean;
   ai_enabled: boolean;
+  chat_streaming: boolean;
 };
 
 const toDraft = (settings: Record<string, SettingValue>): Draft => ({
@@ -40,6 +41,7 @@ const toDraft = (settings: Record<string, SettingValue>): Draft => ({
   theme: String(settings.theme ?? DEFAULT_SETTINGS.theme),
   enable_animations: settings.enable_animations !== false,
   ai_enabled: settings.ai_enabled === true,
+  chat_streaming: settings.chat_streaming !== false,
 });
 
 export function SettingsPage() {
@@ -212,10 +214,24 @@ export function SettingsPage() {
             />
             <label htmlFor="ai_enabled" className="form-check-label">Enable AI features</label>
           </div>
-          <div className="form-text">
+          <div className="form-text mb-3">
             Off by default. When on, the assistant sends your questions and the portfolio facts it looks up to the
             provider you configure under <Link to="/settings/llm-providers">LLM Providers</Link>. Nothing is sent
             anywhere else.
+          </div>
+          <div className="form-check">
+            <input
+              id="chat_streaming"
+              type="checkbox"
+              className="form-check-input"
+              checked={draft.chat_streaming}
+              onChange={(e) => setDraft({ ...draft, chat_streaming: e.target.checked })}
+            />
+            <label htmlFor="chat_streaming" className="form-check-label">Stream answers as they arrive</label>
+          </div>
+          <div className="form-text">
+            On, the reply is written out token by token. Off, a spinner shows while the model works and the whole
+            answer appears at once.
           </div>
         </div>
 

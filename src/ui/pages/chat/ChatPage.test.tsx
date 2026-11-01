@@ -177,6 +177,69 @@ describe("ChatPage", () => {
     expect(rows[1].textContent).toContain("113,627.08");
   });
 
+  it("shows a spinner and no partial text when streaming is turned off", async () => {
+    const user = userEvent.setup();
+    repo.getAllSettings.mockResolvedValue({ ai_enabled: true, chat_streaming: false, base_currency: "CHF" });
+
+    let release!: () => void;
+    let emit!: (event: unknown) => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      emit = options.onEvent;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Full answer.", pendingActions: [], cancelled: false, rounds: 0 };
+    });
+
+    const { container } = renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    expect(await screen.findByRole("status", { name: "Generating" })).toBeTruthy();
+
+    // Tokens arrive but must not be rendered while the setting is off.
+    emit({ type: "delta", content: "Full answ" });
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(container.textContent).not.toContain("Full answ");
+    expect(screen.getByRole("status", { name: "Generating" })).toBeTruthy();
+
+    release();
+    await waitFor(() => expect(screen.queryByRole("status", { name: "Generating" })).toBeNull());
+  });
+
+  it("clears the preamble when a tool round starts", async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    let emit!: (event: unknown) => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      emit = options.onEvent;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Final.", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    const { container } = renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    emit({ type: "delta", content: "Let me look that up. " });
+    await waitFor(() => expect(container.textContent).toContain("Let me look that up."));
+
+    emit({ type: "toolCall", id: "c1", name: "get_portfolio_summary", arguments: "{}" });
+    await waitFor(() => expect(container.textContent).not.toContain("Let me look that up."));
+
+    emit({ type: "delta", content: "Your portfolio is 406,860.98 CHF." });
+    await waitFor(() => expect(container.textContent).toContain("Your portfolio is 406,860.98 CHF."));
+    expect(container.textContent).not.toContain("Let me look that up.");
+
+    release();
+  });
+
   it("offers the suggested prompts", async () => {
     renderChat();
     expect(await screen.findByText("Portfolio review")).toBeTruthy();

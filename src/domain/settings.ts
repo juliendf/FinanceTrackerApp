@@ -26,6 +26,8 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
    * See docs/DEVIATIONS.md.
    */
   ai_enabled: false,
+  /** Stream answers token by token; off shows a spinner then the whole reply. */
+  chat_streaming: true,
 };
 
 /** Port of `_parse_setting_value`. */
