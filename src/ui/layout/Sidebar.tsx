@@ -43,9 +43,9 @@ const SECTIONS = [
     title: "Portfolio",
     links: [
       { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
-      { to: "/resume", label: "Résumé", icon: "bi-file-text" },
       { to: "/assets", label: "Assets", icon: "bi-wallet2" },
       { to: "/snapshots", label: "Snapshots", icon: "bi-camera" },
+      { to: "/resume", label: "Résumé", icon: "bi-file-text" },
     ],
   },
   {
