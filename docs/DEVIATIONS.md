@@ -383,6 +383,9 @@ and changeable there.
   current month only: on the 31st, "90 days of history" means "since the 1st".
   `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
   real days instead.
+- **The spinner names the work.** While a tool runs, the status line reads
+  "Looking up your portfolio…" and so on (`toolStatusLabel`), rather than a bare
+  "Generating…" for ten seconds. The transcript itself stays free of tool chatter.
 - **Streaming is a choice.** `chat_streaming` (default on) decides whether the
   answer is written out as it arrives or held back behind a spinner and shown
   whole. Either way a tool round clears the preamble text, so the final answer

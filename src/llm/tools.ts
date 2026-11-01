@@ -169,6 +169,24 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   },
 ];
 
+/**
+ * What to say while a tool runs. The transcript stays quiet, so this is the only
+ * place the user learns what the pause is for.
+ */
+const TOOL_STATUS: Record<string, string> = {
+  get_portfolio_summary: "Looking up your portfolio…",
+  list_assets: "Listing your assets…",
+  get_asset_details: "Reading that asset's details…",
+  get_asset_history: "Reading the value history…",
+  get_allocation: "Breaking down your allocation…",
+  propose_snapshot: "Preparing a snapshot for you to confirm…",
+  remember_fact: "Preparing a note to remember…",
+};
+
+export function toolStatusLabel(name: string): string {
+  return TOOL_STATUS[name] ?? "Working…";
+}
+
 export interface ToolResult {
   /** JSON-serialisable payload handed back to the model. */
   result: unknown;

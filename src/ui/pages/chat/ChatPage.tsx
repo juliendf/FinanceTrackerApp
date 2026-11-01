@@ -42,6 +42,7 @@ import {
   type PendingActionView,
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
+import { toolStatusLabel } from "../../../llm/tools";
 import { useRememberedModel } from "../../../llm/modelChoice";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
@@ -86,7 +87,14 @@ export function ChatPage() {
   const [input, setInput] = useState("");
   const [bubbles, setBubbles] = useState<PendingBubble[]>([]);
   const [streaming, setStreaming] = useState(false);
-  const [waiting, setWaiting] = useState(false);
+  /**
+   * What the spinner says. `tool` phases show in both modes — the model is
+   * thinking between rounds either way, and a bare "Generating…" for ten
+   * seconds tells the user nothing.
+   */
+  const [activity, setActivity] = useState<
+    { phase: "thinking" | "tool" | "writing"; label?: string } | null
+  >(null);
   const [renaming, setRenaming] = useState<number | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [models, setModels] = useState<string[]>([]);
@@ -190,7 +198,7 @@ export function ChatPage() {
 
     setInput("");
     setStreaming(true);
-    setWaiting(!streamAnswers);
+    setActivity({ phase: "thinking" });
     // Only the user's own line shows until the model produces text. No
     // "Thinking…" placeholder and no tool-call chatter: those are plumbing, and
     // they used to flash in and out of the transcript on every turn.
@@ -216,10 +224,12 @@ export function ChatPage() {
           // preamble, and appending the final answer to it produced a jumble.
           if (event.type === "toolCall") {
             setBubbles((current) => current.filter((bubble) => bubble.role === "user"));
+            setActivity({ phase: "tool", label: toolStatusLabel(event.name) });
             return;
           }
-          if (event.type !== "delta" || !streamAnswers) return;
-          setWaiting(false);
+          if (event.type !== "delta") return;
+          setActivity(streamAnswers ? null : { phase: "writing" });
+          if (!streamAnswers) return;
           setBubbles((current) => {
             const next = [...current];
             const last = next[next.length - 1];
@@ -238,7 +248,7 @@ export function ChatPage() {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
       setStreaming(false);
-      setWaiting(false);
+      setActivity(null);
       abortRef.current = null;
     }
 
@@ -474,10 +484,20 @@ export function ChatPage() {
                   </div>
                 ))}
 
-                {waiting ? (
-                  <div className="msg-bubble msg-assistant" role="status" aria-label="Generating">
+                {activity && (activity.phase === "tool" || !streamAnswers) ? (
+                  <div
+                    className="msg-bubble msg-assistant"
+                    role="status"
+                    aria-label={activity.phase === "tool" ? (activity.label ?? "Working") : "Generating"}
+                  >
                     <span className="spinner-border spinner-border-sm text-secondary me-2" aria-hidden="true" />
-                    <span className="text-muted">Generating…</span>
+                    <span className="text-muted">
+                      {activity.phase === "tool"
+                        ? activity.label
+                        : activity.phase === "writing"
+                          ? "Writing the answer…"
+                          : "Generating…"}
+                    </span>
                   </div>
                 ) : null}
 
