@@ -6,6 +6,15 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Toolbar: "You" is a direct link to your profile, with no menu. About moved to
+  the sidebar footer, on the version line.
+- Profile: Financial goals now come before "What I know about you"; the memories
+  panel explains that entries come from chat (after confirming a card) or by
+  hand, shows each entry's source, and no longer asks for a key — it is derived
+  from the text.
+- Profile: the Timezone field is gone. It was never read: dates come from the
+  Mac's clock, so the control promised something it did not do.
+
 - The account menu is Profile + About only. Settings was duplicated there and in
   the sidebar; the sidebar wins.
 

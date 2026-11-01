@@ -30,6 +30,7 @@ import {
 import { fromMinorUnits, toMinorUnits } from "../../../domain/money";
 import { CURRENCY_CHOICES } from "../../../domain/settings";
 import { formatDate } from "../../../domain/format";
+import { deriveMemoryKey } from "../../../domain/memoryKey";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
@@ -237,15 +238,6 @@ export function ProfilePage() {
                 ))}
               </select>
             </div>
-            <div className="col-md-4 mb-3">
-              <label htmlFor="timezone" className="form-label">Timezone</label>
-              <input
-                id="timezone"
-                className="form-control"
-                value={draft.timezone}
-                onChange={(e) => setDraft({ ...draft, timezone: e.target.value })}
-              />
-            </div>
           </div>
           <div className="mb-1">
             <label htmlFor="financial_goals" className="form-label">Other Aspirations</label>
@@ -313,8 +305,8 @@ export function ProfilePage() {
         </div>
       </form>
 
-      <MemoriesSection memories={memories.data ?? []} onChange={refresh} />
       <GoalsSection goals={goals.data ?? []} onChange={refresh} currency={draft.currency} />
+      <MemoriesSection memories={memories.data ?? []} onChange={refresh} />
     </>
   );
 }
@@ -324,28 +316,33 @@ export function ProfilePage() {
 function MemoriesSection({ memories, onChange }: { memories: Memory[]; onChange: () => void }) {
   const toast = useToast();
   const [editing, setEditing] = useState<Memory | "new" | null>(null);
-  const [form, setForm] = useState({ category: "personal", key: "", content: "", importance: "3" });
+  const [form, setForm] = useState({ category: "personal", content: "", importance: "3" });
   const [pendingDelete, setPendingDelete] = useState<Memory | null>(null);
 
   const open = (memory: Memory | "new") => {
     setEditing(memory);
     setForm(
       memory === "new"
-        ? { category: "personal", key: "", content: "", importance: "3" }
-        : { category: memory.category, key: memory.key, content: memory.content, importance: String(memory.importance) },
+        ? { category: "personal", content: "", importance: "3" }
+        : { category: memory.category, content: memory.content, importance: String(memory.importance) },
     );
   };
 
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    if (!form.key.trim() || !form.content.trim()) {
-      toast.error("Key and content are required.");
+    if (!form.content.trim()) {
+      toast.error("Write the fact to remember.");
       return;
     }
     try {
       const payload = {
         category: form.category,
-        key: form.key.trim(),
+        // New memories get a key derived from their text; editing keeps the one
+        // that is already there so references stay stable.
+        key:
+          editing === "new"
+            ? deriveMemoryKey(form.content, memories.map((memory) => memory.key))
+            : (editing?.key ?? deriveMemoryKey(form.content)),
         content: form.content.trim(),
         importance: Number(form.importance),
       };
@@ -369,28 +366,41 @@ function MemoriesSection({ memories, onChange }: { memories: Memory[]; onChange:
         </button>
       </div>
       <p className="text-muted small">
-        The ten most important memories go into the assistant's prompt. Chat can propose new ones, and they only land
-        here once you confirm the card.
+        Facts the assistant carries into every conversation; the ten most important are in its prompt. They arrive two
+        ways: <strong>from chat</strong>, where the assistant proposes one and it lands here only after you confirm the
+        card, or <strong>by hand</strong> with the button above.
       </p>
 
       {memories.length === 0 ? (
-        <p className="text-muted mb-0">Nothing remembered yet.</p>
+        <p className="text-muted mb-0">
+          Nothing remembered yet. Ask the assistant to remember something, or add it yourself.
+        </p>
       ) : (
         <div className="table-container">
           <div className="table-responsive">
             <table className="table table-hover align-middle mb-0">
               <thead>
                 <tr>
-                  <th>Category</th><th>Key</th><th>Content</th><th>Importance</th><th className="text-end">Actions</th>
+                  <th>Category</th><th>What the assistant knows</th><th>Importance</th><th>Source</th>
+                  <th className="text-end">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {memories.map((memory) => (
                   <tr key={memory.id}>
                     <td><span className="chip">{memory.category}</span></td>
-                    <td><span className="font-monospace small">{memory.key}</span></td>
                     <td>{memory.content}</td>
                     <td>{memory.importance}/5</td>
+                    <td>
+                      {memory.source === "ai_extracted" ? (
+                        <span className="text-muted small">
+                          <i className="bi bi-stars me-1" aria-hidden="true" />
+                          AI
+                        </span>
+                      ) : (
+                        <span className="text-muted small">Manual</span>
+                      )}
+                    </td>
                     <td className="text-end">
                       <div className="row-actions d-inline-flex">
                         <button type="button" className="btn btn-icon" aria-label={`Edit memory ${memory.key}`} onClick={() => open(memory)}>
@@ -422,11 +432,6 @@ function MemoriesSection({ memories, onChange }: { memories: Memory[]; onChange:
                     <option key={choice.value} value={choice.value}>{choice.label}</option>
                   ))}
                 </select>
-              </div>
-              <div className="col-md-4 mb-3">
-                <label htmlFor="memory_key" className="form-label">Key</label>
-                <input id="memory_key" className="form-control" maxLength={200} value={form.key}
-                  placeholder="house_downpayment" onChange={(e) => setForm({ ...form, key: e.target.value })} />
               </div>
               <div className="col-md-4 mb-3">
                 <label htmlFor="memory_importance" className="form-label">Importance</label>

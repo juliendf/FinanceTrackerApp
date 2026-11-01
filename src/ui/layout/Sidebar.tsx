@@ -12,6 +12,7 @@ import { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { getVersion } from "@tauri-apps/api/app";
 import { useQuery } from "@tanstack/react-query";
+import { AboutModal } from "../components/AboutModal";
 
 const STORAGE_KEY = "sidebar.collapsed";
 
@@ -68,6 +69,7 @@ const SECTIONS = [
 
 export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   const version = useQuery({ queryKey: ["app-version"], queryFn: getVersion });
+  const [aboutOpen, setAboutOpen] = useState(false);
 
   return (
     <aside className={`app-sidebar${collapsed ? " collapsed" : ""}`} aria-label="Main navigation">
@@ -95,7 +97,17 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
       </nav>
 
       <div className="app-sidebar-footer">
-        <span className="label text-muted small">Version {version.data ?? "…"}</span>
+        {/* About sits with the version it reports. */}
+        <button
+          type="button"
+          className="app-sidebar-about"
+          onClick={() => setAboutOpen(true)}
+          title="About FinanceTracker"
+          aria-label="About FinanceTracker"
+        >
+          <i className="bi bi-info-circle" aria-hidden="true" />
+          <span className="label">Version {version.data ?? "…"}</span>
+        </button>
         <button
           type="button"
           className="btn btn-sm btn-outline-secondary"
@@ -106,6 +118,8 @@ export function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle:
           <i className={`bi bi-chevron-${collapsed ? "right" : "left"}`} aria-hidden="true" />
         </button>
       </div>
+
+      <AboutModal show={aboutOpen} onHide={() => setAboutOpen(false)} />
     </aside>
   );
 }

@@ -473,8 +473,16 @@ and changeable there.
   recipe; a Developer ID build signs before bundling and needs none.
 - **The release workflow has never run.** The repository has no remote. It is
   written to be read, not assumed working (docs/RELEASE.md).
-- **An About modal sits in the "You" menu** next to the macOS default About
-  panel; it shows the bundle version and the database path.
+- **About lives at the bottom of the sidebar**, on the version line, next to the
+  macOS default About panel; it shows the bundle version and the database path.
+  The top-right "You" is a direct link to the profile, not a menu.
+- **Timezone is carried but not shown.** The profile keeps the column (a v2
+  backup sets it) and the app uses the Mac's clock for dates, so a control would
+  have promised behaviour it does not have. If it is ever used for date
+  boundaries it can come back as a picker.
+- **Memory keys are derived, not typed.** `user_memories.key` is a short label;
+  the form builds it from the memory's text (`deriveMemoryKey`) and keeps the
+  existing key when editing.
 - **Update artifacts are opt-in** through `src-tauri/tauri.release.conf.json`,
   so a plain `npm run tauri build` works without the updater private key.
 

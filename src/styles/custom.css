@@ -3742,3 +3742,26 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* About entry point: the version line in the sidebar footer. */
+.app-sidebar-about {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.15rem 0.25rem;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: none;
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    text-align: left;
+}
+
+.app-sidebar-about:hover {
+    color: var(--text-primary);
+    background: var(--surface-3);
+}
+
+.app-sidebar.collapsed .app-sidebar-about {
+    padding: 0.25rem;
+}

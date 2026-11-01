@@ -1,14 +1,13 @@
 // @vitest-environment jsdom
 /**
- * The account menu is not a second navigation.
+ * The toolbar is not a second navigation.
  *
- * Navigation lives in the sidebar; the top-right menu is for the two things that
- * are not sections — your profile and the About box. It used to link to Settings
- * as well, which duplicated the sidebar entry.
+ * It carries the app name, the theme toggle and a direct link to your profile.
+ * Settings stays in the sidebar, and About lives next to the version in the
+ * sidebar footer.
  */
 
 import { cleanup, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -25,10 +24,8 @@ import { ToastProvider } from "./Toasts";
 
 afterEach(cleanup);
 
-describe("Navbar account menu", () => {
-  it("offers Profile and About, but not Settings", async () => {
-    const user = userEvent.setup();
-    // AboutModal asks the app for its version and database path.
+describe("Navbar", () => {
+  it("links straight to the profile and offers no menu", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -40,10 +37,10 @@ describe("Navbar account menu", () => {
       </QueryClientProvider>,
     );
 
-    await user.click(screen.getByRole("button", { name: /you/i }));
-    expect(await screen.findByRole("link", { name: "Profile" })).toBeTruthy();
-    expect(screen.getByText("About FinanceTracker")).toBeTruthy();
-    // Settings belongs to the sidebar only.
-    expect(screen.queryByRole("link", { name: /^settings$/i })).toBeNull();
+    const you = screen.getByRole("link", { name: /you/i });
+    expect(you.getAttribute("href")).toBe("/profile");
+    // No dropdown, and no duplicate Settings entry.
+    expect(screen.queryByRole("button", { name: /you/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /settings/i })).toBeNull();
   });
 });

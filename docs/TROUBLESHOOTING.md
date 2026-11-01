@@ -121,7 +121,7 @@ in-app modals now.
 ~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db
 ```
 
-Settings → About (in the "You" menu) prints the path. Provider keys are in the
+The version line at the bottom of the sidebar opens About, which prints the path. Provider keys are in the
 macOS Keychain under service `ch.julien.financetrackerapp`, account
 `provider:<id>`.
 
@@ -169,5 +169,5 @@ first launch after macOS forgets it.
 ## Still stuck
 
 Run the app from a terminal (`npm run tauri dev`) so the webview console is
-visible, and note the version from Settings → About. Most reports so far were
+visible, and note the version from the sidebar footer (About). Most reports so far were
 solved by identifying the build first.
