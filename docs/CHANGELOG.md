@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Streaming: multi-byte characters are no longer corrupted when a chunk boundary
+  falls inside them (`é`, `’`, `€`, emoji showed as `��`). The parser buffers
+  bytes and decodes whole lines; a final line without a newline is no longer
+  dropped.
+
 - Security: the webview can no longer read a provider key. Chat and the provider
   checks take a provider id; Rust reads the endpoint from SQLite and the key from
   the Keychain. `secret_get` is removed, and key writes are limited to

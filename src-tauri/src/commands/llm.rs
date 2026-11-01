@@ -66,6 +66,43 @@ pub struct ToolCall {
     pub extra_content: Option<Value>,
 }
 
+/// Splits an SSE byte stream into lines without ever decoding half a character.
+///
+/// Decoding each network chunk on its own corrupts any UTF-8 sequence that
+/// straddles a chunk boundary — `é`, `’`, `€` and emoji all become U+FFFD. Bytes
+/// are buffered until a newline arrives, and a newline can never be part of a
+/// multi-byte sequence, so every line handed out is whole.
+#[derive(Default)]
+struct LineBuffer {
+    bytes: Vec<u8>,
+}
+
+impl LineBuffer {
+    fn extend(&mut self, chunk: &[u8]) {
+        self.bytes.extend_from_slice(chunk);
+    }
+
+    /// Next complete line, without its `\n` (and without a trailing `\r`).
+    fn next_line(&mut self) -> Option<String> {
+        let newline = self.bytes.iter().position(|byte| *byte == b'\n')?;
+        let mut line: Vec<u8> = self.bytes.drain(..=newline).collect();
+        line.pop(); // the newline itself
+        if line.last() == Some(&b'\r') {
+            line.pop();
+        }
+        Some(String::from_utf8_lossy(&line).into_owned())
+    }
+
+    /// Whatever is left when the stream ends without a trailing newline.
+    fn flush(&mut self) -> Option<String> {
+        if self.bytes.is_empty() {
+            return None;
+        }
+        let line = std::mem::take(&mut self.bytes);
+        Some(String::from_utf8_lossy(&line).into_owned())
+    }
+}
+
 /// What one round trip produced, for callers that need the values rather than
 /// the event stream.
 #[derive(Default, Debug, Clone)]
@@ -287,7 +324,7 @@ where
     }
 
     let mut stream = response.bytes_stream();
-    let mut buffer = String::new();
+    let mut buffer = LineBuffer::default();
     let mut content = String::new();
     let mut tool_calls: Vec<ToolCall> = Vec::new();
     let mut saw_done = false;
@@ -312,12 +349,9 @@ where
                 return Err(message);
             }
         };
-        buffer.push_str(&String::from_utf8_lossy(&bytes));
+        buffer.extend(&bytes);
 
-        while let Some(newline) = buffer.find('\n') {
-            let line = buffer[..newline].trim_end_matches('\r').to_string();
-            buffer.drain(..=newline);
-
+        while let Some(line) = buffer.next_line() {
             let Some(payload) = line.strip_prefix("data:") else {
                 // Blank separator lines and SSE comments.
                 continue;
@@ -350,6 +384,32 @@ where
             if let Some(calls) = delta["tool_calls"].as_array() {
                 for call in calls {
                     merge_tool_delta(&mut tool_calls, call);
+                }
+            }
+        }
+    }
+
+    // A stream that ends without a trailing newline still has one last line.
+    if let Some(line) = buffer.flush().filter(|_| !saw_done) {
+        if let Some(payload) = line.strip_prefix("data:") {
+            let payload = payload.trim();
+            if !payload.is_empty() && payload != "[DONE]" {
+                if let Ok(event) = serde_json::from_str::<Value>(payload) {
+                    if let Some(delta) = event["choices"].get(0).and_then(|c| c.get("delta")) {
+                        if let Some(text) = delta["content"].as_str() {
+                            if !text.is_empty() {
+                                content.push_str(text);
+                                emit(ChatEvent::Delta {
+                                    content: text.to_string(),
+                                });
+                            }
+                        }
+                        if let Some(calls) = delta["tool_calls"].as_array() {
+                            for call in calls {
+                                merge_tool_delta(&mut tool_calls, call);
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -624,6 +684,42 @@ mod tests {
         merge_tool_delta(&mut acc, &json!({"index": 0, "function": {"name": "b"}}));
         assert_eq!(acc.len(), 1);
         assert_eq!(acc[0].name, "ab");
+    }
+
+    #[test]
+    fn a_multibyte_character_split_across_chunks_survives() {
+        let text = "CHF 1’000.50 — éé€ 🙂\n";
+        let bytes = text.as_bytes();
+        let mut buffer = LineBuffer::default();
+
+        // Feed it one byte at a time: no chunk boundary may corrupt a character.
+        let mut lines = Vec::new();
+        for byte in bytes {
+            buffer.extend(std::slice::from_ref(byte));
+            while let Some(line) = buffer.next_line() {
+                lines.push(line);
+            }
+        }
+
+        assert_eq!(lines, vec![text.trim_end_matches('\n').to_string()]);
+        assert!(!lines[0].contains('\u{FFFD}'), "replacement character appeared");
+    }
+
+    #[test]
+    fn a_trailing_line_without_a_newline_is_flushed() {
+        let mut buffer = LineBuffer::default();
+        buffer.extend(b"data: {\"a\":1}");
+        assert_eq!(buffer.next_line(), None);
+        assert_eq!(buffer.flush().as_deref(), Some("data: {\"a\":1}"));
+        assert_eq!(buffer.flush(), None);
+    }
+
+    #[test]
+    fn carriage_returns_are_trimmed() {
+        let mut buffer = LineBuffer::default();
+        buffer.extend(b"data: one\r\ndata: two\n");
+        assert_eq!(buffer.next_line().as_deref(), Some("data: one"));
+        assert_eq!(buffer.next_line().as_deref(), Some("data: two"));
     }
 
     #[test]

@@ -223,7 +223,9 @@ async fn unreachable_endpoint_is_a_clean_error() {
 fn keychain_round_trip() {
     use financetrackerapp_lib::commands::secrets;
 
-    let account = "provider:test-integration".to_string();
+    // Only `provider:<id>` accounts are writable now, so the probe uses an id no
+    // real provider will have.
+    let account = "provider:999999".to_string();
 
     // Start from a known state, then prove the round trip.
     secrets::secret_delete(account.clone()).expect("delete is idempotent");

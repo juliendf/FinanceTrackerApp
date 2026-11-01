@@ -10,7 +10,7 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 |---|---|---|---|---|
 | 1 | Critical | Security | `src-tauri/capabilities/default.json:13` | `sql:allow-execute` bypasses the SQL guard — **fixed, see below** |
 | 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, see below** |
-| 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted |
+| 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted — **fixed, see below** |
 | 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent |
 | 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable |
 | 6 | Medium | Correctness | `src/llm/tools.ts:259` | `list_assets` truncates before sorting |
@@ -109,6 +109,19 @@ Each network chunk is decoded on its own with `String::from_utf8_lossy`. A multi
 **Scenario:** a French or German answer (é, ü, €, `CHF 1’000`) or one containing emoji shows `��` in the transcript and in the saved message. If the split falls inside a tool-call `arguments` string, that JSON is corrupted.
 
 **Fix:** buffer raw bytes (`Vec<u8>`), split on `b'\n'`, and decode only whole lines.
+
+**Status: done (2026-11-01, 0.4.0).** The stream is now read through a
+`LineBuffer` that appends raw bytes and only decodes a line once its newline has
+arrived — a newline can never be part of a multi-byte sequence, so no character
+can be split. The last line is flushed when the stream ends without a trailing
+newline (the minor item from the same review), and `\r\n` line endings are
+trimmed.
+
+Verified by a unit test that feeds `"CHF 1’000.50 — éé€ 🙂"` one **byte** at a
+time and asserts the assembled line has no replacement character, plus tests for
+the trailing-line flush and CRLF trimming. The live provider tests still pass
+against Ollama (streaming, tool call, mid-stream cancel) and Gemini (tool round,
+two calls apart).
 
 ### 4. Medium — Stop does nothing while the provider is silent
 
