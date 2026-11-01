@@ -78,6 +78,22 @@ New asset ids are allocated inside the transaction (`nextId` / `justInserted` ag
 - Behaviour is verified against the source, not assumed: independent Python oracles in `tests/oracle/` recompute results from a real backup file and the tests compare (asset filters; snapshot CSV byte-for-byte). The dashboards go further: `tests/oracle/dashboard.py` runs the *source's own code* with the clock frozen and the TypeScript is compared with the JSON its endpoints return.
 - Oracle-backed tests are opt-in via environment variables and skip otherwise, so the default suite needs no private data.
 
+## Tests
+
+Four layers, cheapest first:
+
+| Layer | Where | What it proves |
+|---|---|---|
+| Unit | `src/domain/*.test.ts`, `src/llm/*.test.ts` | Pure logic: money, filters, dashboards, prompt text, the loop with an injected transport |
+| Component | `src/ui/**/*.test.tsx` (jsdom) | Screens with repositories mocked: filters, validation, confirm cards |
+| Rust | `src-tauri/tests/*.rs`, module tests | One transaction or none, the statement guard, migrations, stream parsing and cancellation |
+| Oracle / live | `tests/oracle/*.py`, `*.golden.test.ts`, `cargo test --test live` | Agreement with the source app on real data, and with a real provider |
+
+The oracle tests are opt-in (`FINANCETRACKER_BACKUP`, `SNAPSHOT_ROWS`,
+`GEMINI_API_KEY`, …) so the default suite needs no private data or network.
+`src/docs.test.ts` keeps the version in three files in step and fails on a broken
+relative link.
+
 ## Build and layout
 
 ```

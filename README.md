@@ -4,6 +4,8 @@ A native macOS app for tracking assets and their value over time, ported feature
 
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
+Contents: [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation)
+
 ## Status
 
 Version 0.2.7. Phases 0 to 8 of the plan are done: backup import and export,
@@ -18,9 +20,16 @@ built. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.
 
 ## Requirements
 
-- macOS on Apple silicon
-- Node 20+ and npm
-- Rust stable (`rustup`) and Xcode command line tools
+- macOS 11 or newer, Apple silicon
+- Node 20.19+ or 22.12+ (Vite 8's requirement) and npm
+- Rust stable via `rustup`, with `cargo` on your `PATH`
+- Xcode command line tools
+
+If `which cargo` prints nothing, rustup's environment file is not sourced:
+
+```sh
+echo '. "$HOME/.cargo/env"' >> ~/.zshrc   # then open a new terminal
+```
 
 ## Run
 
@@ -58,10 +67,14 @@ GitHub Actions release are documented in [docs/RELEASE.md](docs/RELEASE.md).
 ## Test
 
 ```sh
-npm test                                  # vitest
-npm run typecheck                         # app + tests
-cd src-tauri && cargo test                # Rust (transactions, importer, keychain tests are opt-in)
+npm test            # vitest: domain, repositories, components, docs guards
+npm run typecheck   # app and tests
+cd src-tauri && cargo test
 ```
+
+Rust tests cover the transaction primitive, the statement guard, migrations and
+the keychain move; the ones needing the network, a live provider or the login
+keychain are `#[ignore]`d (`cargo test -- --ignored`).
 
 Parity tests against real data are opt-in. They compare the app with independent Python oracles in `tests/oracle/`:
 
@@ -97,6 +110,14 @@ Keys live in the macOS Keychain, never in the database or a backup.
 - Provider API keys: macOS Keychain, service `ch.julien.financetrackerapp`
 - Import a Flask backup (JSON v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
 
+## Troubleshooting
+
+The common failures and their fixes are in
+[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md): `cargo` not found, port 1420
+in use, Gatekeeper on an ad-hoc build, "no update feed", Gemini 400s, a model
+that will not call tools, where the database lives, and what to do when a page
+shows the error boundary.
+
 ## Documentation
 
 | Document | Purpose |
@@ -109,4 +130,6 @@ Keys live in the macOS Keychain, never in the database or a backup.
 | [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Every intentional difference from the source |
 | [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md) | Screen-by-screen status |
 | [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md) | Backup file format |
+| [CONTRIBUTING.md](CONTRIBUTING.md) | Layout, conventions, how to add a screen, tool or migration |
+| [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Symptoms, causes, fixes |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Release-by-release summary |

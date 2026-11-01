@@ -1,9 +1,26 @@
 # Deviations from FinanceTracker
 
 Every deliberate behavioural difference between the desktop app and the Flask
-source. Newest phase last. Anything not listed here is intended to match.
+source. Anything not listed here is intended to match.
 
-Format: **what** — **why** — **revisit in**.
+Most entries are a decision, not a wish: they say what the app does now and why.
+Where a difference was later closed (mostly the Phase 0 spike notes), the entry
+says so rather than being deleted, so the record stays honest.
+
+## Contents
+
+- [Phase 0 (spike)](#phase-0-spike)
+- [Phase 1 (foundation)](#phase-1-foundation)
+- [Phase 1b (import from FinanceTracker)](#phase-1b-import-from-financetracker)
+- [Phase 2 (reference data)](#phase-2-reference-data)
+- [Phase 3 (assets)](#phase-3-assets)
+- [Phase 4: snapshots](#phase-4-snapshots)
+- [Resolved: the theme that stayed dark](#resolved-the-theme-that-stayed-dark)
+- [Phase 5: dashboards](#phase-5-dashboards)
+- [Phase 6: settings and data](#phase-6-settings-and-data)
+- [Phase 7: AI](#phase-7-ai)
+- [Phase 8: packaging](#phase-8-packaging)
+- [Security hardening (after Phase 4)](#security-hardening-after-phase-4)
 
 ## Phase 0 (spike)
 

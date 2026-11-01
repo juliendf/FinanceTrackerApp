@@ -1,0 +1,123 @@
+# Contributing
+
+A single-author port of the Flask `FinanceTracker` web app to a native macOS
+Tauri app. The original app is the specification: when behaviour is ambiguous,
+read the source, and when you deliberately depart from it, write the reason in
+[`docs/DEVIATIONS.md`](docs/DEVIATIONS.md).
+
+## Layout
+
+| Path | What lives there |
+|---|---|
+| `src/ui/pages/<area>/` | One folder per screen area (assets, snapshots, dashboard, settings, chat, profile) |
+| `src/ui/components/` | Shared widgets: page header, cards, modals, tables, chart wrappers |
+| `src/ui/layout/` | Shell: sidebar, toolbar, toasts, theme toggle |
+| `src/domain/` | Pure logic: money, formatting, filters, dashboards, chat prompts. No Tauri, no SQL |
+| `src/db/repositories/` | Typed SQL only, one file per aggregate |
+| `src/db/client.ts`, `transaction.ts`, `literals.ts` | Connection, `run_transaction`, escaped SQL literals |
+| `src/llm/` | Chat loop, transport, tools, prompt building, service |
+| `src/import/`, `src/export/` | Backup parse/plan/execute, and the v3 writer |
+| `src-tauri/src/commands/` | Rust: `db` (transactions, path), `files` (dialogs), `secrets` (Keychain), `llm` (HTTP streaming) |
+| `src-tauri/migrations/` | Schema, applied by the SQL plugin at startup |
+| `tests/oracle/`, `tests/roundtrip/` | Independent Python oracles and the backup round-trip diff |
+| `docs/` | Analysis, brief, deviations, parity checklist, release notes |
+
+## Ground rules
+
+- **Money is integer minor units.** Convert at the edges with
+  `src/domain/money.ts` (`toMinorUnits`, `fromMinorUnits`, half-even). Never store
+  or add floats; `decimal.js` is already configured for half-even rounding.
+- **`domain` imports nothing from `ui` or `db`.** It is what the tests and the
+  oracles exercise.
+- **SQL lives only in repositories,** and repositories do no validation or
+  formatting. Pages never build SQL.
+- **Multi-statement writes go through `run_transaction`.** Build the statement
+  list with `sqlText` / `sqlInt` from `src/db/literals.ts`; values are inlined
+  because the SQL plugin exposes no transaction handle. The Rust guard allows
+  only single `INSERT` / `UPDATE` / `DELETE` statements.
+- **Never call `window.confirm` or `alert`.** They route to the dialog plugin,
+  which this app does not permit; use `DeleteConfirmModal`. A test enforces it.
+- **Query keys are part of the contract.** One key, one shape: `["assets"]` is
+  always `AssetRow[]`, counts use their own key. Reusing a key for a different
+  shape crashes a screen (this happened with the Data page).
+- **Parity first, deviation second.** If the source does something odd, port it,
+  then fix it as a separate, documented deviation — `docs/DEVIATIONS.md` records
+  both the intent and the current behaviour.
+
+## Adding a screen
+
+1. Create `src/ui/pages/<area>/<Name>Page.tsx`; start with `PageHeader`.
+2. Add the route in `src/router.tsx` inside `<AppShell>`.
+3. Add sidebar navigation in `src/ui/layout/Sidebar.tsx` if it is a top-level area.
+4. Data through TanStack Query with a fresh key; invalidate the affected keys
+   after writes.
+5. Test it in `src/ui/pages/<area>/<Name>.test.tsx` with `// @vitest-environment
+   jsdom`, `afterEach(cleanup)`, mocked repositories.
+6. Add the row to [`docs/PARITY_CHECKLIST.md`](docs/PARITY_CHECKLIST.md).
+
+## Adding a chat tool
+
+1. Add the schema to `TOOL_DEFINITIONS` in `src/llm/tools.ts`, verbatim from the
+   source's `app/services/tools.json`.
+2. Add a status label to `TOOL_STATUS` — a test fails if one is missing.
+3. Implement the executor in the same file. Read-only tools answer with JSON;
+   **write tools only stage a pending action** and must not touch the tables.
+4. Extend `src/llm/tools.test.ts`, including the negative assertion that no write
+   happened.
+
+## Migrations
+
+Add `src-tauri/migrations/000N_<name>.sql` and register it in `migrations()` in
+`src-tauri/src/lib.rs` with the next version number. Never edit a migration that
+has shipped; the plugin records applied versions in `_sqlx_migrations`. Test the
+SQL against a copy of a real database before shipping it.
+
+## Tests
+
+```sh
+npm test                 # vitest: domain, repositories, components, docs guards
+npm run typecheck        # app and tests
+cd src-tauri && cargo test
+```
+
+Optional, and skipped without their environment:
+
+- Oracles: `tests/oracle/*.py` recompute behaviour from a real backup, and the
+  `*.golden.test.ts` files compare. Each test's header names its variables.
+- Backup round-trip: `tests/roundtrip/compare.py ORIGINAL.db REBUILT.db`.
+- Live provider tests: `cargo test --test live -- --ignored` needs Ollama, or
+  `GEMINI_API_KEY` for the two Gemini tests.
+
+Never commit a real backup, a database file or an API key; `.gitignore` covers
+those patterns.
+
+## Versions and releases
+
+One version number in three files, always in step: `package.json`,
+`src-tauri/Cargo.toml`, `src-tauri/tauri.conf.json`. `src/docs.test.ts` fails if
+they drift. Signing, notarisation and the updater are in
+[`docs/RELEASE.md`](docs/RELEASE.md).
+
+## Commits
+
+Imperative subject, a scope when it helps, one concern per commit:
+
+```
+feat: per-row record-snapshot shortcut on the asset list
+fix: never send extra_content as null to Gemini
+docs: bring README up to date for 0.2.7
+```
+
+Phases were committed with a `Phase N: ...` subject; keep that convention if you
+resume the plan.
+
+## Documents to update
+
+| Change | Update |
+|---|---|
+| Intentional behaviour difference | `docs/DEVIATIONS.md` |
+| Screen added, finished or dropped | `docs/PARITY_CHECKLIST.md` |
+| Anything a user will notice | `docs/CHANGELOG.md` + version bump |
+| Command, install or data path | `README.md` |
+| Layer, schema or transaction model | `ARCHITECTURE.md` |
+| Permissions, secrets, network | `SECURITY.md` |

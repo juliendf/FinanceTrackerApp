@@ -84,7 +84,7 @@ and exposed as **Check for updates** on the Data page. It reads a static
    `https://github.com/OWNER/financeTrackerApp/releases/latest/download/latest.json`
 2. The public key in the config matches the private key at
    `~/.config/financetrackerapp/updater.key` (generated with
-   `npm run tauri signer generate`). **Back that file up**: losing it means
+   `npx tauri signer generate`). **Back that file up**: losing it means
    existing installs can never accept an update. It is outside the repository on
    purpose.
 3. Update artifacts are only produced with
@@ -99,6 +99,25 @@ and exposed as **Check for updates** on the Data page. It reads a static
    That writes `FinanceTracker.app.tar.gz` and its `.sig` next to the bundle.
 4. Install-on-demand is intentionally absent: the card reports and links, it
    does not restart the app behind your back.
+
+## Verify an artifact
+
+Before handing someone a build:
+
+```sh
+APP=src-tauri/target/release/bundle/macos/FinanceTracker.app
+codesign --verify --deep --strict --verbose=2 "$APP"     # must be silent and exit 0
+codesign -dv "$APP" 2>&1 | grep -E "Identifier|Signature"
+/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Contents/Info.plist"
+shasum -a 256 src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
+```
+
+With an ad-hoc signature, `spctl -a -vv "$APP"` reports `rejected` — expected, and
+the reason for the right-click → Open step. A Developer ID build reports
+`accepted` with `source=Notarized Developer ID`.
+
+Mount the image and verify the copy inside too: the packaging step can pick up a
+stale app if you signed after `tauri build` (see above).
 
 ## GitHub Actions
 
