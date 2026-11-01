@@ -7,12 +7,10 @@
  * finishes and is persisted.
  */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
+import { TranscriptMessage } from "./TranscriptMessage";
 import {
   createConversation,
   deleteConversation,
@@ -42,6 +40,14 @@ import {
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
 import { toolStatusLabel } from "../../../llm/tools";
+
+/**
+ * How often streamed text reaches the screen.
+ *
+ * 60 ms is ~16 fps: fast enough that the answer reads as live typing, slow enough
+ * that a 50 token/s answer causes ~1 render instead of 50.
+ */
+const FRAME_MS = 60;
 import { filterSessions, groupSessions } from "./sessionList";
 import { useRememberedModel } from "../../../llm/modelChoice";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
@@ -108,6 +114,62 @@ export function ChatPage() {
   const requestIdRef = useRef<string>("");
   const abortRef = useRef<(() => Promise<void>) | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  /**
+   * Streaming text is buffered here and flushed on a timer.
+   *
+   * A delta can arrive 30 to 60 times a second; re-rendering the page per delta
+   * rebuilt the whole transcript and re-parsed the answer from scratch. Batching at
+   * ~16 fps keeps the text visibly streaming while the main thread stays free.
+   */
+  const streamTextRef = useRef("");
+  const flushTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** The activity already shown, so an unchanged phase does not re-render. */
+  const activityKeyRef = useRef<string | null>(null);
+
+  /** Show whatever has arrived so far. */
+  const flushStream = useCallback(() => {
+    const text = streamTextRef.current;
+    setBubbles((current) => {
+      const next = [...current];
+      const last = next[next.length - 1];
+      if (last?.role === "assistant") {
+        if (last.content === text) return current;
+        next[next.length - 1] = { ...last, content: text };
+      } else {
+        next.push({ id: "streaming", role: "assistant", content: text });
+      }
+      return next;
+    });
+  }, []);
+
+  /** Flush at most every FRAME_MS instead of on every token. */
+  const scheduleStreamFlush = useCallback(() => {
+    if (flushTimerRef.current !== null) return;
+    flushTimerRef.current = setTimeout(() => {
+      flushTimerRef.current = null;
+      flushStream();
+    }, FRAME_MS);
+  }, [flushStream]);
+
+  const stopFlushing = useCallback(() => {
+    if (flushTimerRef.current !== null) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+  }, []);
+
+  /** Only update the spinner when what it says actually changes. */
+  const showActivity = useCallback((next: { phase: "thinking" | "tool" | "writing"; label?: string } | null) => {
+    const key = next ? `${next.phase}:${next.label ?? ""}` : null;
+    if (activityKeyRef.current === key) return;
+    activityKeyRef.current = key;
+    setActivity(next);
+  }, []);
+
+  /** Deleting a message opens the modal; stable so the memoised rows do not rerender. */
+  const requestDeleteMessage = useCallback((messageId: number) => {
+    setPendingDelete({ kind: "message", id: messageId });
+  }, []);
 
   const visibleGroups = useMemo(
     () => groupSessions(filterSessions(conversations.data ?? [], sessionQuery)),
@@ -209,7 +271,8 @@ export function ChatPage() {
 
     setInput("");
     setStreaming(true);
-    setActivity({ phase: "thinking" });
+    streamTextRef.current = "";
+    showActivity({ phase: "thinking" });
     // Only the user's own line shows until the model produces text. No
     // "Thinking…" placeholder and no tool-call chatter: those are plumbing, and
     // they used to flash in and out of the transcript on every turn.
@@ -233,23 +296,18 @@ export function ChatPage() {
           // A tool round starts a fresh answer: the text before the call was
           // preamble, and appending the final answer to it produced a jumble.
           if (event.type === "toolCall") {
+            // The text before a tool call was preamble; the answer starts clean.
+            streamTextRef.current = "";
+            stopFlushing();
             setBubbles((current) => current.filter((bubble) => bubble.role === "user"));
-            setActivity({ phase: "tool", label: toolStatusLabel(event.name) });
+            showActivity({ phase: "tool", label: toolStatusLabel(event.name) });
             return;
           }
           if (event.type !== "delta") return;
-          setActivity(streamAnswers ? null : { phase: "writing" });
+          showActivity(streamAnswers ? null : { phase: "writing" });
           if (!streamAnswers) return;
-          setBubbles((current) => {
-            const next = [...current];
-            const last = next[next.length - 1];
-            if (last?.role === "assistant") {
-              next[next.length - 1] = { ...last, content: last.content + event.content };
-            } else {
-              next.push({ id: `assistant-${Date.now()}`, role: "assistant", content: event.content });
-            }
-            return next;
-          });
+          streamTextRef.current += event.content;
+          scheduleStreamFlush();
         },
       });
 
@@ -257,8 +315,11 @@ export function ChatPage() {
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
     } finally {
+      // Show the last token before the transcript is refetched over it.
+      stopFlushing();
+      flushStream();
       setStreaming(false);
-      setActivity(null);
+      showActivity(null);
       abortRef.current = null;
     }
 
@@ -492,43 +553,15 @@ export function ChatPage() {
                   <p className="text-muted text-center py-4 mb-0">Ask anything about your portfolio to get started.</p>
                 ) : null}
 
-                {(messages.data ?? []).map((message) => {
-                  if (message.role === "user") {
-                    return (
-                      <div className="msg-bubble msg-user" key={message.id}>
-                        <button
-                          type="button"
-                          className="btn-delete-msg"
-                          title="Delete this message and rewind conversation"
-                          onClick={() => setPendingDelete({ kind: "message", id: message.id })}
-                        >
-                          <i className="bi bi-x" aria-hidden="true" />
-                        </button>
-                        <span className="msg-text">{message.content}</span>
-                      </div>
-                    );
-                  }
-                  if (message.role === "assistant" && message.content) {
-                    return (
-                      <div className="msg-bubble msg-assistant" key={message.id}>
-                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                          {message.content}
-                        </ReactMarkdown>
-                      </div>
-                    );
-                  }
-                  return null;
-                })}
+                {(messages.data ?? []).map((message) => (
+                  <TranscriptMessage key={message.id} message={message} onRequestDelete={requestDeleteMessage} />
+                ))}
 
                 {bubbles.map((bubble) => (
                   <div className={`msg-bubble ${bubble.role === "user" ? "msg-user" : "msg-assistant"}`} key={bubble.id}>
-                    {bubble.role === "user" ? (
-                      <span className="msg-text">{bubble.content}</span>
-                    ) : (
-                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
-                        {bubble.content}
-                      </ReactMarkdown>
-                    )}
+                    {/* Plain text while streaming: markdown is re-parsed on every
+                        flush otherwise, and the saved message renders it anyway. */}
+                    <span className="msg-text">{bubble.content}</span>
                   </div>
                 ))}
 

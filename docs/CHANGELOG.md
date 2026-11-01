@@ -6,6 +6,10 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Chat streaming no longer re-renders and re-parses the whole transcript for every
+  token: text is batched at ~16 fps, the streaming bubble is plain text, and saved
+  messages are memoised. Long conversations stay responsive while an answer streams.
+
 - **Security:** a provider pointed at a new remote endpoint, or a keyless one made
   the default, now asks for confirmation in a native dialog raised by Rust. A
   compromised webview can trigger the prompt but cannot answer it. Local endpoints

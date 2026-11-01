@@ -17,7 +17,7 @@ Previous rounds: [`code-review-claude-2026-11-01.md`](./code-review-claude-2026-
 | B2 | Critical | Correctness | `src-tauri/src/commands/providers.rs:43` | `provider_save` cannot deserialize the input TS sends — **fixed** |
 | B3 | Critical | Correctness | `src/db/seed.ts:95` | The first-run seed inserts a provider through the write path the authorizer refuses — **fixed** |
 | R1 | High | Correctness / data loss | `providers.rs:61`, `src/import/execute.ts:230` | `providers_restore` fails after the import has already wiped providers and keys — **fixed** |
-| P1 | High | Performance | `src/ui/pages/chat/ChatPage.tsx:243` | Every streamed token re-renders and re-parses the whole transcript |
+| P1 | High | Performance | `src/ui/pages/chat/ChatPage.tsx:243` | Every streamed token re-renders and re-parses the whole transcript — **fixed** |
 | Q1 | High | Quality | tests | No test covers the TS/Rust boundary or the startup path |
 | R2 | Medium | Robustness | `src/db/reset.ts:13`, `src/import/execute.ts:13` | Import and reset are four separate commits, but documented as atomic — **import fixed, reset still separate** |
 | R3 | Medium | Robustness / data loss | `providers.rs:267` | A transient Keychain error during an edit deletes the key |
@@ -212,6 +212,18 @@ The three decisions are pure functions (`endpoint_needs_confirmation`, `default_
 - Buffer the streaming text in a ref and flush it once per animation frame or every 50 ms.
 - Render the streaming bubble as plain text and switch to markdown on `done`.
 - Only call `setActivity` when the phase actually changes.
+
+**Status: done (2026-11-01).** All four measures, plus the memoisation the review implied for the saved transcript:
+
+- **`MessageMarkdown`** (`src/ui/pages/chat/MessageMarkdown.tsx`) is a `memo` component with module-level plugin arrays, so `react-markdown` sees the same options across renders.
+- **`TranscriptMessage`** (`TranscriptMessage.tsx`) is a `memo` row; the delete handler it receives is a `useCallback`, so a re-render of the page no longer re-parses every message.
+- **Streamed text is buffered** in a ref and flushed on a 60 ms timer (`FRAME_MS`), not per delta. The last chunk is flushed before the transcript is refetched, so the end of an answer does not blink out.
+- **The streaming bubble is plain text**; markdown is rendered by the saved message afterwards. That removes the per-token re-parse of a growing answer (the O(n²) part).
+- **`showActivity`** compares the phase and label against a ref and only calls `setActivity` when they change, so `chat_streaming: false` no longer allocates a new state object per token.
+
+Not done: the ChatPage split (Q7). The component is still ~690 lines; the render tree is now cheap, so splitting is maintainability work rather than a performance fix.
+
+**Proof:** a new test emits 40 deltas in one tick and asserts the text arrives once, in one bubble, as plain text — the behaviours that make the flush and the plain-text rendering correct. The existing streaming tests were updated where they asserted a same-tick render, which is exactly what changed.
 
 ### P2. Medium — A new SQLite connection per call
 

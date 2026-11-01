@@ -241,6 +241,42 @@ describe("ChatPage", () => {
     release();
   });
 
+  it("batches streamed tokens into one bubble", async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    let emit!: (event: unknown) => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      emit = options.onEvent;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "done", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    const { container } = renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    // 40 tokens in the same tick: one flush, one bubble, no repeated rerenders.
+    const words = Array.from({ length: 40 }, (_, index) => `w${index} `);
+    for (const word of words) emit({ type: "delta", content: word });
+    await waitFor(() => expect(container.textContent).toContain("w39"));
+
+    // The transcript already holds one answer; the streaming one is the last.
+    const assistantBubbles = container.querySelectorAll(".msg-bubble.msg-assistant");
+    const streaming = assistantBubbles[assistantBubbles.length - 1];
+    expect(streaming.textContent).toContain("w0 w1 ");
+    expect(streaming.textContent).toContain("w39 ");
+    // One copy of the text, not one per delta.
+    expect(container.textContent?.match(/w0 /g)).toHaveLength(1);
+    // Plain text while streaming, so nothing re-parses markdown per flush.
+    expect(streaming.querySelector("p")).toBeNull();
+
+    release();
+  });
+
   it("says what it is doing while a tool runs", async () => {
     const user = userEvent.setup();
     let release!: () => void;
@@ -263,10 +299,11 @@ describe("ChatPage", () => {
     expect(await screen.findByText("Looking up your portfolio…")).toBeTruthy();
     expect(screen.getByRole("status", { name: "Looking up your portfolio…" })).toBeTruthy();
 
-    // Streaming on: the status disappears as soon as words arrive.
+    // Streaming on: the status disappears as soon as words arrive. The words
+    // themselves land on the next flush (~60 ms), not on the same tick.
     emit({ type: "delta", content: "Your portfolio is " });
     await waitFor(() => expect(screen.queryByText("Looking up your portfolio…")).toBeNull());
-    expect(container.textContent).toContain("Your portfolio is");
+    await waitFor(() => expect(container.textContent).toContain("Your portfolio is"));
 
     release();
   });
