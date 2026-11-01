@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
 import {
   createConversation,
@@ -91,7 +92,7 @@ export function ChatPage() {
   >(null);
   const [model, setModel] = useRememberedModel(conversation.data?.provider_id ?? null);
   const requestIdRef = useRef<string>("");
-  const abortRef = useRef<((requestId: string) => Promise<void>) | null>(null);
+  const abortRef = useRef<(() => Promise<void>) | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   const providerList = providers.data ?? [];
@@ -241,10 +242,9 @@ export function ChatPage() {
   };
 
   const stop = async () => {
-    const requestId = requestIdRef.current;
     const cancel = abortRef.current;
-    if (!requestId || !cancel) return;
-    await cancel(requestId);
+    if (!cancel) return;
+    await cancel();
   };
 
   const confirmPending = async (action: PendingActionView) => {
@@ -299,7 +299,7 @@ export function ChatPage() {
   const canChat = aiEnabled && providerList.length > 0;
 
   return (
-    <>
+    <div className="chat-page">
       <PageHeader
         title="Chat"
         subtitle="AI-powered financial assistant"
@@ -353,7 +353,7 @@ export function ChatPage() {
                     }}
                   />
                 ) : (
-                  <button type="button" className="item-title btn btn-link p-0 text-start" onClick={() => navigate(`/chat/${conv.id}`)}>
+                  <button type="button" className="item-title" onClick={() => navigate(`/chat/${conv.id}`)}>
                     {conv.title}
                   </button>
                 )}
@@ -443,7 +443,9 @@ export function ChatPage() {
                   if (message.role === "assistant" && message.content) {
                     return (
                       <div className="msg-bubble msg-assistant" key={message.id}>
-                        <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{message.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+                          {message.content}
+                        </ReactMarkdown>
                       </div>
                     );
                   }
@@ -455,7 +457,9 @@ export function ChatPage() {
                     {bubble.role === "user" ? (
                       <span className="msg-text">{bubble.content}</span>
                     ) : (
-                      <ReactMarkdown rehypePlugins={[rehypeSanitize]}>{bubble.content}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeSanitize]}>
+                        {bubble.content}
+                      </ReactMarkdown>
                     )}
                   </div>
                 ))}
@@ -573,7 +577,7 @@ export function ChatPage() {
           else void removeConversation(pendingDelete.id);
         }}
       />
-    </>
+    </div>
   );
 }
 

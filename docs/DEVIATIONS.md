@@ -383,6 +383,10 @@ and changeable there.
   current month only: on the 31st, "90 days of history" means "since the 1st".
   `get_asset_history` and the 30/90-day change in `get_asset_details` subtract
   real days instead.
+- **Chat is a fixed frame.** The transcript scrolls inside the window; the page
+  no longer grows with the answer. Stop cancels the round actually in flight
+  (the loop suffixes request ids per round, so cancelling the base id matched
+  nothing in Rust). Tables use `remark-gfm` and are styled for a bubble.
 - **No `window.confirm` / `alert`.** Tauri routes them through the dialog plugin,
   whose permission this app does not grant, so they reject silently and the
   delete never runs. Every confirmation is an in-app modal

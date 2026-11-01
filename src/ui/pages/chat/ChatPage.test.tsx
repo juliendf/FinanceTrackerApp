@@ -155,6 +155,28 @@ describe("ChatPage", () => {
     await waitFor(() => expect(screen.getByRole("button", { name: "Send" })).toBeTruthy());
   });
 
+  it("renders markdown tables from the answer", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "compare", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+      {
+        id: 2,
+        conversation_id: 5,
+        role: "assistant",
+        content: "| Asset | Value |\n| --- | ---: |\n| Bourse | 113,627.08 |\n| SCPI | 32,553.13 |",
+        tool_calls: null,
+        tool_call_id: null,
+        created_at: "",
+        updated_at: "",
+      },
+    ]);
+    const { container } = renderChat();
+    await waitFor(() => expect(container.querySelector(".msg-assistant table")).toBeTruthy());
+    const rows = container.querySelectorAll(".msg-assistant table tr");
+    expect(rows).toHaveLength(3);
+    expect(rows[1].textContent).toContain("Bourse");
+    expect(rows[1].textContent).toContain("113,627.08");
+  });
+
   it("offers the suggested prompts", async () => {
     renderChat();
     expect(await screen.findByText("Portfolio review")).toBeTruthy();
