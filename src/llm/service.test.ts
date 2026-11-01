@@ -356,6 +356,25 @@ describe("extractMemories", () => {
     expect(await extractMemories(5, async () => ({ content: "no json here", toolCalls: [], cancelled: false }), "x")).toEqual([]);
   });
 
+  it("sends the extraction as a user turn, not a system-only request", async () => {
+    // Gemini's OpenAI-compatible endpoint answers a request with no user message
+    // with `500 no user query found in messages`.
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "I have two kids", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+      { id: 2, conversation_id: 5, role: "assistant", content: "Noted.", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    const transport = vi.fn(async () => ({ content: "[]", toolCalls: [], cancelled: false }));
+
+    await extractMemories(5, transport as unknown as ChatTransport, "x");
+
+    const request = (transport.mock.calls[0] as unknown[])[0] as { messages: Array<{ role: string; content: string }> };
+    expect(request.messages[0].role).toBe("system");
+    const user = request.messages.filter((message) => message.role === "user");
+    expect(user).toHaveLength(1);
+    expect(user[0].content).toContain("[User]: I have two kids");
+    expect(user[0].content).toContain("[Assistant]: Noted.");
+  });
+
   it("does not call the model on an empty conversation", async () => {
     repo.listMessages.mockResolvedValue([]);
     const transport = vi.fn();

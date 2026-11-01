@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** "Extract memories" sent its prompt as a single system message, which
+  Gemini answers with `500 no user query found in messages`. The instruction is now
+  the system turn and the conversation is the user turn, which every provider
+  accepts.
+
 - **Fixed:** a running answer no longer follows you into another conversation.
   Opening or switching to a chat during a generation showed the spinner, the Stop
   button and then the old answer's text in the new chat. The turn now belongs to

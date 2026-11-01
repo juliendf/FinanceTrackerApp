@@ -27,7 +27,7 @@ import { todayIso } from "../domain/dates";
 import { formatNumber, formatSymbolAmount } from "../domain/format";
 import { buildHistoryMessages } from "./history";
 import { runTurn, type ChatTransport } from "./chatLoop";
-import { buildExtractionPrompt, buildSystemPrompt } from "./prompts";
+import { buildExtractionMessages, buildSystemPrompt } from "./prompts";
 import { executeTool, type ToolResult } from "./tools";
 import Decimal from "decimal.js";
 import { listAssets } from "../db/repositories/assets";
@@ -336,7 +336,9 @@ export async function extractMemories(
 
   const response = await transport({
     requestId,
-    messages: [{ role: "system", content: buildExtractionPrompt(messages) }],
+    // Instruction and transcript as two turns: a system-only request is not a
+    // chat, and Gemini rejects it with a 500.
+    messages: buildExtractionMessages(messages),
     tools: [],
     onEvent: () => {},
   });

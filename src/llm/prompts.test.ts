@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildExtractionPrompt, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
+import { buildExtractionMessages, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
 import type { Profile } from "../db/repositories/profile";
 
 const profile: Profile = {
@@ -137,13 +137,17 @@ describe("prompt sections", () => {
   });
 
   it("labels the extraction transcript by role", () => {
-    const prompt = buildExtractionPrompt([
+    const [system, user] = buildExtractionMessages([
       { role: "user", content: "I have two kids" },
       { role: "assistant", content: "Noted" },
     ]);
-    expect(prompt).toContain("[User]: I have two kids");
-    expect(prompt).toContain("[Assistant]: Noted");
-    expect(prompt).toContain("Only extract facts explicitly stated");
+
+    // Two turns, never a system-only request: Gemini answers that with
+    // "500 no user query found in messages".
+    expect(system.role).toBe("system");
+    expect(system.content).toContain("Only extract facts explicitly stated");
+    expect(user.role).toBe("user");
+    expect(user.content).toBe("[User]: I have two kids\n[Assistant]: Noted");
   });
 
   it("ships the five suggested prompts", () => {

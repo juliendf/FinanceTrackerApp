@@ -186,12 +186,30 @@ export const EXTRACTION_PROMPT_PREFIX =
   "If no facts worth remembering, return [].\n\n" +
   "Conversation:\n\n";
 
-export function buildExtractionPrompt(messages: ReadonlyArray<{ role: string; content: string }>): string {
-  let prompt = EXTRACTION_PROMPT_PREFIX;
-  for (const message of messages) {
-    prompt += `[${message.role === "user" ? "User" : "Assistant"}]: ${message.content}\n`;
-  }
-  return prompt;
+/** The conversation, labelled by speaker, as the user turn of the request. */
+export function buildExtractionTranscript(
+  messages: ReadonlyArray<{ role: string; content: string }>,
+): string {
+  return messages
+    .map((message) => `[${message.role === "user" ? "User" : "Assistant"}]: ${message.content}`)
+    .join("\n");
+}
+
+/**
+ * The extraction request, as two turns.
+ *
+ * It used to be a single **system** message, and Gemini's OpenAI-compatible
+ * endpoint answers that with `500 no user query found in messages`: a request with
+ * no user turn is not a chat. The instruction is the system turn, the transcript is
+ * the user turn, which every provider accepts.
+ */
+export function buildExtractionMessages(
+  messages: ReadonlyArray<{ role: string; content: string }>,
+): Array<{ role: "system" | "user"; content: string }> {
+  return [
+    { role: "system", content: EXTRACTION_PROMPT_PREFIX },
+    { role: "user", content: buildExtractionTranscript(messages) },
+  ];
 }
 
 /** Suggested questions, ported from `routes/chat.py`'s `QUICK_PROMPTS`. */
