@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- **Fixed:** importing a backup is one transaction. It used to be four separate
+  commits, so a failure in the last one left the portfolio imported and every
+  provider and API key gone. The wipe, the rows, the providers and their keys now
+  land together or not at all.
+
 - **Fixed:** the database is created and migrated by Rust before the window opens.
   The SQL plugin used to do it, but only for a database the webview opened, and the
   webview no longer can — a fresh install would have started with no schema at all.
@@ -27,8 +32,8 @@ and `src-tauri/tauri.conf.json` together.
   is never sent to a different scheme, host or port. Changing a provider's base URL
   drops its key. ***A key saved before this version must be entered again once.***
 - **Security:** provider rows can only be written by the named commands
-  (`provider_save`, `provider_delete`, `provider_set_default`, `providers_restore`,
-  `providers_reset`); `secret_set` and `secret_delete` are no longer exposed to the
+  (`provider_save`, `provider_delete`, `provider_set_default`, `providers_reset`,
+  `import_all`); `secret_set` and `secret_delete` are no longer exposed to the
   webview at all.
 - **Security:** the window refuses to navigate anywhere but the app itself, via
   `on_navigation`. Links, including Cmd- and Shift-clicks, open in the default

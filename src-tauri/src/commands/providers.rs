@@ -114,6 +114,7 @@ pub struct RestoreInput {
 }
 
 /// A key to write once the rows are committed.
+#[derive(Debug)]
 pub struct PendingKey {
     pub account: String,
     pub key: String,
@@ -414,21 +415,22 @@ pub async fn set_default_row(connection: &mut SqliteConnection, id: i64) -> Resu
 }
 
 /// Replace every provider with the rows of a backup. Returns the keys to write.
-pub async fn restore_rows(
-    connection: &mut SqliteConnection,
+/// Delete every provider and insert `rows` inside an open transaction.
+///
+/// Returns the keys that must be written once the transaction commits. Used by the
+/// import path, which needs provider replacement in the *same* transaction as the
+/// portfolio data — otherwise a failing restore leaves the user with data and no
+/// providers.
+pub async fn replace_providers(
+    transaction: &mut sqlx::Transaction<'_, sqlx::Sqlite>,
     rows: &[RestoreInput],
 ) -> Result<Vec<PendingKey>, String> {
-    let mut transaction = connection
-        .begin()
-        .await
-        .map_err(|e| format!("cannot start a transaction: {e}"))?;
-
     sqlx::query("DELETE FROM provider_models")
-        .execute(&mut *transaction)
+        .execute(&mut **transaction)
         .await
         .map_err(|e| format!("cannot clear the model list: {e}"))?;
     sqlx::query("DELETE FROM llm_providers")
-        .execute(&mut *transaction)
+        .execute(&mut **transaction)
         .await
         .map_err(|e| format!("cannot clear the providers: {e}"))?;
 
@@ -468,11 +470,11 @@ pub async fn restore_rows(
         .bind(i64::from(row.is_active.unwrap_or(true)))
         .bind(row.created_at.as_deref())
         .bind(row.updated_at.as_deref())
-        .execute(&mut *transaction)
+        .execute(&mut **transaction)
         .await
         .map_err(|e| format!("cannot restore provider {}: {e}", row.id))?;
 
-        write_models(&mut transaction, row.id, &row.models).await?;
+        write_models(transaction, row.id, &row.models).await?;
 
         if let (Some(account), Some(key)) = (account, key) {
             keys.push(PendingKey { account, key, base_url });
@@ -485,37 +487,11 @@ pub async fn restore_rows(
           WHERE id = (SELECT MIN(id) FROM llm_providers)
             AND NOT EXISTS (SELECT 1 FROM llm_providers WHERE is_default = 1)",
     )
-    .execute(&mut *transaction)
+    .execute(&mut **transaction)
     .await
     .map_err(|e| format!("cannot set a default provider: {e}"))?;
 
-    transaction
-        .commit()
-        .await
-        .map_err(|e| format!("cannot commit: {e}"))?;
-
     Ok(keys)
-}
-
-/// Restore providers from a backup and store their keys. Returns how many keys
-/// were written; on a key failure, every key this call wrote is removed again.
-#[tauri::command]
-pub async fn providers_restore(app: AppHandle, rows: Vec<RestoreInput>) -> Result<usize, String> {
-    let mut connection = connect(&app).await?;
-    let keys = restore_rows(&mut connection, &rows).await?;
-
-    let mut stored: Vec<String> = Vec::new();
-    for pending in keys {
-        if let Err(error) = store_key(&pending.account, &pending.key, &pending.base_url) {
-            for account in &stored {
-                let _ = delete_key(account);
-            }
-            return Err(error);
-        }
-        stored.push(pending.account);
-    }
-
-    Ok(stored.len())
 }
 
 /// Delete every provider and every stored key, for "reset the database".

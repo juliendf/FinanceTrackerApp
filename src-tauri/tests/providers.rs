@@ -6,8 +6,8 @@
 //! covered by `secrets`' own tests and by the ignored round-trip in `live.rs`.
 
 use financetrackerapp_lib::commands::providers::{
-    delete_row, reset_rows, restore_rows, save_row, set_default_row, ModelChoice, ProviderInput,
-    RestoreInput,
+    delete_row, replace_providers, reset_rows, save_row, set_default_row, ModelChoice,
+    ProviderInput, RestoreInput,
 };
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Connection, SqliteConnection};
@@ -35,6 +35,17 @@ async fn fresh(name: &str) -> (String, String) {
         .unwrap();
 
     (file.display().to_string(), url)
+}
+
+/// Replace every provider, committed — the shape `providers_restore` used to have.
+async fn restore_rows(
+    connection: &mut SqliteConnection,
+    rows: &[RestoreInput],
+) -> Result<Vec<financetrackerapp_lib::commands::providers::PendingKey>, String> {
+    let mut transaction = connection.begin().await.unwrap();
+    let keys = replace_providers(&mut transaction, rows).await?;
+    transaction.commit().await.unwrap();
+    Ok(keys)
 }
 
 async fn connection(url: &str) -> SqliteConnection {

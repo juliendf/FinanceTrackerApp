@@ -4,14 +4,13 @@
  * Strategy:
  *   1. pre-flight (buildImportPlan) must be clean, so structural problems are
  *      reported before anything is touched;
- *   2. providers and their API keys are restored by one Rust command, which
- *      binds each key to the origin of its base URL; the generic SQL path
- *      refuses to write those tables;
- *   3. the whole dataset is executed by the Rust `run_transaction` command:
- *      one real sqlx transaction on one connection, with foreign keys enforced.
- *      (The SQL plugin cannot do this — see src-tauri/src/commands/db.rs.);
- *   4. if it fails, the transaction rolls back and the Keychain items are
- *      removed again, so a failure leaves no trace.
+ *   2. one Rust command, `import_all`, does the whole replacement in a single
+ *      sqlx transaction: empties the tables, inserts the rows, replaces the
+ *      providers and binds their keys to each endpoint's origin;
+ *   3. the Keychain is written before the commit, so a refusal cancels the import
+ *      instead of leaving data without its keys;
+ *   4. if any step fails, the transaction rolls back and the keys this call wrote
+ *      are removed, so a failure leaves no trace.
  *
  * Row ids from the file are preserved rather than remapped. The import only runs
  * on an empty database, so there is nothing to collide with, and preserving them
@@ -19,7 +18,6 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { resetDatabase } from "../db/reset";
 import { buildImportPlan, type ImportCounts, type ImportPlan } from "./plan";
 import type { ParsedBackup } from "./schema";
 import { amountMinor, decimalText, rateText, sqlInt, sqlText } from "./sql";
@@ -219,46 +217,38 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
 /**
  * Import a backup into an empty database.
  *
- * Destructive by design: it resets first, so a half-imported database can never
- * confuse a retry.
+ * Destructive by design: the whole dataset is replaced. It is also atomic: one
+ * Rust transaction covers the wipe, the rows and the providers, so a failure
+ * leaves the previous database exactly as it was. That used to be four commits,
+ * and a failing provider restore left the data imported and every key gone.
  */
 export async function executeImport(backup: ParsedBackup): Promise<ImportResult> {
   const started = performance.now();
   const plan = buildImportPlan(backup);
   if (plan.errors.length > 0) throw new ImportBlockedError(plan);
 
-  await resetDatabase();
-
   const statements = buildImportStatements(backup);
 
-  try {
-    await invoke<number>("run_transaction", { statements });
-  } catch (error) {
-    // The transaction rolled back in Rust; nothing else has been written yet.
-    throw error;
-  }
-
-  // Providers last: they are written on their own connection, and Rust binds each
-  // key to its endpoint's origin. A key failure removes the keys it stored.
-  const keysToKeychain = await invoke<number>("providers_restore", {
-    rows: backup.data.llm_providers.map((row) => ({
-      id: row.id,
-      name: row.name,
-      base_url: row.base_url.replace(/\/+$/, ""),
-      model: row.model,
-      provider_type: row.provider_type ?? "openai",
-      // The schema allows a boolean or 0/1; Rust accepts either, but send booleans.
-      is_default: Boolean(row.is_default),
-      is_active: row.is_active === undefined ? true : Boolean(row.is_active),
-      created_at: row.created_at ?? null,
-      updated_at: row.updated_at ?? null,
-      api_key: row.api_key ?? null,
-      models: [
-        ...backup.data.provider_models
+  const keysToKeychain = await invoke<number>("import_all", {
+    request: {
+      statements,
+      providers: backup.data.llm_providers.map((row) => ({
+        id: row.id,
+        name: row.name,
+        base_url: row.base_url.replace(/\/+$/, ""),
+        model: row.model,
+        provider_type: row.provider_type ?? "openai",
+        // The schema allows a boolean or 0/1; Rust accepts either, but send booleans.
+        is_default: Boolean(row.is_default),
+        is_active: row.is_active === undefined ? true : Boolean(row.is_active),
+        created_at: row.created_at ?? null,
+        updated_at: row.updated_at ?? null,
+        api_key: row.api_key ?? null,
+        models: backup.data.provider_models
           .filter((model) => model.provider_id === row.id)
-          .map((model) => ({ model: model.model, enabled: (model.enabled ?? true) ? true : false })),
-      ],
-    })),
+          .map((model) => ({ model: model.model, enabled: model.enabled === undefined ? true : Boolean(model.enabled) })),
+      })),
+    },
   });
 
   return {

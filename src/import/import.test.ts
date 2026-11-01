@@ -9,10 +9,14 @@
  */
 
 import { readFileSync, existsSync, writeFileSync } from "node:fs";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const invoke = vi.hoisted(() => vi.fn());
+vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
+
 import { buildImportPlan } from "./plan";
 import { parseBackup } from "./schema";
-import { buildImportStatements } from "./execute";
+import { buildImportStatements, executeImport } from "./execute";
 import { amountMinor, decimalText, rateText, sqlBool, sqlInt, sqlText } from "./sql";
 
 const FIXTURE = "tests/fixtures/backup-v2-small.json";
@@ -307,5 +311,47 @@ describe("real backup (opt-in)", () => {
       // eslint-disable-next-line no-console
       console.log(`wrote ${statements.length} statements to ${sqlOut}`);
     }
+  });
+});
+
+describe("executeImport", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    invoke.mockResolvedValue(0);
+  });
+
+  it("replaces the database in a single call, so nothing can half-apply", async () => {
+    // It used to be four commits: provider reset, data reset, data insert, provider
+    // restore. A failure in the last one left the data imported and every key gone.
+    const backup = parseBackup(fixtureRaw);
+    const result = await executeImport(backup);
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    const [command, payload] = invoke.mock.calls[0] as [string, { request: { statements: string[]; providers: unknown[] } }];
+    expect(command).toBe("import_all");
+    expect(payload.request.statements).toHaveLength(result.statements);
+    expect(payload.request.providers).toHaveLength(backup.data.llm_providers.length);
+
+    // Every provider carries the fields Rust expects, in snake_case.
+    for (const provider of payload.request.providers as Array<Record<string, unknown>>) {
+      expect(provider).toHaveProperty("base_url");
+      expect(provider).toHaveProperty("provider_type");
+      expect(provider).toHaveProperty("is_active");
+      expect(typeof provider.is_default).toBe("boolean");
+    }
+  });
+
+  it("reports the keys the backend wrote", async () => {
+    invoke.mockResolvedValue(2);
+    const result = await executeImport(parseBackup(fixtureRaw));
+    expect(result.keysToKeychain).toBe(2);
+  });
+
+  it("sends nothing when the plan has errors", async () => {
+    const broken = JSON.parse(fixtureRaw);
+    // A snapshot without its asset: pre-flight refuses it.
+    broken.data.snapshots[0].asset_id = 9999;
+    await expect(executeImport(parseBackup(JSON.stringify(broken)))).rejects.toThrow();
+    expect(invoke).not.toHaveBeenCalled();
   });
 });

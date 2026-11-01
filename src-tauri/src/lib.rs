@@ -63,7 +63,7 @@ pub fn run() {
             commands::providers::provider_save,
             commands::providers::provider_delete,
             commands::providers::provider_set_default,
-            commands::providers::providers_restore,
+            commands::import::import_all,
             commands::providers::providers_reset,
             commands::llm::chat_completion,
             commands::llm::cancel_chat,

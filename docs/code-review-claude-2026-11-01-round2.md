@@ -16,10 +16,10 @@ Previous rounds: [`code-review-claude-2026-11-01.md`](./code-review-claude-2026-
 | B1 | Critical | Correctness | `src-tauri/tauri.conf.json`, `src/db/client.ts` | Schema migrations never run; a fresh install has no database — **fixed** |
 | B2 | Critical | Correctness | `src-tauri/src/commands/providers.rs:43` | `provider_save` cannot deserialize the input TS sends — **fixed** |
 | B3 | Critical | Correctness | `src/db/seed.ts:95` | The first-run seed inserts a provider through the write path the authorizer refuses — **fixed** |
-| R1 | High | Correctness / data loss | `providers.rs:61`, `src/import/execute.ts:230` | `providers_restore` fails after the import has already wiped providers and keys — **deserialization fixed, ordering open** |
+| R1 | High | Correctness / data loss | `providers.rs:61`, `src/import/execute.ts:230` | `providers_restore` fails after the import has already wiped providers and keys — **fixed** |
 | P1 | High | Performance | `src/ui/pages/chat/ChatPage.tsx:243` | Every streamed token re-renders and re-parses the whole transcript |
 | Q1 | High | Quality | tests | No test covers the TS/Rust boundary or the startup path |
-| R2 | Medium | Robustness | `src/db/reset.ts:13`, `src/import/execute.ts:13` | Import and reset are four separate commits, but documented as atomic |
+| R2 | Medium | Robustness | `src/db/reset.ts:13`, `src/import/execute.ts:13` | Import and reset are four separate commits, but documented as atomic — **import fixed, reset still separate** |
 | R3 | Medium | Robustness / data loss | `providers.rs:267` | A transient Keychain error during an edit deletes the key |
 | R4 | Medium | Correctness | `LlmProviderFormPage.tsx:117` | Test connection checks the saved URL, not the edited one |
 | S1 | Medium | Security (design) | `providers.rs` | A compromised webview can point a keyless default provider at any URL |
@@ -103,11 +103,13 @@ On an empty provider table, `seedFirstRun` inserts the default provider with `ex
 - Coerce the booleans in TS, or accept 0/1 in Rust.
 - Validate the provider payload before `resetDatabase()`.
 
-**Status (2026-11-01): the two deserialization causes are fixed, the ordering is not.**
+**Status: done (2026-11-01).**
 
 - Field names: fixed with B2.
-- Booleans: `is_default` and `is_active` go through a `boolish` deserializer that accepts `true`/`false` and `1`/`0` (and a missing field), and `enabled` does too; TypeScript also sends real booleans now.
-- **Still open:** `executeImport` resets before it restores, so a restore that fails for any *other* reason still leaves the data imported and the providers gone. That is R2's atomicity problem and needs the provider reset/restore moved into the import transaction.
+- Booleans: `is_default` and `is_active` go through a `boolish` deserializer that accepts `true`/`false` and `1`/`0` (and a missing field), and `enabled` does too; TypeScript also sends real booleans.
+- **Ordering: fixed.** `executeImport` no longer resets and restores separately. One command, `import_all`, empties the tables, inserts the rows and replaces the providers **in one transaction**, and writes the Keychain before the commit — so a refusal cancels the whole import instead of leaving data without keys. If the commit fails, the keys it wrote are removed. `providers_restore` is gone.
+
+**Proof:** `src-tauri/tests/import_atomicity.rs` (5 tests) — a good import replaces everything; a dangling foreign key changes nothing (old institutions, assets *and* providers all survive); a `file:` provider URL keeps the old providers and the old data; keys come back for the caller to write; a smuggled statement is rejected. Plus `src/import/import.test.ts`: `executeImport` makes exactly one `import_all` call with snake_case provider payloads, and sends nothing when the plan has errors.
 
 ### R2. Medium — Import and reset are not all-or-nothing
 
@@ -116,6 +118,8 @@ On an empty provider table, `seedFirstRun` inserts the default provider with `ex
 Provider reset, data reset, data import and provider restore are four separate commits. If any step after the first fails, the database is left half-replaced.
 
 **Fix:** do the provider reset and restore in the same Rust transaction as the data, and write the Keychain after the commit. At minimum, correct the comment.
+
+**Status (2026-11-01): the import half is done, the "reset the database" button is not.** `import_all` replaces everything — wipe, rows, providers — in one transaction (see R1), so the import is now all-or-nothing. What remains is `resetDatabase()` on the Settings screen: it still calls `providers_reset` and then `run_transaction` for the other tables, so a failure between them leaves providers gone and data present. That path is user-initiated and destructive by definition; it is the same fix pattern when someone gets to it.
 
 ### R3. Medium — A transient Keychain error deletes the key
 
