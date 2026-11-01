@@ -2,6 +2,8 @@
 
 Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files, up to `2066543 chore: version 0.4.0`). Nothing was changed in the code.
 
+**What was done about it:** [`code-review-fixes-2026-11-01.md`](./code-review-fixes-2026-11-01.md) — the fix report, per finding.
+
 **Scope and limits.** This pass looked for **security issues and correctness bugs** and kept the 10 most important. It did **not** cover code quality (structure, duplication, maintainability, test coverage) or performance (query patterns, indexes, re-renders, bundle size). Those still need a separate pass.
 
 ## Summary

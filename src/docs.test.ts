@@ -48,6 +48,7 @@ describe("documents", () => {
     "docs/DEVIATIONS.md",
     "docs/PARITY_CHECKLIST.md",
     "docs/IMPORT_FORMAT.md",
+    "docs/code-review-fixes-2026-11-01.md",
   ];
 
   it("all exist", () => {
@@ -66,7 +67,15 @@ describe("links", () => {
   const sources = ["README.md", "CONTRIBUTING.md", "ARCHITECTURE.md", "SECURITY.md", ...requiredDocs()];
 
   function requiredDocs(): string[] {
-    return ["docs/TROUBLESHOOTING.md", "docs/RELEASE.md", "docs/CHANGELOG.md", "docs/DEVIATIONS.md", "docs/PARITY_CHECKLIST.md", "docs/IMPORT_FORMAT.md"];
+    return [
+      "docs/TROUBLESHOOTING.md",
+      "docs/RELEASE.md",
+      "docs/CHANGELOG.md",
+      "docs/DEVIATIONS.md",
+      "docs/PARITY_CHECKLIST.md",
+      "docs/IMPORT_FORMAT.md",
+      "docs/code-review-fixes-2026-11-01.md",
+    ];
   }
 
   it("every relative link resolves", () => {
