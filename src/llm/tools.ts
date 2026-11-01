@@ -22,6 +22,7 @@ import { displayName } from "../domain/assets";
 import { CurrencyConverter, RateTable } from "../domain/currency";
 import { latestPerAsset, summarise, type Fact } from "../domain/dashboard";
 import { addDays, isValidIsoDate, todayIso } from "../domain/dates";
+import { formatCurrency } from "../domain/format";
 import { listExchangeRates } from "../db/repositories/exchangeRates";
 import { listFacts, listAssetCurrencies } from "../db/repositories/dashboard";
 
@@ -204,6 +205,21 @@ const round2 = (value: Decimal): number => value.toDecimalPlaces(2, Decimal.ROUN
 const major = (minor: number): Decimal => new Decimal(minor).dividedBy(100);
 
 /**
+ * A money value as the app would display it, for the model to copy.
+ *
+ * Without this the model is handed a bare number and a currency code, and small
+ * models fill the gap themselves — one answer came back as `₫ 578’865` for a
+ * portfolio in CHF, with home-made digit grouping. The `_display` fields exist so
+ * there is nothing to invent: the prompt tells the model to copy them verbatim.
+ */
+function displayMoney(amountMinor: number | null, currency: string): string | null {
+  if (amountMinor === null) return null;
+  // `formatCurrency` is a port of the source's filter, whose CHF symbol carries a
+  // trailing space; trim it, since this string goes into prose.
+  return formatCurrency(major(amountMinor), currency).trim();
+}
+
+/**
  * The start of a look-back window.
  *
  * The source computes `today.replace(day=max(1, today.day - days))`, which only
@@ -237,6 +253,7 @@ async function portfolioSummary(): Promise<unknown> {
   );
   return {
     total_value_base: round2(summary.portfolioValue),
+    total_value_display: formatCurrency(summary.portfolioValue, baseCurrency).trim(),
     base_currency: baseCurrency,
     asset_count: summary.totalAssets,
     last_update_date: latest ?? "N/A",
@@ -270,6 +287,7 @@ async function listAssetsTool(args: Record<string, unknown>): Promise<unknown> {
       category: row.category_name,
       currency: row.currency,
       latest_amount: row.latest_amount_minor === null ? null : round2(major(row.latest_amount_minor)),
+      latest_amount_display: displayMoney(row.latest_amount_minor, row.currency),
       latest_date: row.latest_date,
     }));
 }
@@ -307,6 +325,7 @@ async function assetDetails(assetId: number, today: string): Promise<unknown> {
     interest_rate: asset.interest_rate,
     notes: asset.notes,
     latest_amount: latest ? round2(major(latest.amount_minor)) : null,
+    latest_amount_display: latest ? displayMoney(latest.amount_minor, asset.currency) : null,
     latest_date: latest?.date ?? null,
     change_30d_pct: change(30),
     change_90d_pct: change(90),
@@ -369,7 +388,13 @@ async function allocation(dimension: string): Promise<unknown> {
       pct: total.isZero() ? 0 : round2(value.dividedBy(total).times(100)),
     }));
 
-  return { dimension, base_currency: baseCurrency, total_base: round2(total), buckets: result };
+  return {
+    dimension,
+    base_currency: baseCurrency,
+    total_base: round2(total),
+    total_base_display: formatCurrency(total, baseCurrency).trim(),
+    buckets: result,
+  };
 }
 
 // --- write tools (confirmation only) ----------------------------------------------

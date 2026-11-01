@@ -108,17 +108,36 @@ describe("read tools", () => {
     // 1000 CHF + 500 EUR * 0.95
     expect(result).toMatchObject({
       total_value_base: 1475,
+      // The display string the model is told to copy instead of formatting itself.
+      total_value_display: "1,475.00 CHF",
       base_currency: "CHF",
       asset_count: 2,
       last_update_date: "2026-09-30",
     });
   });
 
+  it("hands the model a display string for every money field", async () => {
+    // A CHF portfolio came back from a small model as "₫ 578’865": the tool only
+    // gave a number and a code, so it invented the rest.
+    const summary = await executeTool("get_portfolio_summary", {}, ctx);
+    expect((summary.result as { total_value_display: string }).total_value_display).toBe("1,475.00 CHF");
+
+    const allocation = await executeTool("get_allocation", { dimension: "currency" }, ctx);
+    expect((allocation.result as { total_base_display: string }).total_base_display).toBe("1,475.00 CHF");
+
+    const assets = await executeTool("list_assets", {}, ctx);
+    const rows = assets.result as Array<{ latest_amount_display: string }>;
+    expect(rows.map((row) => row.latest_amount_display)).toEqual(["€1,000.00", "1,000.00 CHF"]);
+
+    const details = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    expect((details.result as { latest_amount_display: string }).latest_amount_display).toBe("1,000.00 CHF");
+  });
+
   it("lists assets with the source's fields, sorted by institution then product", async () => {
     const { result } = await executeTool("list_assets", {}, ctx);
     expect(result).toEqual([
-      { asset_id: 2, name: "Boursorama - P2 (Cash)", institution: "Boursorama", category: "Cash", currency: "EUR", latest_amount: 1000, latest_date: "2026-09-30" },
-      { asset_id: 1, name: "UBS - P1 (Cash)", institution: "UBS", category: "Cash", currency: "CHF", latest_amount: 1000, latest_date: "2026-09-30" },
+      { asset_id: 2, name: "Boursorama - P2 (Cash)", institution: "Boursorama", category: "Cash", currency: "EUR", latest_amount: 1000, latest_amount_display: "€1,000.00", latest_date: "2026-09-30" },
+      { asset_id: 1, name: "UBS - P1 (Cash)", institution: "UBS", category: "Cash", currency: "CHF", latest_amount: 1000, latest_amount_display: "1,000.00 CHF", latest_date: "2026-09-30" },
     ]);
   });
 

@@ -89,6 +89,9 @@ describe("prompt sections", () => {
     expect(prompt).toContain("## Response style");
     expect(prompt).not.toContain("{date}");
     expect(prompt).toContain("never invent numbers");
+    // The rule that stops a model from inventing a currency symbol of its own.
+    expect(prompt).toContain("Copy those strings verbatim");
+    expect(prompt).toContain("Never substitute a currency symbol");
   });
 
   it("labels the extraction transcript by role", () => {

@@ -28,7 +28,13 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "confirm the card shown in the UI — you cannot save data yourself. If you " +
   "learn something important about the user that would be useful to remember " +
   "for future conversations, use the `remember_fact` tool. Be concise. " +
-  "Amounts are formatted with the user's currency. " +
+  // Money is where small models improvise: a CHF portfolio came back as
+  // "₫ 578’865", a symbol and a digit grouping nothing in the app produces.
+  "Money: every tool result carries a `*_display` string (for example " +
+  "`CHF 12,345.00`) and a currency code. Copy those strings verbatim. Never " +
+  "substitute a currency symbol of your own, never translate the currency, and " +
+  "never reformat the digits — if you need an amount the tools did not format, " +
+  "use its currency code followed by a space and the number with two decimals. " +
   "Format responses using Markdown where appropriate (bold, lists, etc).";
 
 /** `"100,000"` — `{:,.0f}`, used for goal targets. */

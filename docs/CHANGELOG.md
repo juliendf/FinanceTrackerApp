@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Chat tools now carry a `*_display` string for every money field (for example
+  `1,475.00 CHF`), and the system prompt tells the model to copy those verbatim
+  instead of formatting amounts itself — one answer came back as `₫ 578’865` for a
+  portfolio in CHF, with a symbol and a digit grouping the app never produces.
+
 - **Fixed:** the profile query did not read `job_title`, `financial_goals` or
   `birth_date`, although the form writes them. The fields therefore looked empty
   after saving, and the next save overwrote them with NULL. The assistant's prompt
