@@ -538,3 +538,54 @@ async fn a_guarded_write_updates_and_deletes() {
     assert_eq!(deleted.rows_affected, 1);
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM tags WHERE id = 9").await, 0);
 }
+
+// ---------------------------------------------------------------------------
+// execute_statements_returning_id: the id is read inside the transaction
+// ---------------------------------------------------------------------------
+
+use financetrackerapp_lib::commands::db::execute_statements_returning_id;
+
+#[tokio::test]
+async fn the_returned_id_is_the_row_the_batch_created() {
+    let (_file, url) = fresh_database("returning-id").await;
+    seed_reference_rows(&url).await;
+
+    // An asset and a tag link in one batch: the asset id must come back, and the
+    // link must point at it with no read between the two statements.
+    let (count, id) = execute_statements_returning_id(&url, &create_asset_statements("2026-03-01"), "assets")
+        .await
+        .unwrap();
+    assert_eq!(count, 4);
+    assert_eq!(id, 1);
+    assert_eq!(scalar(&url, "SELECT COUNT(*) FROM asset_tags WHERE asset_id = 1").await, 2);
+
+    // A second batch reports the second id, not the first.
+    let (_, second) = execute_statements_returning_id(&url, &create_asset_statements("2026-04-01"), "assets")
+        .await
+        .unwrap();
+    assert_eq!(second, 2);
+}
+
+#[tokio::test]
+async fn a_failed_batch_returns_no_id_and_writes_nothing() {
+    let (_file, url) = fresh_database("returning-id-rollback").await;
+    seed_reference_rows(&url).await;
+
+    let statements = vec![
+        "INSERT INTO assets (institution_id, category_id, currency, product_name) VALUES (1, 1, 'CHF', 'Kept?')"
+            .to_string(),
+        // Foreign key that does not exist: the whole batch must roll back.
+        "INSERT INTO asset_tags (asset_id, tag_id) VALUES (1, 999)".to_string(),
+    ];
+
+    assert!(execute_statements_returning_id(&url, &statements, "assets").await.is_err());
+    assert_eq!(scalar(&url, "SELECT COUNT(*) FROM assets").await, 0);
+}
+
+#[tokio::test]
+async fn an_empty_batch_returns_zero() {
+    let (_file, url) = fresh_database("returning-id-empty").await;
+
+    let (count, id) = execute_statements_returning_id(&url, &[], "assets").await.unwrap();
+    assert_eq!((count, id), (0, 0));
+}

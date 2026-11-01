@@ -15,6 +15,10 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./styles/custom.css";
 
 import App from "./App";
+import { installExternalLinkGuard } from "./lib/externalLinks";
+
+// Assistant replies can contain links; they open in the browser, never here.
+installExternalLinkGuard();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>

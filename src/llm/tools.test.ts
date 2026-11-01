@@ -78,6 +78,7 @@ beforeEach(() => {
   repo.getAllSettings.mockResolvedValue({ base_currency: "CHF" });
   repo.latestSnapshotForAsset.mockResolvedValue(null);
   repo.snapshotExists.mockResolvedValue(false);
+  repo.getSnapshotOn.mockResolvedValue(null);
   repo.createPendingAction.mockResolvedValue(11);
 });
 
@@ -235,11 +236,19 @@ describe("write tools only stage a confirmation", () => {
     expect(repo.createPendingAction).not.toHaveBeenCalled();
   });
 
-  it("warns when a snapshot already exists on that date", async () => {
-    repo.snapshotExists.mockResolvedValue(true);
-    repo.latestSnapshotForAsset.mockResolvedValue({ id: 3, asset_id: 1, date: "2026-10-31", amount_minor: 50000 });
+  it("warns with the value on that date, not the asset's latest", async () => {
+    repo.getSnapshotOn.mockResolvedValue({ id: 3, asset_id: 1, date: "2026-10-31", amount_minor: 50000 });
     const { result } = await executeTool("propose_snapshot", { asset_id: 1, amount: 900 }, ctx);
-    expect((result as { existing_snapshot_warning: string }).existing_snapshot_warning).toContain("already exists");
+    const warning = (result as { existing_snapshot_warning: string }).existing_snapshot_warning;
+    expect(warning).toContain("already exists");
+    expect(warning).toContain("500");
+    expect(repo.getSnapshotOn).toHaveBeenCalledWith(1, "2026-10-31");
+  });
+
+  it("refuses a date that looks like ISO but does not exist", async () => {
+    const bad = await executeTool("propose_snapshot", { asset_id: 1, amount: 5, date: "2026-02-31" }, ctx);
+    expect((bad.result as { error: string }).error).toMatch(/Invalid date/);
+    expect(repo.createPendingAction).not.toHaveBeenCalled();
   });
 
   it("remember_fact validates category and importance before staging", async () => {

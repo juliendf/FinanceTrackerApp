@@ -20,6 +20,24 @@ pub struct PickedFile {
 /// this stops a mistaken pick of a huge file from being loaded into the webview.
 const MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
 
+/// Open an http(s) URL in the user's default browser.
+///
+/// Assistant replies can contain links; the app never navigates to them itself.
+/// Only web URLs are accepted, so a `file:` or `javascript:` scheme cannot be
+/// handed to the system opener.
+#[tauri::command]
+pub fn open_external(url: String) -> Result<(), String> {
+    let trimmed = url.trim();
+    if !(trimmed.starts_with("https://") || trimmed.starts_with("http://")) {
+        return Err(format!("refusing to open '{trimmed}': only http(s) links are allowed"));
+    }
+    std::process::Command::new("open")
+        .arg(trimmed)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| format!("cannot open the link: {e}"))
+}
+
 /// Show an open dialog and read the chosen UTF-8 file. `None` when cancelled.
 #[tauri::command]
 pub async fn pick_and_read_text_file(
@@ -80,4 +98,25 @@ pub async fn save_text_file(
         .map_err(|e| format!("unsupported path: {e}"))?;
     std::fs::write(&path, contents).map_err(|e| format!("cannot write {}: {e}", path.display()))?;
     Ok(Some(path.display().to_string()))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::open_external;
+
+    /// Only the refusal path is tested: a valid URL would launch the browser.
+    #[test]
+    fn refuses_anything_that_is_not_http() {
+        for url in [
+            "file:///etc/passwd",
+            "javascript:alert(1)",
+            "mailto:someone@example.com",
+            "https:/example.com",
+            "example.com",
+            " ",
+        ] {
+            let error = open_external(url.to_string()).unwrap_err();
+            assert!(error.contains("only http(s)"), "accepted {url}: {error}");
+        }
+    }
 }

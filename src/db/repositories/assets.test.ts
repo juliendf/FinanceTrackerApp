@@ -7,13 +7,18 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const runTransaction = vi.fn();
-const select = vi.fn();
+const runTransactionReturningId = vi.fn();
 vi.mock("../transaction", async () => {
   const actual = await vi.importActual<typeof import("../transaction")>("../transaction");
-  return { ...actual, runTransaction: (...a: unknown[]) => runTransaction(...a) };
+  return {
+    ...actual,
+    runTransaction: (...a: unknown[]) => runTransaction(...a),
+    runTransactionReturningId: (...a: unknown[]) => runTransactionReturningId(...a),
+  };
 });
-vi.mock("../client", () => ({ getDb: async () => ({ select }) }));
+vi.mock("../client", () => ({ getDb: async () => ({ select: vi.fn() }) }));
 
+import { todayIso } from "../../domain/dates";
 import { createAsset, deleteAsset, updateAsset, type AssetWriteInput } from "./assets";
 
 const NEXT_ID = "(COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'assets'), 0) + 1)";
@@ -25,13 +30,17 @@ const base: AssetWriteInput = {
   cost_charges: "0.85", interest_rate: null, tag_ids: [3, 3, 4],
 };
 
-const sent = (): string[] => runTransaction.mock.calls[0][0] as string[];
+/** The statements of the last batch, whichever helper it went through. */
+const sent = (): string[] => {
+  const calls = [...runTransaction.mock.calls, ...runTransactionReturningId.mock.calls];
+  return (calls[calls.length - 1] as [string[]])[0];
+};
 
 describe("asset writes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     runTransaction.mockResolvedValue(1);
-    select.mockResolvedValue([{ seq: 7 }]);
+    runTransactionReturningId.mockResolvedValue(7);
   });
 
   it("allocates the id inside the transaction and links tags and snapshot to it", async () => {
@@ -51,14 +60,24 @@ describe("asset writes", () => {
 
   it("is a single transaction call, so nothing needs a compensating delete", async () => {
     await createAsset({ ...base, initial_amount: "10", initial_date: "2026-01-01" });
-    expect(runTransaction).toHaveBeenCalledTimes(1);
+    // One batch, and the id comes back from inside it rather than from a later read.
+    expect(runTransactionReturningId).toHaveBeenCalledTimes(1);
+    expect(runTransaction).not.toHaveBeenCalled();
+  });
+
+  it("dates the first snapshot on the local calendar day", async () => {
+    await createAsset({ ...base, initial_amount: "10" });
+    // `toISOString` is UTC: before 01:00 in Zurich it dated the snapshot to
+    // yesterday. `todayIso` uses the local day, which is what the user sees.
+    const snapshot = sent().find((statement) => statement.includes("INSERT INTO snapshots"));
+    expect(snapshot).toContain(`'${todayIso()}'`);
   });
 
   it("writes no snapshot without an amount", async () => {
     await createAsset({ ...base, initial_amount: "" });
     expect(sent().some((s) => s.includes("INSERT INTO snapshots"))).toBe(false);
     await createAsset({ ...base });
-    expect(runTransaction.mock.calls[1][0].some((s: string) => s.includes("INSERT INTO snapshots"))).toBe(false);
+    expect(sent().some((s) => s.includes("INSERT INTO snapshots"))).toBe(false);
   });
 
   it("escapes text, trims the product, and stores decimals as text", async () => {

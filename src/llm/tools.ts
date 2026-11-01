@@ -16,12 +16,12 @@ import {
   listRecentMessages,
 } from "../db/repositories/chat";
 import { listTopMemories } from "../db/repositories/profile";
-import { listAllSnapshotPoints, latestSnapshotForAsset, snapshotExists } from "../db/repositories/snapshots";
+import { getSnapshotOn, listAllSnapshotPoints } from "../db/repositories/snapshots";
 import { getAllSettings } from "../db/repositories/settings";
 import { displayName } from "../domain/assets";
 import { CurrencyConverter, RateTable } from "../domain/currency";
 import { latestPerAsset, summarise, type Fact } from "../domain/dashboard";
-import { addDays, todayIso } from "../domain/dates";
+import { addDays, isValidIsoDate, todayIso } from "../domain/dates";
 import { listExchangeRates } from "../db/repositories/exchangeRates";
 import { listFacts, listAssetCurrencies } from "../db/repositories/dashboard";
 
@@ -388,17 +388,20 @@ async function proposeSnapshot(
   if (!asset) return { error: `Asset ${assetId} not found or not yours.` };
 
   const isoDate = date?.trim() || today;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+  // A regex alone accepts 2026-02-31; the calendar check rejects it.
+  if (!isValidIsoDate(isoDate)) {
     return { error: `Invalid date format '${date}'. Use YYYY-MM-DD.` };
   }
   if (isoDate > today) return { error: "Date cannot be in the future." };
 
   let warning: string | null = null;
-  if (await snapshotExists(assetId, isoDate)) {
-    const existing = await latestSnapshotForAsset(assetId);
+  const existing = await getSnapshotOn(assetId, isoDate);
+  if (existing) {
+    // The value on *that* date is what a confirm would overwrite — not the
+    // asset's latest value, which could be a different balance entirely.
     warning =
       `A snapshot for ${displayName(asset)} on ${isoDate} already exists` +
-      (existing ? ` with value ${round2(major(existing.amount_minor))}` : "") +
+      ` with value ${round2(major(existing.amount_minor))}` +
       ". If the user confirms, it will be updated.";
   }
 

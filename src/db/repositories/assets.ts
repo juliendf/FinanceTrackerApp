@@ -1,7 +1,8 @@
 /** Assets: typed SQL only. Multi-statement writes go through `run_transaction`. */
 
 import { getDb } from "../client";
-import { runTransaction, justInserted, nextId } from "../transaction";
+import { runTransaction, runTransactionReturningId, justInserted, nextId } from "../transaction";
+import { todayIso } from "../../domain/dates";
 import { sqlInt, sqlText, decimalText, amountMinor } from "../literals";
 import type { AssetRow } from "../../domain/assets";
 
@@ -146,20 +147,18 @@ export async function createAsset(input: CreateAssetInput): Promise<number> {
   }
 
   if (input.initial_amount && input.initial_amount.trim() !== "") {
-    const date = input.initial_date || new Date().toISOString().slice(0, 10);
+    // Local calendar date: `toISOString` is UTC, which dated an asset created
+    // between midnight and 02:00 in Zurich to the previous day.
+    const date = input.initial_date || todayIso();
     statements.push(
       `INSERT INTO snapshots (asset_id, date, amount_minor)
        VALUES (${justInserted("assets")}, ${sqlText(date)}, ${amountMinor(input.initial_amount)})`,
     );
   }
 
-  await runTransaction(statements);
-
-  const db = await getDb();
-  const rows = await db.select<{ seq: number }[]>(
-    `SELECT seq FROM sqlite_sequence WHERE name = 'assets'`,
-  );
-  return rows[0]?.seq ?? 0;
+  // The id is read inside the same transaction: a pooled `SELECT seq` afterwards
+  // could see another asset's row.
+  return runTransactionReturningId(statements, "assets");
 }
 
 /** Update an asset and replace its tags in one transaction. */

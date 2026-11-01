@@ -177,13 +177,15 @@ export async function updateProvider(id: number, input: ProviderInput, apiKey?: 
 /** Delete a provider and its Keychain item. The default flag moves to the first survivor. */
 export async function deleteProvider(id: number): Promise<void> {
   const provider = await getProvider(id);
-  if (provider?.keychain_ref) {
-    await invoke("secret_delete", { account: provider.keychain_ref }).catch(() => undefined);
-  }
+  // Row first: if the delete fails the provider keeps its key and can be
+  // retried, instead of lingering without a credential.
   await runTransaction([
     `DELETE FROM provider_models WHERE provider_id = ${sqlInt(id)}`,
     `DELETE FROM llm_providers WHERE id = ${sqlInt(id)}`,
   ]);
+  if (provider?.keychain_ref) {
+    await invoke("secret_delete", { account: provider.keychain_ref }).catch(() => undefined);
+  }
   if (provider?.is_default === 1) {
     const remaining = await listProviders();
     if (remaining.length > 0) await setDefaultProvider(remaining[0].id);

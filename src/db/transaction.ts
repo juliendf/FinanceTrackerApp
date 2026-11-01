@@ -16,6 +16,17 @@ export async function runTransaction(statements: string[]): Promise<number> {
 }
 
 /**
+ * Run a batch atomically and return the id of `table`'s newest row, read inside
+ * the same transaction.
+ */
+export async function runTransactionReturningId(
+  statements: string[],
+  table: string,
+): Promise<number> {
+  return invoke<number>("run_transaction_returning_id", { statements, table });
+}
+
+/**
  * SQL expression for "the id of the row this transaction just inserted into an
  * AUTOINCREMENT table". Valid after an INSERT into `table` and before any other
  * INSERT into the same table.

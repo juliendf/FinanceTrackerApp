@@ -6,13 +6,23 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Links in an assistant reply open in the default browser instead of replacing
+  the app window; only `http` and `https` are accepted.
+- The first snapshot of a new asset is dated on the local calendar day, not in
+  UTC (an asset created before 01:00 in Zurich was dated to the previous day).
+- The "a snapshot already exists on that date" warning shows the value on that
+  date rather than the asset's latest value, and impossible dates such as
+  `2026-02-31` are refused.
+- Deleting a provider removes its rows before its Keychain item, so a failed
+  delete leaves a provider that can be retried rather than one without a key.
+- `createAsset` reads the new asset id inside its own transaction instead of
+  from a separate pooled connection.
 - Chat tools: a fall to zero is reported as `-100 %` instead of "no change", and a
   window that starts at zero reports no change instead of dividing by it.
 - Chat tools: `list_assets` sorts before it caps at 50, so a named asset is no
   longer hidden behind an arbitrary slice.
 - Confirming a card claims it atomically: a double click can no longer create the
   same memory or snapshot twice, and the buttons lock while it runs.
-
 - Stop now works while a provider is silent: the request waits on a cancellation
   poll as well as on the network, both before the first byte and mid-stream.
   Previously a model that was loading, or thinking, ignored Stop until the

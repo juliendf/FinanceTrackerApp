@@ -200,6 +200,84 @@ pub async fn execute_write(
     write_statement(&format!("sqlite://{}", file.display()), &sql, &params).await
 }
 
+/// Run a batch atomically and report the `sqlite_sequence` value of `table`.
+///
+/// Reading that afterwards on a *pooled* connection is a race: another insert
+/// can land in between. Doing it inside the transaction, on the same
+/// connection, makes "the id I just created" exact.
+pub async fn execute_statements_returning_id(
+    db_url: &str,
+    statements: &[String],
+    table: &str,
+) -> Result<(usize, i64), String> {
+    if statements.is_empty() {
+        return Ok((0, 0));
+    }
+
+    let options = SqliteConnectOptions::from_str(db_url)
+        .map_err(|e| format!("invalid database URL: {e}"))?
+        .busy_timeout(Duration::from_secs(5))
+        .foreign_keys(true);
+
+    let mut connection = SqliteConnection::connect_with(&options)
+        .await
+        .map_err(|e| format!("cannot open the database: {e}"))?;
+    let mut transaction = connection
+        .begin()
+        .await
+        .map_err(|e| format!("cannot start a transaction: {e}"))?;
+
+    for (index, statement) in statements.iter().enumerate() {
+        check_statement(statement)
+            .map_err(|e| format!("statement {} of {} rejected: {e}", index + 1, statements.len()))?;
+        if let Err(error) = sqlx::query(statement).execute(&mut *transaction).await {
+            return Err(format!(
+                "statement {} of {} failed: {error}",
+                index + 1,
+                statements.len()
+            ));
+        }
+    }
+
+    let id: i64 = sqlx::query_scalar("SELECT seq FROM sqlite_sequence WHERE name = ?")
+        .bind(table)
+        .fetch_optional(&mut *transaction)
+        .await
+        .map_err(|e| format!("cannot read the new id: {e}"))?
+        .unwrap_or(0);
+
+    transaction
+        .commit()
+        .await
+        .map_err(|e| format!("cannot commit: {e}"))?;
+    Ok((statements.len(), id))
+}
+
+/// Run a list of statements atomically and return the id of `table`'s last row.
+#[tauri::command]
+pub async fn run_transaction_returning_id(
+    app: AppHandle,
+    statements: Vec<String>,
+    table: String,
+) -> Result<i64, String> {
+    let file = database_file(&app)?;
+    if !file.exists() {
+        return Err(format!("database not found at {}", file.display()));
+    }
+    // The table name is a literal in TypeScript, but refuse anything that is not
+    // a plain identifier before it reaches the query.
+    if !table.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err(format!("invalid table name: {table}"));
+    }
+    let (_, id) = execute_statements_returning_id(
+        &format!("sqlite://{}", file.display()),
+        &statements,
+        &table,
+    )
+    .await?;
+    Ok(id)
+}
+
 /// Run a list of statements atomically against the app database.
 #[tauri::command]
 pub async fn run_transaction(app: AppHandle, statements: Vec<String>) -> Result<usize, String> {
