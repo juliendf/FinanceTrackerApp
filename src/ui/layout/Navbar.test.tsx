@@ -2,9 +2,8 @@
 /**
  * The toolbar is not a second navigation.
  *
- * It carries the app name, the theme toggle and a direct link to your profile.
- * Settings stays in the sidebar, and About lives next to the version in the
- * sidebar footer.
+ * It carries the app name and the theme toggle, and no navigation: profile and
+ * settings are both in the sidebar, and About sits next to the version.
  */
 
 import { cleanup, render, screen } from "@testing-library/react";
@@ -25,7 +24,7 @@ import { ToastProvider } from "./Toasts";
 afterEach(cleanup);
 
 describe("Navbar", () => {
-  it("links straight to the profile and offers no menu", async () => {
+  it("holds no navigation at all", async () => {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     render(
       <QueryClientProvider client={client}>
@@ -37,10 +36,9 @@ describe("Navbar", () => {
       </QueryClientProvider>,
     );
 
-    const you = screen.getByRole("link", { name: /you/i });
-    expect(you.getAttribute("href")).toBe("/profile");
-    // No dropdown, and no duplicate Settings entry.
+    // The theme toggle stays; destinations do not.
+    expect(screen.getByRole("button", { name: /theme/i })).toBeTruthy();
+    expect(screen.queryByRole("link")).toBeNull();
     expect(screen.queryByRole("button", { name: /you/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /settings/i })).toBeNull();
   });
 });

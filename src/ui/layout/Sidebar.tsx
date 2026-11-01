@@ -62,8 +62,11 @@ const SECTIONS = [
     ],
   },
   {
-    title: "App",
-    links: [{ to: "/settings", label: "Settings", icon: "bi-gear" }],
+    title: "You",
+    links: [
+      { to: "/profile", label: "Profile", icon: "bi-person-circle" },
+      { to: "/settings", label: "Settings", icon: "bi-gear" },
+    ],
   },
 ] as const;
 

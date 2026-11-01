@@ -30,9 +30,10 @@ function renderSidebar() {
 afterEach(cleanup);
 
 describe("Sidebar", () => {
-  it("keeps Settings in the sidebar and About in the footer", async () => {
+  it("keeps every destination in the sidebar", async () => {
     renderSidebar();
-    expect(await screen.findByRole("link", { name: /settings/i })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /profile/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /settings/i })).toBeTruthy();
     expect(screen.getByRole("button", { name: "About FinanceTracker" })).toBeTruthy();
   });
 

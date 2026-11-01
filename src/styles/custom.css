@@ -3307,21 +3307,6 @@ body {
     -webkit-app-region: no-drag;
 }
 
-.app-user-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.25rem 0.6rem;
-    border: 1px solid var(--border-color);
-    border-radius: 7px;
-    background: transparent;
-    color: var(--text-primary);
-}
-
-.app-user-toggle:hover {
-    background: var(--surface-2, rgba(127, 127, 127, 0.12));
-}
-
 .app-content {
     flex: 1 1 auto;
     min-height: 0;

@@ -1,12 +1,11 @@
 /**
- * Top toolbar: a drag strip with the app name, the theme toggle and a shortcut to
- * your profile.
+ * Top toolbar: a drag strip with the app name and the theme toggle.
  *
- * Navigation is the sidebar's job, so there is no second menu here. About lives
- * at the bottom of the sidebar, next to the version it describes.
+ * It holds no navigation at all — every destination is in the sidebar, so there
+ * is exactly one place to look. About lives at the bottom of the sidebar, next to
+ * the version it describes.
  */
 
-import { NavLink } from "react-router-dom";
 import { ThemeToggle } from "./ThemeToggle";
 
 export function Navbar() {
@@ -18,10 +17,6 @@ export function Navbar() {
       </div>
       <div className="app-toolbar-spacer" data-tauri-drag-region />
       <ThemeToggle />
-      <NavLink to="/profile" className="app-user-toggle" title="Your profile">
-        <i className="bi bi-person-circle" aria-hidden="true" />
-        <span className="d-none d-md-inline">You</span>
-      </NavLink>
     </header>
   );
 }

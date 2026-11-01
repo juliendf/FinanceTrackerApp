@@ -6,8 +6,9 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
-- Toolbar: "You" is a direct link to your profile, with no menu. About moved to
-  the sidebar footer, on the version line.
+- Toolbar: no navigation at all — it is the app name, the theme toggle and the
+  window drag strip. Profile and Settings both live in the sidebar (under "You");
+  About moved to the sidebar footer, on the version line.
 - Profile: Financial goals now come before "What I know about you"; the memories
   panel explains that entries come from chat (after confirming a card) or by
   hand, shows each entry's source, and no longer asks for a key — it is derived
