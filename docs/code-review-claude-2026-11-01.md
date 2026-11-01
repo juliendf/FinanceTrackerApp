@@ -11,7 +11,7 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 | 1 | Critical | Security | `src-tauri/capabilities/default.json:13` | `sql:allow-execute` bypasses the SQL guard — **fixed, see below** |
 | 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, see below** |
 | 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted — **fixed, see below** |
-| 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent |
+| 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent — **fixed, see below** |
 | 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable |
 | 6 | Medium | Correctness | `src/llm/tools.ts:259` | `list_assets` truncates before sorting |
 | 7 | Medium | Correctness | `src/llm/service.ts:206` | `confirmAction` race: double confirm |
@@ -132,6 +132,20 @@ The cancel `AtomicBool` is only checked when a chunk arrives.
 **Scenario:** the user presses Stop while Ollama loads a 32B model or a reasoning model thinks for 90 s. The UI stays in streaming mode until the next byte or the 300 s timeout, and the answer is still saved.
 
 **Fix:** use `tokio::select!` between `stream.next()` and a `CancellationToken` (or `Notify`).
+
+**Status: done (2026-11-01, 0.4.0).** Both waits in a request now race against a
+100 ms cancellation poll (`wait_for_cancel`), not just the stream:
+
+- **before the response**: `http.send()` is inside a `tokio::select!`, so a
+  provider that is loading a model and sends no headers can be stopped;
+- **during the stream**: the read is a `select!` too, so a provider that goes
+  quiet mid-answer is stopped as well.
+
+The partial answer delivered so far is kept and returned with `cancelled: true`.
+Verified by two integration tests with a local server that never answers, and one
+that answers and then goes silent: both return in well under a second (the suite
+completes in 0.35 s), and the live Ollama mid-stream cancellation test still
+passes.
 
 ### 5. Medium — Divide-by-zero guard checks the wrong variable
 

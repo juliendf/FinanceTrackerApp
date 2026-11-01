@@ -6,6 +6,11 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
+- Stop now works while a provider is silent: the request waits on a cancellation
+  poll as well as on the network, both before the first byte and mid-stream.
+  Previously a model that was loading, or thinking, ignored Stop until the
+  timeout.
+
 - Streaming: multi-byte characters are no longer corrupted when a chunk boundary
   falls inside them (`é`, `’`, `€`, emoji showed as `��`). The parser buffers
   bytes and decodes whole lines; a final line without a newline is no longer

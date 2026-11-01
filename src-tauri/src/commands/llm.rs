@@ -66,6 +66,23 @@ pub struct ToolCall {
     pub extra_content: Option<Value>,
 }
 
+/// How often a running request checks for cancellation while it waits.
+///
+/// The stream only yields when the provider sends something, so a silent
+/// provider (a model loading, or one that thinks for a minute) would otherwise
+/// ignore Stop until the 300 s timeout.
+const CANCEL_POLL: Duration = Duration::from_millis(100);
+
+/// Resolves once the cancel flag is set. Used inside `tokio::select!`.
+async fn wait_for_cancel(cancel: &Arc<AtomicBool>) {
+    loop {
+        if cancel.load(Ordering::Relaxed) {
+            return;
+        }
+        tokio::time::sleep(CANCEL_POLL).await;
+    }
+}
+
 /// Splits an SSE byte stream into lines without ever decoding half a character.
 ///
 /// Decoding each network chunk on its own corrupts any UTF-8 sequence that
@@ -292,7 +309,17 @@ where
     )
     .json(&body);
 
-    let response = match http.send().await {
+    // Cancellation has to cover the wait for the response, not just the stream:
+    // a provider that is loading a model sends no headers for a long time.
+    let response = tokio::select! {
+        response = http.send() => response,
+        _ = wait_for_cancel(&cancel) => {
+            emit(ChatEvent::Cancelled);
+            return Ok(Outcome { content: String::new(), tool_calls: Vec::new(), cancelled: true });
+        }
+    };
+
+    let response = match response {
         Ok(r) => r,
         Err(e) if e.is_connect() => {
             let message = format!(
@@ -329,15 +356,22 @@ where
     let mut tool_calls: Vec<ToolCall> = Vec::new();
     let mut saw_done = false;
 
-    'outer: while let Some(chunk) = stream.next().await {
-        if cancel.load(Ordering::Relaxed) {
-            emit(ChatEvent::Cancelled);
-            return Ok(Outcome {
-                content,
-                tool_calls,
-                cancelled: true,
-            });
-        }
+    'outer: loop {
+        let chunk = tokio::select! {
+            chunk = stream.next() => chunk,
+            _ = wait_for_cancel(&cancel) => {
+                emit(ChatEvent::Cancelled);
+                return Ok(Outcome {
+                    content,
+                    tool_calls,
+                    cancelled: true,
+                });
+            }
+        };
+
+        let Some(chunk) = chunk else {
+            break;
+        };
 
         let bytes = match chunk {
             Ok(b) => b,
