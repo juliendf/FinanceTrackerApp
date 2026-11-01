@@ -6,6 +6,14 @@
  * http(s) link is handed to the system browser instead, and a `file:` or
  * `javascript:` href is ignored entirely. The Rust `open_external` command
  * re-checks the scheme.
+ *
+ * Modifier-clicks are handled the same way: in a browser Cmd-click means "open in
+ * a new tab", but this window has no tabs, so leaving it alone would either do
+ * nothing or navigate the app. The browser is still one click away, in a real tab.
+ *
+ * There is also a Rust backstop (`navigation_guard` in `src-tauri/src/lib.rs`)
+ * that refuses any document navigation away from the app, in case a click is not
+ * seen here.
  */
 
 import { invoke } from "@tauri-apps/api/core";
@@ -23,9 +31,7 @@ const WEB_URL = /^https?:\/\//i;
  */
 export function installExternalLinkGuard(doc: Document = document): () => void {
   const handler = (event: MouseEvent) => {
-    if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey) {
-      return;
-    }
+    if (event.defaultPrevented || event.button !== 0) return;
     const target = event.target as Element | null;
     const anchor = target?.closest?.("a[href]") as HTMLAnchorElement | null;
     if (!anchor) return;

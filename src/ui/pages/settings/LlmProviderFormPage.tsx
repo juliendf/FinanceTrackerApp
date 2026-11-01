@@ -314,7 +314,7 @@ export function LlmProviderFormPage() {
               />
               <div className="form-text">
                 {existing.data?.keychain_ref
-                  ? "Leave empty to keep the stored key."
+                  ? "Leave empty to keep the stored key. Changing the base URL clears it, because a key is only ever sent to the endpoint it was entered for."
                   : "Goes to the macOS Keychain, never to the database."}
               </div>
             </div>

@@ -11,7 +11,7 @@ vi.mock("../transaction", async () => {
 vi.mock("../client", () => ({ getDb: async () => ({ select }) }));
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
 
-import { deleteProvider, normaliseBaseUrl, PROVIDER_TYPES, keychainAccount } from "./llmProviders";
+import { deleteProvider, normaliseBaseUrl, PROVIDER_TYPES } from "./llmProviders";
 
 describe("normaliseBaseUrl", () => {
   it("trims trailing slashes for OpenAI-compatible endpoints", () => {
@@ -32,53 +32,30 @@ describe("normaliseBaseUrl", () => {
 });
 
 describe("provider plumbing", () => {
-  it("names the Keychain account after the provider id", () => {
-    expect(keychainAccount(2)).toBe("provider:2");
-  });
-
   it("offers both provider types", () => {
     expect(PROVIDER_TYPES.map((type) => type.value)).toEqual(["openai", "gemini"]);
   });
 });
 
-describe("deleteProvider", () => {
-  const provider = {
-    id: 3,
-    name: "Ollama",
-    base_url: "http://localhost:11434/v1",
-    model: "qwen3",
-    provider_type: "openai",
-    keychain_ref: "provider:3",
-    is_default: 0,
-    is_active: 1,
-    created_at: "2026-01-01T00:00:00.000Z",
-    updated_at: "2026-01-01T00:00:00.000Z",
-  };
-
+describe("provider writes", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    runTransaction.mockResolvedValue(0);
     invoke.mockResolvedValue(undefined);
-    select.mockResolvedValue([provider]);
+    select.mockResolvedValue([]);
   });
 
-  it("deletes the rows before the Keychain item, so a failed delete is retryable", async () => {
+  it("deletes through Rust, which also removes the Keychain item", async () => {
     await deleteProvider(3);
 
-    expect(runTransaction).toHaveBeenCalledTimes(1);
-    expect((runTransaction.mock.calls[0] as unknown[][])[0]).toEqual([
-      "DELETE FROM provider_models WHERE provider_id = 3",
-      "DELETE FROM llm_providers WHERE id = 3",
-    ]);
-    expect(invoke).toHaveBeenCalledWith("secret_delete", { account: "provider:3" });
-    // Order: rows first, key second.
-    expect(runTransaction.mock.invocationCallOrder[0]).toBeLessThan(invoke.mock.invocationCallOrder[0]);
+    // One command: the row, its model list and its key go together, and the
+    // generic SQL path is not involved (it may not touch these tables).
+    expect(invoke).toHaveBeenCalledWith("provider_delete", { id: 3 });
+    expect(runTransaction).not.toHaveBeenCalled();
   });
 
-  it("keeps the key when the delete fails", async () => {
-    runTransaction.mockRejectedValue(new Error("database is locked"));
+  it("surfaces a failure instead of swallowing it", async () => {
+    invoke.mockRejectedValue(new Error("database is locked"));
 
     await expect(deleteProvider(3)).rejects.toThrow(/locked/);
-    expect(invoke).not.toHaveBeenCalled();
   });
 });

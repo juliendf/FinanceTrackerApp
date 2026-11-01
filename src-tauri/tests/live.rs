@@ -226,29 +226,39 @@ fn keychain_round_trip() {
     // Only `provider:<id>` accounts are writable now, so the probe uses an id no
     // real provider will have.
     let account = "provider:999999".to_string();
+    let origin = "http://localhost:11434/v1";
 
     // Start from a known state, then prove the round trip.
-    secrets::secret_delete(account.clone()).expect("delete is idempotent");
+    secrets::delete_key(&account).expect("delete is idempotent");
     assert_eq!(
-        secrets::read_secret(&account).expect("get on a missing item"),
+        secrets::read_key(&account, origin).expect("get on a missing item"),
         None,
         "a missing secret reads as None, not an error"
     );
 
-    secrets::secret_set(account.clone(), "sk-test-123".into()).expect("set");
+    secrets::store_key(&account, "sk-test-123", origin).expect("set");
     assert_eq!(
-        secrets::read_secret(&account).expect("get"),
+        secrets::read_key(&account, origin).expect("get"),
         Some("sk-test-123".to_string())
     );
+    // The binding is the point: the same item is refused from another host.
+    assert!(
+        secrets::read_key(&account, "https://attacker.tld/v1").is_err(),
+        "a key bound to one host must not be readable for another"
+    );
+    assert!(
+        secrets::read_key(&account, "http://localhost:11435/v1").is_err(),
+        "a different port is a different endpoint"
+    );
 
-    secrets::secret_set(account.clone(), "sk-test-456".into()).expect("overwrite");
+    secrets::store_key(&account, "sk-test-456", origin).expect("overwrite");
     assert_eq!(
-        secrets::read_secret(&account).expect("get after overwrite"),
+        secrets::read_key(&account, origin).expect("get after overwrite"),
         Some("sk-test-456".to_string())
     );
 
-    secrets::secret_delete(account.clone()).expect("delete");
-    assert_eq!(secrets::read_secret(&account).expect("get after delete"), None);
+    secrets::delete_key(&account).expect("delete");
+    assert_eq!(secrets::read_key(&account, origin).expect("get after delete"), None);
 }
 
 /// Gemini 3 refuses a follow-up request that drops the `thought_signature` it

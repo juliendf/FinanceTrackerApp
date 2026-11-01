@@ -4,8 +4,9 @@
  * Strategy:
  *   1. pre-flight (buildImportPlan) must be clean, so structural problems are
  *      reported before anything is touched;
- *   2. provider API keys go to the Keychain *before* the SQL runs, so a
- *      plaintext secret never exists in the database;
+ *   2. providers and their API keys are restored by one Rust command, which
+ *      binds each key to the origin of its base URL; the generic SQL path
+ *      refuses to write those tables;
  *   3. the whole dataset is executed by the Rust `run_transaction` command:
  *      one real sqlx transaction on one connection, with foreign keys enforced.
  *      (The SQL plugin cannot do this — see src-tauri/src/commands/db.rs.);
@@ -21,14 +22,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { resetDatabase } from "../db/reset";
 import { buildImportPlan, type ImportCounts, type ImportPlan } from "./plan";
 import type { ParsedBackup } from "./schema";
-import {
-  amountMinor,
-  decimalText,
-  rateText,
-  sqlBool,
-  sqlInt,
-  sqlText,
-} from "./sql";
+import { amountMinor, decimalText, rateText, sqlInt, sqlText } from "./sql";
 
 export interface ImportResult {
   counts: ImportCounts;
@@ -47,10 +41,7 @@ export class ImportBlockedError extends Error {
 }
 
 /** Build the SQL statements for the whole dataset, in foreign-key order. */
-export function buildImportStatements(
-  backup: ParsedBackup,
-  keychainRefs: Map<number, string>,
-): string[] {
+export function buildImportStatements(backup: ParsedBackup): string[] {
   const { data } = backup;
   const statements: string[] = [];
 
@@ -149,32 +140,7 @@ export function buildImportStatements(
     );
   }
 
-  for (const row of data.llm_providers) {
-    statements.push(
-      `INSERT INTO llm_providers (id, name, base_url, model, provider_type, keychain_ref, is_default, is_active, created_at, updated_at) VALUES (${[
-        sqlInt(row.id),
-        sqlText(row.name),
-        sqlText(row.base_url.replace(/\/+$/, "")),
-        sqlText(row.model),
-        sqlText(row.provider_type ?? "openai"),
-        sqlText(keychainRefs.get(row.id) ?? null),
-        sqlBool(row.is_default),
-        sqlBool(row.is_active ?? true),
-        sqlText(row.created_at ?? null),
-        sqlText(row.updated_at ?? null),
-      ].join(", ")})`,
-    );
-  }
 
-  for (const row of data.provider_models) {
-    statements.push(
-      `INSERT OR IGNORE INTO provider_models (provider_id, model, enabled) VALUES (${[
-        sqlInt(row.provider_id),
-        sqlText(row.model),
-        sqlBool(row.enabled ?? true),
-      ].join(", ")})`,
-    );
-  }
 
   for (const row of data.settings) {
     statements.push(
@@ -261,39 +227,42 @@ export async function executeImport(backup: ParsedBackup): Promise<ImportResult>
   const plan = buildImportPlan(backup);
   if (plan.errors.length > 0) throw new ImportBlockedError(plan);
 
-  // Secrets first: if this fails, nothing has been written yet.
-  const keychainRefs = new Map<number, string>();
-  const storedAccounts: string[] = [];
-  for (const provider of backup.data.llm_providers) {
-    if (!provider.api_key) continue;
-    const account = `provider:${provider.id}`;
-    await invoke("secret_set", { account, secret: provider.api_key });
-    keychainRefs.set(provider.id, account);
-    storedAccounts.push(account);
-  }
-
   await resetDatabase();
 
-  const statements = buildImportStatements(backup, keychainRefs);
+  const statements = buildImportStatements(backup);
 
   try {
     await invoke<number>("run_transaction", { statements });
   } catch (error) {
-    // The transaction rolled back in Rust; undo the Keychain writes too, so a
-    // failed import leaves no trace anywhere.
-    for (const account of storedAccounts) {
-      try {
-        await invoke("secret_delete", { account });
-      } catch {
-        /* nothing to clean up */
-      }
-    }
+    // The transaction rolled back in Rust; nothing else has been written yet.
     throw error;
   }
 
+  // Providers last: they are written on their own connection, and Rust binds each
+  // key to its endpoint's origin. A key failure removes the keys it stored.
+  const keysToKeychain = await invoke<number>("providers_restore", {
+    rows: backup.data.llm_providers.map((row) => ({
+      id: row.id,
+      name: row.name,
+      base_url: row.base_url.replace(/\/+$/, ""),
+      model: row.model,
+      provider_type: row.provider_type ?? "openai",
+      is_default: row.is_default,
+      is_active: row.is_active ?? true,
+      created_at: row.created_at ?? null,
+      updated_at: row.updated_at ?? null,
+      api_key: row.api_key ?? null,
+      models: [
+        ...backup.data.provider_models
+          .filter((model) => model.provider_id === row.id)
+          .map((model) => ({ model: model.model, enabled: (model.enabled ?? true) ? true : false })),
+      ],
+    })),
+  });
+
   return {
     counts: plan.counts,
-    keysToKeychain: keychainRefs.size,
+    keysToKeychain,
     statements: statements.length,
     durationMs: Math.round(performance.now() - started),
   };

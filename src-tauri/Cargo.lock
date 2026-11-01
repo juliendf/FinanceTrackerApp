@@ -982,6 +982,7 @@ version = "0.4.0"
 dependencies = [
  "futures-util",
  "keyring",
+ "libsqlite3-sys",
  "reqwest",
  "serde",
  "serde_json",
@@ -993,6 +994,7 @@ dependencies = [
  "tauri-plugin-updater",
  "thiserror 2.0.21",
  "tokio",
+ "url",
 ]
 
 [[package]]

@@ -26,7 +26,7 @@ use tauri::ipc::Channel;
 use tauri::AppHandle;
 
 use crate::commands::db::database_file;
-use crate::commands::secrets::read_secret;
+use crate::commands::secrets::read_key;
 
 /// Events pushed to the webview while a completion streams.
 #[derive(Clone, Serialize)]
@@ -517,9 +517,14 @@ async fn provider_config(app: &AppHandle, provider_id: i64) -> Result<ProviderCo
     })
 }
 
+/// The stored key, if it was saved for the endpoint this provider now uses.
+///
+/// `read_key` refuses when the provider's base URL no longer matches the origin
+/// the key was entered for, so moving the row cannot redirect a saved key to
+/// another host.
 fn provider_key(config: &ProviderConfig) -> Result<Option<String>, String> {
     match config.keychain_ref.as_deref() {
-        Some(account) => read_secret(account),
+        Some(account) => read_key(account, &config.base_url),
         None => Ok(None),
     }
 }

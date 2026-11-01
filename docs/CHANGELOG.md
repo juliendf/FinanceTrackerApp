@@ -6,8 +6,21 @@ and `src-tauri/tauri.conf.json` together.
 
 ## Unreleased
 
-- Links in an assistant reply open in the default browser instead of replacing
-  the app window; only `http` and `https` are accepted.
+- **Security:** SQL writes are now enforced by a SQLite authorizer, not only by a
+  text filter. The filter was bypassable (a quote inside a double-quoted identifier
+  hid a second statement, which sqlx then ran). `PRAGMA`, `ATTACH`, `DETACH`,
+  `CREATE`, `DROP`, `ALTER`, `VACUUM` and writes to the provider tables are
+  refused by the engine on every write connection.
+- **Security:** a stored API key is bound to the endpoint it was entered for, and
+  is never sent to a different scheme, host or port. Changing a provider's base URL
+  drops its key. ***A key saved before this version must be entered again once.***
+- **Security:** provider rows can only be written by the named commands
+  (`provider_save`, `provider_delete`, `provider_set_default`, `providers_restore`,
+  `providers_reset`); `secret_set` and `secret_delete` are no longer exposed to the
+  webview at all.
+- **Security:** the window refuses to navigate anywhere but the app itself, via
+  `on_navigation`. Links, including Cmd- and Shift-clicks, open in the default
+  browser.
 - The first snapshot of a new asset is dated on the local calendar day, not in
   UTC (an asset created before 01:00 in Zurich was dated to the previous day).
 - The "a snapshot already exists on that date" warning shows the value on that

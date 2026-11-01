@@ -102,6 +102,22 @@ Some models do not emit structured tool calls through the OpenAI-compatible
 endpoint. `qwen2.5-coder:14b` is one; `qwen3.5:4b` and `ministral-3:8b` work.
 The model must also be listed by `Fetch models` on the provider form.
 
+**"The saved API key belongs to …, but this provider now points at …"**
+
+A key is bound to the endpoint it was entered for, so it is never sent to another
+scheme, host or port. Either put the old base URL back, or enter the key again for
+the new one — changing a provider's base URL deliberately drops the old key.
+
+**"This API key was saved before keys were bound to their endpoint"**
+
+A key stored by an older version has no recorded origin, and an unbound key cannot
+be sent safely. Open the provider and enter the key again once.
+
+**Changing a provider's URL cleared the key**
+
+Intended: the key belonged to the old endpoint. Enter it again after saving if the
+new endpoint needs one.
+
 **Stop does nothing**
 
 Fixed in 0.2.2; before that the cancel went to the base request id while the

@@ -82,13 +82,16 @@ describe("external link guard", () => {
     expect(invoke).toHaveBeenCalledTimes(1);
   });
 
-  it("does not intercept a click with a modifier, where the user chose a new tab", () => {
-    const prevented = click(Object.assign(document.createElement("a"), { href: "https://example.com/" }), {
-      metaKey: true,
-    });
+  it("opens a modifier-click in the browser too, because this window has no tabs", () => {
+    for (const modifier of ["metaKey", "ctrlKey", "shiftKey"] as const) {
+      invoke.mockClear();
+      const prevented = click(Object.assign(document.createElement("a"), { href: "https://example.com/" }), {
+        [modifier]: true,
+      });
 
-    expect(prevented).toBe(false);
-    expect(invoke).not.toHaveBeenCalled();
+      expect(prevented, modifier).toBe(true);
+      expect(invoke, modifier).toHaveBeenCalledWith("open_external", { url: "https://example.com/" });
+    }
   });
 
   it("finds the anchor when the click lands on a child element", () => {

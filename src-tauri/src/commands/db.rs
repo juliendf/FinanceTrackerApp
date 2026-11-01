@@ -14,11 +14,24 @@
 //! being written silently.
 //!
 //! SQL is still generated in TypeScript; Rust only executes the list.
+//!
+//! **Guarding the text is not enough.** `check_statement` is a first filter, but a
+//! hand-written scanner is exactly the kind of thing that gets bypassed: an early
+//! version tracked only `'…'`, so a quote inside a `"…"` identifier desynchronised
+//! it and a `;` hid a second statement. sqlx prepares and runs whatever follows the
+//! `;` as well, so `DELETE …; DROP TABLE t; …` passed the guard and dropped the
+//! table. Every write connection therefore also installs a real SQLite
+//! **authorizer** (`sqlite3_set_authorizer`, see `write_authorizer`): the engine
+//! itself refuses anything that is not a data modification, whatever the text
+//! looks like.
 
+use libsqlite3_sys as ffi;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Connection, SqliteConnection};
+use std::ffi::CStr;
+use std::os::raw::{c_char, c_int, c_void};
 use std::str::FromStr;
 use std::time::Duration;
 use tauri::{AppHandle, Manager};
@@ -55,6 +68,7 @@ pub async fn execute_statements(db_url: &str, statements: &[String]) -> Result<u
     let mut connection = SqliteConnection::connect_with(&options)
         .await
         .map_err(|e| format!("cannot open the database: {e}"))?;
+    install_write_authorizer(&mut connection).await?;
 
     let mut transaction = connection
         .begin()
@@ -81,11 +95,17 @@ pub async fn execute_statements(db_url: &str, statements: &[String]) -> Result<u
 
 /// Reject anything that is not one plain data-modifying statement.
 ///
-/// `run_transaction` receives SQL text from the webview. Every legitimate caller
-/// sends `INSERT`, `UPDATE` or `DELETE`, so anything else (`DROP`, `ATTACH`,
-/// `PRAGMA`, `CREATE`, ...) is refused, as is a second statement smuggled in
-/// after a `;` and any SQL comment. Text inside single-quoted literals is
-/// skipped, with `''` as the escaped quote, so values may contain `;` and `--`.
+/// This is the *first* filter, not the boundary: `write_authorizer` is what
+/// actually stops a smuggled statement. Both are kept, because a readable error
+/// beats an engine-level denial when the caller made a mistake.
+///
+/// Every legitimate caller sends `INSERT`, `UPDATE` or `DELETE`, so anything else
+/// (`DROP`, `ATTACH`, `PRAGMA`, `CREATE`, ...) is refused, as is a second
+/// statement smuggled in after a `;` and any SQL comment.
+///
+/// Text is skipped inside all four kinds of quoted token — `'text'`, `"column"`,
+/// `` `column` `` and `[column]` — because a `'` inside a double-quoted identifier
+/// is not a string delimiter, and treating it as one lets a `;` slip through.
 pub fn check_statement(statement: &str) -> Result<(), String> {
     let trimmed = statement.trim_start();
     let verb: String = trimmed
@@ -97,38 +117,147 @@ pub fn check_statement(statement: &str) -> Result<(), String> {
         return Err(format!("only INSERT, UPDATE and DELETE are allowed, got `{verb}`"));
     }
 
-    let mut in_string = false;
+    #[derive(Clone, Copy, PartialEq)]
+    enum Quoted {
+        None,
+        Text,
+        Identifier,
+        Backtick,
+        Bracket,
+    }
+
+    let mut quoted = Quoted::None;
     let mut chars = statement.trim_end().chars().peekable();
     while let Some(c) = chars.next() {
-        if in_string {
-            if c == '\'' {
-                if chars.peek() == Some(&'\'') {
-                    chars.next();
-                } else {
-                    in_string = false;
+        match quoted {
+            // 'it''s', "a""b" and `a``b` escape the delimiter by doubling it.
+            Quoted::Text => {
+                if c == '\'' {
+                    if chars.peek() == Some(&'\'') {
+                        chars.next();
+                    } else {
+                        quoted = Quoted::None;
+                    }
                 }
             }
-            continue;
-        }
-        match c {
-            '\'' => in_string = true,
-            ';' => {
-                // A single trailing semicolon is harmless; anything after it is not.
-                if chars.peek().is_some() {
-                    return Err("multiple statements are not allowed".to_string());
+            Quoted::Identifier => {
+                if c == '"' {
+                    if chars.peek() == Some(&'"') {
+                        chars.next();
+                    } else {
+                        quoted = Quoted::None;
+                    }
                 }
             }
-            '-' if chars.peek() == Some(&'-') => return Err("SQL comments are not allowed".to_string()),
-            '/' if chars.peek() == Some(&'*') => return Err("SQL comments are not allowed".to_string()),
-            _ => {}
+            Quoted::Backtick => {
+                if c == '`' {
+                    if chars.peek() == Some(&'`') {
+                        chars.next();
+                    } else {
+                        quoted = Quoted::None;
+                    }
+                }
+            }
+            Quoted::Bracket => {
+                if c == ']' {
+                    quoted = Quoted::None;
+                }
+            }
+            Quoted::None => match c {
+                '\'' => quoted = Quoted::Text,
+                '"' => quoted = Quoted::Identifier,
+                '`' => quoted = Quoted::Backtick,
+                '[' => quoted = Quoted::Bracket,
+                ';' => {
+                    // A single trailing semicolon is harmless; anything after it is not.
+                    if chars.peek().is_some() {
+                        return Err("multiple statements are not allowed".to_string());
+                    }
+                }
+                '-' if chars.peek() == Some(&'-') => {
+                    return Err("SQL comments are not allowed".to_string())
+                }
+                '/' if chars.peek() == Some(&'*') => {
+                    return Err("SQL comments are not allowed".to_string())
+                }
+                _ => {}
+            },
         }
     }
-    if in_string {
-        return Err("unterminated string literal".to_string());
+    if quoted != Quoted::None {
+        return Err("unterminated quoted text".to_string());
     }
     Ok(())
 }
 
+/// Refuse, at the engine level, anything that is not a data modification.
+///
+/// Installed on every connection that runs SQL supplied by the webview. SQLite
+/// calls it while preparing each operation, so it sees the operations of *every*
+/// statement in the string — including one hidden behind a `;` that the text
+/// scanner did not notice, and including one hidden inside a quoted identifier.
+/// The text scanner cannot be trusted to be exhaustive; this can.
+///
+/// `llm_providers` and `provider_models` are refused too: those rows decide where
+/// an API key would be sent, so only the named Rust commands may change them.
+unsafe extern "C" fn write_authorizer(
+    _user_data: *mut c_void,
+    action: c_int,
+    arg1: *const c_char,
+    _arg2: *const c_char,
+    _database: *const c_char,
+    _trigger: *const c_char,
+) -> c_int {
+    // SAFETY: SQLite passes a NUL-terminated string for the arguments it
+    // documents as non-null; the pointer is only read during this call.
+    let table = if arg1.is_null() {
+        None
+    } else {
+        unsafe { CStr::from_ptr(arg1).to_str().ok() }
+    };
+
+    let allowed = match action {
+        ffi::SQLITE_SELECT | ffi::SQLITE_READ | ffi::SQLITE_FUNCTION | ffi::SQLITE_RECURSIVE => true,
+        ffi::SQLITE_INSERT | ffi::SQLITE_UPDATE | ffi::SQLITE_DELETE => {
+            !matches!(table, Some("llm_providers") | Some("provider_models"))
+        }
+        // sqlx wraps a batch in BEGIN/COMMIT and a nested one in SAVEPOINT; denying
+        // those would break every transaction. A smuggled COMMIT cannot grant
+        // anything: the operations inside it are still authorised one by one.
+        ffi::SQLITE_TRANSACTION | ffi::SQLITE_SAVEPOINT => true,
+        _ => false,
+    };
+
+    if allowed {
+        ffi::SQLITE_OK
+    } else {
+        ffi::SQLITE_DENY
+    }
+}
+
+/// Attach [`write_authorizer`] to a connection this module owns.
+pub async fn install_write_authorizer(connection: &mut SqliteConnection) -> Result<(), String> {
+    let mut handle = connection
+        .lock_handle()
+        .await
+        .map_err(|e| format!("cannot lock the connection: {e}"))?;
+    // SAFETY: the handle is locked for the duration of the call, the callback is a
+    // `'static` fn pointer and has no user data.
+    let status = unsafe {
+        ffi::sqlite3_set_authorizer(
+            handle.as_raw_handle().as_ptr(),
+            Some(write_authorizer),
+            std::ptr::null_mut(),
+        )
+    };
+    if status != ffi::SQLITE_OK {
+        return Err(format!("cannot install the SQL authorizer (code {status})"));
+    }
+    Ok(())
+}
+
+/// Result of one write, shaped like the SQL plugin's so call sites do not care
+/// which path they went through.
 /// Result of one write, shaped like the SQL plugin's so call sites do not care
 /// which path they went through.
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -156,6 +285,7 @@ pub async fn write_statement(
     let mut connection = SqliteConnection::connect_with(&options)
         .await
         .map_err(|e| format!("cannot open the database: {e}"))?;
+    install_write_authorizer(&mut connection).await?;
 
     let mut query = sqlx::query(sql);
     for param in params.to_vec() {
@@ -222,6 +352,7 @@ pub async fn execute_statements_returning_id(
     let mut connection = SqliteConnection::connect_with(&options)
         .await
         .map_err(|e| format!("cannot open the database: {e}"))?;
+    install_write_authorizer(&mut connection).await?;
     let mut transaction = connection
         .begin()
         .await

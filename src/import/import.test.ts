@@ -240,13 +240,17 @@ describe("sql helpers", () => {
 
 describe("buildImportStatements", () => {
   const backup = parseBackup(fixtureRaw);
-  const statements = buildImportStatements(backup, new Map([[2, "provider:2"]]));
+  const statements = buildImportStatements(backup);
   const joined = statements.join("\n");
 
   it("writes one statement per row plus the tag links", () => {
     // 2 institutions + 2 categories + 1 tag + 2 assets + 1 asset_tag
-    // + 3 snapshots + 2 rates + 1 provider + 3 settings + 1 profile = 18
-    expect(statements).toHaveLength(18);
+    // + 3 snapshots + 2 rates + 3 settings + 1 profile = 17. Providers are not
+    // here: they carry the endpoint a key is sent to, so `providers_restore`
+    // writes them and the generic path may not.
+    expect(statements).toHaveLength(17);
+    expect(joined).not.toContain("INSERT INTO llm_providers");
+    expect(joined).not.toContain("INSERT INTO provider_models");
   });
 
   it("preserves ids so foreign keys line up without a remap", () => {
@@ -258,13 +262,8 @@ describe("buildImportStatements", () => {
     expect(joined).toContain("INSERT OR IGNORE INTO asset_tags (asset_id, tag_id) VALUES (53, 5)");
   });
 
-  it("stores the Keychain reference instead of the API key", () => {
-    expect(joined).toContain("'provider:2'");
+  it("never puts an API key in SQL", () => {
     expect(joined).not.toContain("test-key-not-a-real-secret");
-  });
-
-  it("trims a trailing slash from the base URL", () => {
-    expect(joined).toContain("'https://generativelanguage.googleapis.com/v1beta'");
   });
 
   it("converts profile money to minor units", () => {
@@ -303,7 +302,7 @@ describe("real backup (opt-in)", () => {
     //   IMPORT_SQL=/tmp/ft-import.sql cargo test --test import_sql -- --ignored
     const sqlOut = process.env.IMPORT_SQL_OUT;
     if (sqlOut) {
-      const statements = buildImportStatements(backup, new Map());
+      const statements = buildImportStatements(backup);
       writeFileSync(sqlOut, JSON.stringify(statements, null, 0), "utf8");
       // eslint-disable-next-line no-console
       console.log(`wrote ${statements.length} statements to ${sqlOut}`);

@@ -44,6 +44,31 @@ fn migrations() -> Vec<Migration> {
     ]
 }
 
+/// Backstop for the link guard in `src/lib/externalLinks.ts`.
+///
+/// The webview guard intercepts clicks, which covers the app's own UI; this stops
+/// the window from navigating anywhere else even if a click gets through — a
+/// dropped handler, a future component, a `window.location` assignment. Assistant
+/// links are opened in the browser by `open_external`, so any document navigation
+/// away from the app itself is unwanted.
+///
+/// `tauri::Builder` has no `on_navigation`; the hook lives on the plugin builder,
+/// which is why this is a (tiny, inline) plugin.
+fn navigation_guard() -> tauri::plugin::TauriPlugin<tauri::Wry> {
+    tauri::plugin::Builder::<tauri::Wry, ()>::new("navigation-guard")
+        .on_navigation(|_webview, url| match url.scheme() {
+            // The app itself, its assets and its IPC.
+            "tauri" | "asset" | "about" => true,
+            // The dev server, and the IPC endpoint Tauri uses on some platforms.
+            "http" | "https" => matches!(
+                url.host_str(),
+                Some("localhost") | Some("127.0.0.1") | Some("ipc.localhost")
+            ),
+            _ => false,
+        })
+        .build()
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -55,6 +80,7 @@ pub fn run() {
         )
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(navigation_guard())
         .invoke_handler(tauri::generate_handler![
             commands::db::run_transaction,
             commands::db::run_transaction_returning_id,
@@ -63,8 +89,11 @@ pub fn run() {
             commands::files::pick_and_read_text_file,
             commands::files::save_text_file,
             commands::files::open_external,
-            commands::secrets::secret_set,
-            commands::secrets::secret_delete,
+            commands::providers::provider_save,
+            commands::providers::provider_delete,
+            commands::providers::provider_set_default,
+            commands::providers::providers_restore,
+            commands::providers::providers_reset,
             commands::llm::chat_completion,
             commands::llm::cancel_chat,
             commands::llm::provider_models,

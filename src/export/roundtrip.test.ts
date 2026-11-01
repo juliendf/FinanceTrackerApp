@@ -65,7 +65,7 @@ describe("backup round-trip on the real database", () => {
     expect(plan.errors).toEqual([]);
 
     // No key was exported, so nothing goes to the Keychain.
-    const statements = buildImportStatements(parsed, new Map());
+    const statements = buildImportStatements(parsed);
     writeFileSync(out as string, JSON.stringify(statements), "utf8");
     // eslint-disable-next-line no-console
     console.log(`wrote ${statements.length} statements to ${out}`);

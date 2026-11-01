@@ -2,243 +2,273 @@
 
 What was changed in response to
 [`code-review-claude-2026-11-01.md`](./code-review-claude-2026-11-01.md), why,
-and how each fix is proved. The review document holds the findings themselves;
-this one holds the work.
+and how each fix is proved.
 
-**Result:** all 10 findings fixed, 3 of 4 minor items fixed, 1 minor item
-deliberately left as a release task. 510 JS tests and 38 Rust tests pass;
-typecheck is clean.
+**Result:** all 10 findings addressed. Two of them were **reopened by a second
+review** — my first attempt at #1 and #2 did not close the hole, and my claim
+about #8 was wrong. Those are corrected below, and the corrections are the part
+worth reading.
 
 **Not covered:** the review looked only at security and correctness. Code quality
-(module boundaries, duplication, error handling) and performance (indexes, query
-counts, re-renders during streaming) have not been reviewed at all, before or
-after these fixes. See [Residual risk](#residual-risk).
+and performance have not been reviewed at all, before or after these fixes. See
+[Residual risk](#residual-risk).
+
+## Corrections from the second pass
+
+The first version of this report said #1 and #2 were fixed and that #8's suggested
+`on_navigation` hook does not exist in Tauri v2. All three statements were wrong:
+
+| Claim | Reality |
+|---|---|
+| "The text guard closes #1" | It scanned only `'…'`. A `'` inside a `"…"` identifier desynchronised it, a `;` hid a second statement, and **sqlx runs the tail**: `DELETE FROM t WHERE (SELECT 1 AS "'") = 0; DROP TABLE t; SELECT 1 AS "'"` passed the guard and dropped the table. Reproduced against the app's own `write_statement`. |
+| "Moving to provider ids closes #2" | It stopped the *key* from crossing IPC, not the *destination*. `provider_connection` reads `base_url` from `llm_providers`, and the webview could `UPDATE` that row through `execute_write`, then ask for a connection: the key went out in the `Authorization` header to the new host. |
+| "`Builder::on_navigation` does not exist in Tauri v2" | It does — on `tauri::plugin::Builder` (`plugin.rs:459`) and `WebviewWindowBuilder` (`webview_window.rs:266`). Only `tauri::Builder` lacks it, and an inline plugin provides it. |
+
+Both security fixes are now structural rather than textual: a SQLite
+**authorizer** at the engine level, and a **Keychain item bound to the origin it
+was entered for**, with the provider tables removed from the generic write path.
 
 ## Commits
 
-| Commit | Findings | Tests added |
+| Commit | Findings | Tests |
 |---|---|---|
-| `fd0b6ce` | #2 provider keys never reach the webview | transport/form tests updated |
-| `78e8274` | #1 `sql:allow-execute` removed | 3 Rust (`import_sql.rs`) |
-| `a8f1ecf` | #3 UTF-8 split across chunks | 3 Rust unit tests |
-| `f2d61ce` | #4 Stop while the provider is silent | 2 Rust (`llm_silent.rs`) |
+| `fd0b6ce` | #2 (first attempt) | transport/form tests updated |
+| `78e8274` | #1 (first attempt) | 3 Rust |
+| `a8f1ecf` | #3 UTF-8 split across chunks | 3 Rust |
+| `f2d61ce` | #4 Stop while the provider is silent | 2 Rust |
 | `72f7b0a` | #5, #6, #7 | 6 JS, 3 updated |
 | `4bca038` | #8, #9, #10, minors | 14 JS, 4 Rust |
-
-## Method
-
-Each finding was handled in the same order: confirm the bug in the code as it
-actually is (not as the review describes it — the line numbers had drifted),
-write the smallest change that removes the failure mode, add a test that fails
-without it, run the full suites, then mark the finding in the review document with
-what was done and what was not.
-
-Two findings needed a different fix than the review proposed. Both are noted
-below; in each case the review's mechanism does not exist in the versions in use.
+| this pass | #1 and #2 reopened and closed, #8 completed | 20 Rust, JS updated |
 
 ## Findings
 
-### 1. `sql:allow-execute` bypassed the SQL guard
+### 1. SQL guard bypassed by a hand-written scanner
 
-`src-tauri/capabilities/default.json:10` now grants `sql:default`,
-`sql:allow-load`, `sql:allow-select` and `sql:allow-close` — `allow-execute` is
-gone, so the webview cannot reach SQLite's write path directly.
+**Where:** `src-tauri/src/commands/db.rs`
 
-Writes go through two Rust commands that share one guard:
+**What was wrong.** `check_statement` tracked single quotes only. SQLite's other
+quoted tokens — `"identifier"`, `` `identifier` ``, `[identifier]` — were invisible
+to it, so a `'` inside one opened a phantom string and every later `;` was skipped.
+sqlx prepares and executes the *tail* of a multi-statement string, so the hidden
+statement ran. Three tests passed because they only fed payloads with balanced
+single quotes.
 
-- `write_statement` (`src-tauri/src/commands/db.rs:145`) — one statement, values
-  **bound**, not inlined. Exposed as `execute_write` (`db.rs:191`) and
-  `executeWrite` (`src/db/client.ts:58`).
-- `execute_statements` — unchanged, for batches that must be atomic.
+**Fix, in two layers.**
 
-Both call `check_statement` (`db.rs:89`), which requires the statement to start
-with `INSERT`/`UPDATE`/`DELETE`, allows no second statement and no comment outside
-a quoted literal, and refuses `DROP`, `ATTACH`, `PRAGMA`, `CREATE` and `SELECT`.
+1. **The scanner now understands every quoted token.** `check_statement`
+   (`db.rs:109`) tracks `'…'`, `"…"`, `` `…` `` and `[…]`, with the doubled-delimiter
+   escape each one uses, so a `;` inside any of them is text, and a `;` outside one
+   is still a refusal. Comments are still refused.
+2. **The engine refuses what the text cannot be trusted to describe.** Every
+   connection that runs webview SQL installs a SQLite authorizer
+   (`write_authorizer`, `db.rs:203`; `install_write_authorizer`, `db.rs:239`), through
+   sqlx's `lock_handle()`/`as_raw_handle()` and `sqlite3_set_authorizer`:
 
-The PRAGMAs the webview used to send at connect time went with the permission.
-WAL mode is persistent in the file header; the write commands set `foreign_keys`
-on their own connection.
+   | Authorized | Refused |
+   |---|---|
+   | `SELECT`, `READ`, `FUNCTION`, `RECURSIVE` | `PRAGMA`, `ATTACH`, `DETACH` |
+   | `INSERT`, `UPDATE`, `DELETE` | `CREATE_*`, `DROP_*`, `ALTER_TABLE` |
+   | `TRANSACTION`, `SAVEPOINT` (sqlx needs them) | `REINDEX`, `ANALYZE`, `VACUUM`, `CREATE_VTABLE` |
+   | — | any write to `llm_providers` / `provider_models` |
 
-*Cost:* 49 single-statement writes across the repositories, the first-run seed and
-the sample data moved from inline SQL to bound parameters. That is a migration
-risk in itself, which is why the guard tests run against a real database rather
-than a mock.
+   The authorizer sees the operations of every statement in the string, including a
+   tail the scanner missed, so the bypass is dead at the engine even if the scanner
+   regresses again. `libsqlite3-sys` is pinned to `0.30.1`, the version sqlx links
+   against, as sqlx's own docs require for direct FFI.
 
-*Proof:* three Rust tests — a bound write round-trips a value containing quotes,
-semicolons and `--`; successive inserts report the right `lastInsertId`; and
-`PRAGMA`, `DROP`, `ATTACH`, `SELECT` and stacked statements are all refused
-before touching the database.
+   `TRANSACTION` stays allowed because sqlx issues `BEGIN`/`COMMIT`/`SAVEPOINT` on
+   the same connection; a smuggled `COMMIT` cannot grant anything, since each
+   operation inside it is authorised separately.
 
-### 2. API key and base URL came from the webview
+**Proof** (`src-tauri/tests/sql_guard.rs`, 9 tests):
 
-`secret_get` no longer exists. The commands that need a credential take a
-`provider_id` and read `base_url` from SQLite and the key from the Keychain in
-Rust, so neither value crosses IPC:
+- the reported payload, and the same trick with backticks and brackets, are
+  refused by the scanner;
+- `DELETE FROM t; DROP TABLE t; SELECT 1` sent as **raw SQL with no scanning at
+  all** is refused by the authorizer, and the table survives;
+- `DROP`, `ALTER`, `CREATE TABLE`, `CREATE INDEX`, `PRAGMA`, `ATTACH`, `VACUUM INTO`
+  are all refused with an authorization error;
+- writes to `llm_providers` and `provider_models` are refused;
+- ordinary `INSERT`/`UPDATE`/`DELETE` still work, including an `AUTOINCREMENT` table
+  whose `sqlite_sequence` is maintained internally;
+- legitimate statements with quoted identifiers (including `"odd;name"`) still pass.
 
-- `chat_completion(providerId, model?, messages, tools, onEvent)` — `llm.rs:528`
-- `provider_models(providerId)` — `llm.rs:617`
-- `provider_connection(providerId)` — `llm.rs:625`
+The reported bypass was reproduced against `write_statement` **before** the fix
+(`DROP TABLE t` dropped the table) and is refused **after**.
 
-`probe_models` / `probe_connection` (`llm.rs:637`, `llm.rs:643`) still accept a
-raw base URL and key, because the provider form has to test an endpoint before it
-is saved. That key is typed into the form by the user; no stored key is reachable
-that way. `secret_set` and `secret_delete` are limited to `provider:<id>` accounts
-by `check_account` (`secrets.rs:26`).
+### 2. A stored API key could be sent to any URL
 
-*Proof:* the transport and form tests were updated to the provider-id shape; the
-live provider tests still pass against Ollama and Gemini.
+**Where:** `src-tauri/src/commands/secrets.rs`, `src-tauri/src/commands/providers.rs`,
+`src-tauri/src/commands/llm.rs:525`
+
+**What was wrong.** `provider_connection(1)` read `base_url` from SQLite and sent
+the Keychain key there. The webview could change `base_url` with one
+`execute_write` and then call the command. Removing `secret_get` had hidden the key
+but not the redirect: two calls were enough to mail it to `attacker.tld`.
+
+**Fix, in three parts.**
+
+1. **The key is bound to its origin.** The Keychain item is now
+   `{"key": …, "origin": "https://api.openai.com:443"}`, written by
+   `secrets::store_key`. `secrets::read_key(account, base_url)` compares
+   `scheme://host:port` and returns an **error**, never a key, when they differ
+   (`secrets.rs:109`). A path change (`/v1` → `/v2`) keeps the key; a scheme, host or
+   port change does not. A key saved in the old plain format is refused with a
+   message asking for re-entry, because an unbound key cannot be sent safely.
+2. **The provider tables are out of the generic write path.** The authorizer
+   refuses `INSERT`/`UPDATE`/`DELETE` on `llm_providers` and `provider_models` for
+   anything arriving through `execute_write` or `run_transaction`. Provider writes
+   are named commands that do the Keychain work in the same call:
+   `provider_save`, `provider_delete`, `provider_set_default`,
+   `providers_restore` (import), `providers_reset` (reset the database).
+3. **Changing the endpoint drops the key.** `provider_save` keeps a stored key only
+   if `read_key` still resolves it for the *new* base URL; otherwise it deletes the
+   item and clears `keychain_ref`, so the row never claims a key that will not be
+   used. `save_row` (`providers.rs`) is the only writer of that column.
+
+`secret_set` and `secret_delete` are **gone from the IPC surface**. The webview can
+no longer create, overwrite, read or delete a Keychain item; it can only ask for an
+operation on a provider id, and Rust decides what that means.
+
+**Proof.**
+
+- `secrets` unit tests: origin parsing (`https` default port, explicit port, scheme
+  differences, refused `file:`/`javascript:`/`ftp:`/garbage).
+- `src-tauri/tests/providers.rs` (11 tests) against a real migrated database:
+  the first provider becomes the default; a renamed provider on the same origin
+  keeps its key; **a provider moved to `https://attacker.tld` loses `keychain_ref`**;
+  models are replaced not appended; an invalid endpoint is refused before any row is
+  written; deleting the default moves the flag; a backup restores ids, timestamps
+  and models, collapses a duplicate default, and is refused when it points at a
+  `file:` URL; a reset reports the ids whose keys must be deleted.
+- `sql_guard.rs` asserts the authorizer refuses `UPDATE llm_providers SET base_url
+  = 'https://attacker.tld'` outright.
+- The ignored Keychain round-trip was run against the real login Keychain: a key
+  stored for `http://localhost:11434/v1` reads back for that URL and is **refused**
+  for `https://attacker.tld/v1` and for `http://localhost:11435/v1`.
+
+**Consequence for an existing install:** a key saved before this change is refused
+until it is entered again, once. The provider list still shows the badge, and the
+form says what to do.
 
 ### 3. UTF-8 split across chunks was corrupted
 
-`LineBuffer` (`llm.rs:93`) accumulates raw bytes and decodes a line only once its
-newline has arrived. A newline byte can never be part of a multi-byte sequence, so
-no character can be split. `\r\n` is trimmed, and the trailing line is flushed
-when the stream ends without a newline.
+`LineBuffer` (`llm.rs:93`) accumulates raw bytes and decodes a line only when its
+newline has arrived; a newline byte cannot be part of a multi-byte sequence.
+`\r\n` is trimmed and the trailing line is flushed at end of stream.
 
-*Proof:* a unit test feeds `"CHF 1’000.50 — éé€ 🙂"` one **byte** at a time and
-asserts no replacement character survives, plus tests for the trailing flush and
-CRLF trimming. Live Ollama and Gemini runs still stream correctly.
+**Proof:** a unit test feeds `"CHF 1’000.50 — éé€ 🙂"` one byte at a time and
+asserts no replacement character, plus tests for the trailing flush and CRLF.
 
 ### 4. Stop did nothing while the provider was silent
 
-Cancellation used to be checked only when a chunk arrived, so a model that was
-loading sent no bytes and Stop waited out the 300 s timeout. Both waits now race a
-100 ms poll (`wait_for_cancel`, `llm.rs:77`; `CANCEL_POLL`, `llm.rs:74`):
+Both waits race a 100 ms cancellation poll (`wait_for_cancel`, `llm.rs:77`):
+`http.send()` inside a `tokio::select!`, and the stream read. Text received before
+the stop is kept and returned with `cancelled: true`.
 
-- `http.send()` runs inside a `tokio::select!`, so a provider that never sends
-  headers can be stopped;
-- the stream read does too, so a provider that goes quiet mid-answer can be
-  stopped.
-
-Text that already arrived is kept and returned with `cancelled: true`.
-
-*Proof:* `src-tauri/tests/llm_silent.rs` stands up a local server that never
-answers and one that answers then goes silent; both requests return in under a
-second (the pair runs in ~0.35 s), and the delta received before the stop is
-preserved. The live Ollama mid-stream test still passes.
+**Proof:** `tests/llm_silent.rs` — a server that never answers, and one that answers
+then goes quiet; both return in under a second (0.35 s for the pair).
 
 ### 5. Divide-by-zero guard checked the wrong variable
 
-`src/llm/tools.ts:292` now guards `first.amount_minor === 0`, the value it divides
-by. Two consequences, both now tested: a fall from 800 to 0 reports `-100`
-(previously swallowed as "no change"), and a window that starts at 0 reports
-`null` instead of `Infinity`.
+`src/llm/tools.ts:292` guards `first.amount_minor`, the value it divides by. A fall
+from 800 to 0 now reports `-100` (previously "no change"); a window starting at 0
+reports `null` instead of `Infinity`.
 
 ### 6. `list_assets` truncated before sorting
 
-`src/llm/tools.ts:262` sorts by institution and product, then caps at 50. The 50
-that survive are now the first 50 by name instead of an arbitrary slice, so a
+`src/llm/tools.ts:262` sorts by institution and product, then caps at 50, so a
 named asset cannot be dropped by the cap.
 
 **Different from the review's suggestion:** the payload stays a bare array rather
-than becoming `{ assets, truncated }`. That is the shape the source returns and
-what the model expects; making the cap deterministic fixes the actual failure
-(the asset silently missing) without changing the protocol. A test with 60 assets
-asserts the survivors are ids 1–50, not the repository's insertion order.
+than `{ assets, truncated }` — the shape the source returns and the model expects.
+Determinism was the property that mattered.
 
 ### 7. `confirmAction` could write twice
 
-`confirmAction` and `rejectAction` now **claim** the row before doing anything:
-one conditional `UPDATE … WHERE id = ? AND status = 'pending'`
-(`claimPendingAction`, `src/db/repositories/chat.ts:197`), through `execute_write`
-so the affected-row count comes back. The loser of a race gets no row, reports
-"already resolved" and writes nothing. A write that throws marks the action
-`failed` with the error instead of leaving it pending. The card's Confirm and
-Reject buttons disable while a request is in flight (`ChatPage.tsx:574`).
-
-*Proof:* three service tests (claim ordering, second-confirm refusal, failure
-path) and a UI-level busy state.
+`confirmAction`/`rejectAction` claim the row with one conditional
+`UPDATE … WHERE id = ? AND status = 'pending'` (`claimPendingAction`,
+`src/db/repositories/chat.ts:197`) before writing anything. The loser gets no row
+and writes nothing; a failed write marks the action `failed`; the card's buttons
+lock while a request is in flight.
 
 ### 8. Assistant links could replace the app window
 
-**Different from the review's suggestion:** `Builder::on_navigation` does not
-exist in Tauri v2 — the suggested fix does not compile. The guard is in the
-webview:
+**Correction:** `on_navigation` does exist in Tauri v2, on
+`tauri::plugin::Builder`. The first version of this report said it did not, because
+I looked at `tauri::Builder`, which genuinely lacks it. It is now used.
 
-- `installExternalLinkGuard` (`src/lib/externalLinks.ts:24`) adds one capturing
-  `click` listener on the document before React renders. A click on an absolute
-  `http(s)` link is `preventDefault()`ed and handed to `openExternal`, which calls
-  the new `open_external` command.
-- `open_external` (`src-tauri/src/commands/files.rs:29`) re-checks the scheme and
-  refuses anything that is not `http://` or `https://`, so a `file:` or
-  `javascript:` URL never reaches the system opener even if the webview guard is
-  bypassed.
+Three layers:
 
-Hash routes (`#/assets`), relative hrefs, modifier-clicks and non-web schemes are
-left alone — modifier-clicks are a deliberate "open in a new tab" intent that
-should not be hijacked.
+1. **`navigation_guard()`** (`src-tauri/src/lib.rs`) — a five-line inline plugin
+   whose `on_navigation` allows only the app's own schemes (`tauri`, `asset`,
+   `about`) and `localhost`/`127.0.0.1`/`ipc.localhost` over http(s). Any other
+   document navigation is cancelled by the framework, whatever triggered it: a
+   missed click, a new component, a `window.location` assignment.
+2. **`installExternalLinkGuard`** (`src/lib/externalLinks.ts:32`) — one capturing
+   click listener on the document; an absolute `http(s)` link calls
+   `preventDefault()` and goes to the browser through `open_external`. Hash routes,
+   relative hrefs and non-web schemes are left alone. **Modifier-clicks are now
+   intercepted too**: this window has no tabs, so Cmd- or Shift-clicking a link used
+   to do nothing (or navigate); it now opens in the browser like a plain click.
+3. **`open_external`** (`src-tauri/src/commands/files.rs:29`) re-checks the scheme
+   and refuses anything that is not `http://` or `https://`.
 
-Done document-wide rather than per component because replies render in three
-places (history, streaming bubble, delete modal), and a custom `a` component would
-have to be threaded through each.
-
-*Proof:* nine jsdom tests — https, http, hash route, relative path, `file:`, a
-rejected command, a modifier-click, a click on a child element, and reinstall —
-plus a Rust test for the scheme refusal. SECURITY.md documents both halves.
+**Proof:** nine jsdom tests (https, http, hash route, relative path, `file:`,
+rejected command, modifier-click, click on a child element, reinstall) and a Rust
+test for the scheme refusal. The navigation guard itself is not unit-tested — it is
+a five-line closure over a framework callback; it is verified by hand.
 
 ### 9. First snapshot dated in UTC
 
-`src/db/repositories/assets.ts:152` uses `todayIso()` instead of
-`new Date().toISOString()`, so an asset created before 02:00 in Zurich is no
-longer dated to the previous day.
+`src/db/repositories/assets.ts:152` uses `todayIso()`; a repository test asserts the
+emitted statement carries the local day.
 
 ### 10. Wrong "already exists" value; impossible dates accepted
 
-`propose_snapshot` (`src/llm/tools.ts:392`) validates with `isValidIsoDate`, which
-rejects `2026-02-31`, and reads the existing snapshot with
-`getSnapshotOn(assetId, isoDate)` (`tools.ts:398`) so the warning shows the value
-**on that date** rather than the asset's latest balance.
+`propose_snapshot` validates with `isValidIsoDate` (`tools.ts:392`), so `2026-02-31`
+is refused, and warns with `getSnapshotOn(assetId, isoDate)` (`tools.ts:398`) — the
+value **on that date**, not the asset's latest.
 
 ## Minor items
 
-- **`deleteProvider` removed the key before the rows.** Now rows first, Keychain
-  item after (`src/db/repositories/llmProviders.ts:178`). A failed delete leaves a
-  provider that keeps its key and can be retried, instead of one that lingers
-  without a credential. Tests assert the call order and that a failed delete never
-  touches the Keychain.
-- **`createAsset` read its id from a pooled connection.** New
-  `run_transaction_returning_id` (`db.rs:258`), backed by
-  `execute_statements_returning_id` (`db.rs:208`), which reads `sqlite_sequence`
-  **inside** the transaction on the same connection. Rust tests cover two
-  successive batches, a rolled-back batch (no id, nothing written) and an empty
-  batch.
-- **SSE trailing line.** Fixed with #3; `LineBuffer::flush` plus a test.
-- **Updater `OWNER` placeholder.** Not fixed, by choice. It needs the real
-  repository URL and a published release to mean anything; guessing a value is
-  worse than leaving the placeholder. Recorded in `docs/RELEASE.md` and
-  SECURITY.md. Until then the only visible effect is a failed update check.
+- **`deleteProvider`** — rows first, Keychain after. Now one Rust command, so the
+  ordering is inside `provider_delete`; `llm_providers.test.ts` asserts the single
+  call and that the generic SQL path is not used.
+- **`createAsset` id from a pooled connection** — fixed earlier with
+  `run_transaction_returning_id`, which reads `sqlite_sequence` inside the
+  transaction.
+- **SSE trailing line** — fixed with #3.
+- **Updater `OWNER` placeholder** — not fixed, by choice: it needs the real
+  repository URL and a published release. See `docs/RELEASE.md`.
 
 ## Verification
 
 ```
-npx vitest run        # 510 passed, 5 skipped (45 files)
+npx vitest run        # 508 passed, 5 skipped (45 files)
 npm run typecheck     # no errors
-cargo test            # 15 lib + 21 import_sql + 2 llm_silent passed, 9 ignored
+cargo test            # 60 passed, 9 ignored
 ```
 
-The ignored Rust tests are the live-provider ones (they need Ollama or Gemini) and
-the import test (needs SQL generated by the TypeScript importer). They were run
-separately against a local Ollama:
+The ignored Rust tests need a live provider or the login Keychain. The Keychain
+round-trip was run by hand and passes:
 
 ```
-OLLAMA_MODEL=qwen3.5:4b cargo test --test live -- --ignored
+cargo test --test live keychain_round_trip -- --ignored
 ```
 
 ## Residual risk
 
-These fixes close the reported failure modes; they do not make the app hardened.
-
-- **`run_transaction` still has no table allow-list.** Statements are validated
-  (DML only, no stacking, no comments) but any table can be modified, so a
-  compromised webview could still rewrite or delete rows.
-- **The database is unencrypted.** Portfolio and profile data sit in plain SQLite
-  in `~/Library/Application Support/`.
-- **The link guard is a webview mechanism.** It stops a click from navigating, and
-  Rust refuses non-web schemes, but there is no app-level navigation hook to fall
-  back on. A link with a `mailto:` or `tel:` scheme is neither intercepted nor
-  opened: the click does nothing.
-- **#8 is tested in jsdom only.** No test drives a real click in the running app;
-  the Rust side is covered, the wiring to `main.tsx` is not automated.
-- **Code quality and performance are still unreviewed.** No index analysis, no
-  query-count measurement, no look at re-renders during streaming or the cost of
-  rebuilding the system prompt each turn.
+- **The renderer can still change a provider through `provider_save`.** That is not
+  an escalation: the renderer already renders the portfolio it would be protecting,
+  and moving the endpoint drops the key. What it cannot do is read a key or move one.
+- **`run_transaction` still has no table allow-list** beyond the provider tables:
+  any other table can be modified, so a compromised renderer can rewrite or delete
+  portfolio rows. The authorizer limits *what kind* of statement, not *which table*
+  (apart from providers).
+- **The database is unencrypted**, and portfolio data is in plain SQLite.
+- **`document.cookie`/`localStorage` of the webview are not a trust boundary**;
+  nothing sensitive lives there.
+- **`navigation_guard` is untested by automation.** It is five lines; a wrong
+  pattern would show up immediately as "the window is blank", not silently.
+- **Code quality and performance are still unreviewed.**

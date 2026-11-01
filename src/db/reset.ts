@@ -6,25 +6,11 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
-import { getDb } from "./client";
-
-/** Keychain accounts to remove when the providers holding them go away. */
-async function providerAccounts(): Promise<string[]> {
-  const db = await getDb();
-  const rows = await db.select<Array<{ keychain_ref: string | null }>>(
-    `SELECT keychain_ref FROM llm_providers WHERE keychain_ref IS NOT NULL`,
-  );
-  return rows.map((row) => row.keychain_ref).filter((ref): ref is string => !!ref);
-}
 
 export async function resetDatabase(): Promise<void> {
-  for (const account of await providerAccounts()) {
-    try {
-      await invoke("secret_delete", { account });
-    } catch {
-      // A missing Keychain item is not a reason to block a reset.
-    }
-  }
+  // Providers and their Keychain items first: the generic SQL path may not touch
+  // those tables, and Rust removes both together.
+  await invoke("providers_reset");
 
   const statements = [
     `DELETE FROM pending_actions`,
@@ -36,7 +22,6 @@ export async function resetDatabase(): Promise<void> {
     `DELETE FROM tags`,
     `DELETE FROM categories`,
     `DELETE FROM institutions`,
-    `DELETE FROM llm_providers`,
     `DELETE FROM exchange_rates`,
     `DELETE FROM user_memories`,
     `DELETE FROM user_goals`,

@@ -1,12 +1,16 @@
 /**
  * LLM providers. The API key never touches SQLite: `keychain_ref` points at a
- * macOS Keychain item (`provider:<id>`), written through the `secret_*` commands.
+ * macOS Keychain item (`provider:<id>`).
+ *
+ * **Writes go through Rust.** The provider row decides where a stored key is
+ * sent, so the generic SQL path refuses to touch `llm_providers` and
+ * `provider_models` (see `write_authorizer` in `src-tauri/src/commands/db.rs`).
+ * `provider_save` / `provider_delete` / `provider_set_default` also do the
+ * Keychain work, binding a key to the origin it was entered for.
  */
 
 import { invoke } from "@tauri-apps/api/core";
 import { getDb } from "../client";
-import { runTransaction } from "../transaction";
-import { sqlInt, sqlText } from "../literals";
 
 export interface LlmProvider {
   id: number;
@@ -39,10 +43,6 @@ export function normaliseBaseUrl(providerType: string, baseUrl: string): string 
   if (trimmed.endsWith("/openai")) return trimmed;
   if (/\/v1beta$/.test(trimmed)) return `${trimmed}/openai`;
   return trimmed;
-}
-
-export function keychainAccount(id: number): string {
-  return `provider:${id}`;
 }
 
 export async function listProviders(): Promise<LlmProvider[]> {
@@ -111,93 +111,34 @@ export async function listEnabledModels(providerId: number): Promise<string[]> {
   return rows.map((row) => row.model);
 }
 
-/** Statements that replace a provider's model rows; used inside its transaction. */
-function modelStatements(
-  providerId: number,
-  models: ReadonlyArray<{ model: string; enabled: boolean }>,
-): string[] {
-  const statements = [`DELETE FROM provider_models WHERE provider_id = ${sqlInt(providerId)}`];
-  for (const choice of models) {
-    statements.push(
-      `INSERT INTO provider_models (provider_id, model, enabled) VALUES (${sqlInt(providerId)}, ${sqlText(choice.model)}, ${sqlInt(choice.enabled ? 1 : 0)})`,
-    );
-  }
-  return statements;
+/** Create a provider. The key, if given, is bound to this endpoint's origin. */
+export async function createProvider(input: ProviderInput, apiKey?: string): Promise<number> {
+  return invoke<number>("provider_save", {
+    input: { ...input, base_url: normaliseBaseUrl(input.provider_type, input.base_url), id: null, api_key: apiKey ?? null },
+  });
 }
 
 /**
- * Create a provider. The key is stored first, under the id the insert will get;
- * if the insert fails the Keychain item is removed again.
+ * Update a provider.
+ *
+ * Changing the base URL of a provider with a stored key drops that key: it was
+ * bound to the old origin, and sending it to a new host is exactly what the
+ * binding exists to prevent. The form says so, and asks for the key again.
  */
-export async function createProvider(input: ProviderInput, apiKey?: string): Promise<number> {
-  const db = await getDb();
-  const next = await db.select<{ id: number }[]>(
-    `SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name = 'llm_providers'), 0) + 1 AS id`,
-  );
-  const id = next[0]?.id ?? 1;
-  const account = apiKey && apiKey.trim() ? keychainAccount(id) : null;
-  if (account && apiKey) await invoke("secret_set", { account, secret: apiKey });
-
-  try {
-    await runTransaction([
-      `INSERT INTO llm_providers (id, name, base_url, model, provider_type, keychain_ref, is_default, is_active)
-       VALUES (${sqlInt(id)}, ${sqlText(input.name)}, ${sqlText(normaliseBaseUrl(input.provider_type, input.base_url))},
-               ${sqlText(input.model)}, ${sqlText(input.provider_type)}, ${sqlText(account)}, 0,
-               ${sqlInt(input.is_active ? 1 : 0)})`,
-      ...(input.models ? modelStatements(id, input.models) : []),
-    ]);
-    // First provider becomes the default, as a fresh install needs one.
-    const all = await listProviders();
-    if (all.length === 1) await setDefaultProvider(id);
-    return id;
-  } catch (error) {
-    if (account) await invoke("secret_delete", { account }).catch(() => undefined);
-    throw error;
-  }
-}
-
 export async function updateProvider(id: number, input: ProviderInput, apiKey?: string): Promise<void> {
-  const existing = await getProvider(id);
-  const account = keychainAccount(id);
-  if (apiKey !== undefined && apiKey.trim() !== "") {
-    await invoke("secret_set", { account, secret: apiKey });
-  }
-  const keychainRef = existing?.keychain_ref ?? (apiKey && apiKey.trim() ? account : null);
-  await runTransaction([
-    `UPDATE llm_providers
-        SET name = ${sqlText(input.name)}, base_url = ${sqlText(normaliseBaseUrl(input.provider_type, input.base_url))},
-            model = ${sqlText(input.model)}, provider_type = ${sqlText(input.provider_type)},
-            keychain_ref = ${sqlText(keychainRef)}, is_active = ${sqlInt(input.is_active ? 1 : 0)},
-            updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
-      WHERE id = ${sqlInt(id)}`,
-    ...(input.models ? modelStatements(id, input.models) : []),
-  ]);
+  await invoke("provider_save", {
+    input: { ...input, base_url: normaliseBaseUrl(input.provider_type, input.base_url), id, api_key: apiKey ?? null },
+  });
 }
 
-/** Delete a provider and its Keychain item. The default flag moves to the first survivor. */
+/** Delete a provider, its model rows and its Keychain item. */
 export async function deleteProvider(id: number): Promise<void> {
-  const provider = await getProvider(id);
-  // Row first: if the delete fails the provider keeps its key and can be
-  // retried, instead of lingering without a credential.
-  await runTransaction([
-    `DELETE FROM provider_models WHERE provider_id = ${sqlInt(id)}`,
-    `DELETE FROM llm_providers WHERE id = ${sqlInt(id)}`,
-  ]);
-  if (provider?.keychain_ref) {
-    await invoke("secret_delete", { account: provider.keychain_ref }).catch(() => undefined);
-  }
-  if (provider?.is_default === 1) {
-    const remaining = await listProviders();
-    if (remaining.length > 0) await setDefaultProvider(remaining[0].id);
-  }
+  await invoke("provider_delete", { id });
 }
 
-/** Exactly one default: the unique partial index refuses two, so clear first. */
+/** Exactly one default: the unique partial index refuses two, so Rust clears first. */
 export async function setDefaultProvider(id: number): Promise<void> {
-  await runTransaction([
-    `UPDATE llm_providers SET is_default = 0 WHERE is_default = 1`,
-    `UPDATE llm_providers SET is_default = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ${sqlInt(id)}`,
-  ]);
+  await invoke("provider_set_default", { id });
 }
 
 export async function countProviders(): Promise<number> {

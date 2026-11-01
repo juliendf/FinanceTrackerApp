@@ -175,7 +175,9 @@ async fn imports_the_generated_statement_list() {
     );
 }
 
-/// Moves a provider key from a file into the Keychain, exactly as the wizard does.
+/// Moves a provider key from a file into the Keychain, bound to the endpoint it
+/// was entered for — the same call `providers_restore` makes.
+///
 /// Verified by hand against the real backup; the key never appears in argv.
 #[test]
 #[ignore = "writes to the login keychain"]
@@ -187,10 +189,16 @@ fn stores_the_provider_key_in_the_keychain() {
     assert!(!key.is_empty(), "no key to store");
 
     let account = "provider:2".to_string();
-    secrets::secret_set(account.clone(), key.to_string()).expect("set");
-    let read_back = secrets::read_secret(&account).expect("get");
-    assert_eq!(read_back.as_deref(), Some(key));
-    println!("stored {} chars under account {account}", key.len());
+    let base_url = "https://generativelanguage.googleapis.com/v1beta/openai";
+    secrets::store_key(&account, key, base_url).expect("set");
+    assert_eq!(
+        secrets::read_key(&account, base_url).expect("get").as_deref(),
+        Some(key)
+    );
+    // The same key must not be usable from another host.
+    assert!(secrets::read_key(&account, "https://attacker.tld/v1").is_err());
+    secrets::delete_key(&account).expect("clean up");
+    println!("stored and read back {} chars under account {account}", key.len());
 }
 
 // ---------------------------------------------------------------------------
