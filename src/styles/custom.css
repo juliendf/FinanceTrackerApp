@@ -2710,6 +2710,8 @@ body.chat-page main > .container-fluid {
 
 .msg-bubble {
     max-width: min(46rem, 78%);
+    /* A flex child will not shrink below its content unless told to. */
+    min-width: 0;
     padding: 0.6875rem 0.9375rem;
     border-radius: var(--radius-lg);
     font-size: 0.9375rem;
@@ -2845,6 +2847,7 @@ body.chat-page main > .container-fluid {
  * instead, and the table keeps its natural width so columns are not squeezed.
  */
 .md-table-scroll {
+    width: 100%;
     max-width: 100%;
     overflow-x: auto;
     margin-bottom: 0.6rem;
@@ -2853,8 +2856,15 @@ body.chat-page main > .container-fluid {
 }
 
 .msg-bubble table {
+    /*
+     * `fixed` makes the table fit the bubble instead of growing to its content:
+     * columns are equal and their text wraps. A model-written table has no column
+     * widths to respect, so growing to `max-content` only ever produced a table
+     * wider than the conversation — which is what forced a sideways drag.
+     */
     width: 100%;
-    min-width: max-content;
+    max-width: 100%;
+    table-layout: fixed;
     border-collapse: collapse;
     margin-bottom: 0;
     font-size: 0.85em;
