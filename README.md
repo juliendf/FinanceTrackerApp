@@ -4,7 +4,19 @@ A native macOS app for tracking assets and their value over time, ported feature
 
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
-Contents: [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation)
+Contents: [Install](#install) · [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation)
+
+## Install
+
+Download the latest `.dmg` from
+[Releases](https://github.com/juliendf/FinanceTrackerApp/releases), open it and
+drag the app to Applications.
+
+The build is signed ad hoc (no Apple Developer ID yet), so the first launch
+needs **right-click → Open** instead of a double-click, or System Settings →
+Privacy & Security → **Open Anyway**. After that macOS remembers the choice.
+Updates are signed separately and verified with the app's own key —
+**Check for updates** on the Data page.
 
 ## Status
 

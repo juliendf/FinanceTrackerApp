@@ -55,7 +55,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://github.com/OWNER/financeTrackerApp/releases/latest/download/latest.json"
+        "https://github.com/juliendf/FinanceTrackerApp/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEIwM0VFNEQyRjAxOTMxMDcKUldRSE1SbncwdVErc09neklJWnpKNitNSS9VRlJ1TzNGaE5HcmhmQjhmczhUOFZXMUY3MWdFSS8K",
       "dangerousInsecureTransportProtocol": false,

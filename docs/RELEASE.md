@@ -80,8 +80,8 @@ already excludes `*.p12`, `.env*` and provisioning profiles.
 and exposed as **Check for updates** on the Data page. It reads a static
 `latest.json` from GitHub Releases.
 
-1. Replace `OWNER` in the endpoint with the real account/org:
-   `https://github.com/OWNER/financeTrackerApp/releases/latest/download/latest.json`
+1. The endpoint points at `juliendf/FinanceTrackerApp`. If the repository is
+   ever renamed or moved, change it here too.
 2. The public key in the config matches the private key at
    `~/.config/financetrackerapp/updater.key` (generated with
    `npx tauri signer generate`). **Back that file up**: losing it means
@@ -89,7 +89,8 @@ and exposed as **Check for updates** on the Data page. It reads a static
    purpose.
 3. Update artifacts are only produced with
    `src-tauri/tauri.release.conf.json`, which flips
-   `bundle.createUpdaterArtifacts` on:
+   `bundle.createUpdaterArtifacts` on (and, without a Developer ID, pins the
+   ad-hoc identity so the app is signed before the DMG is built):
 
    ```sh
    TAURI_SIGNING_PRIVATE_KEY=~/.config/financetrackerapp/updater.key \
@@ -121,18 +122,52 @@ stale app if you signed after `tauri build` (see above).
 
 ## GitHub Actions
 
-`.github/workflows/release.yml` builds a universal binary on `macos-14`, runs the
-test suite, then publishes a draft release through `tauri-action`. It has never
-been executed — the repository has no remote yet. Secrets it expects:
-`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`,
-`APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID`, `TAURI_SIGNING_PRIVATE_KEY`,
-`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`.
+Two workflows:
+
+- `.github/workflows/ci.yml` — typecheck, `npm test`, `cargo test` on every push
+  to `main` and every pull request.
+- `.github/workflows/release.yml` — on a `v*` tag: the same checks, then
+  `tauri-action` builds a DMG + updater artifacts for `aarch64-apple-darwin`,
+  signs them, and creates a **draft** release. Publish it when the DMG looks
+  right. `latest.json` is only served once the release is published, so
+  **Check for updates** finds nothing while the release is a draft.
+
+Secrets (`gh secret set <NAME> --repo juliendf/FinanceTrackerApp`):
+
+| Secret | Needed | Value |
+|---|---|---|
+| `TAURI_SIGNING_PRIVATE_KEY` | yes | content of `~/.config/financetrackerapp/updater.key` |
+| `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | only if the key has one | its password |
+| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | optional | the Developer ID set below |
+
+Without the Apple secrets, `tauri.release.conf.json` sets
+`bundle.macOS.signingIdentity: "-"`, so the app is signed ad hoc **during the
+bundle** — no manual repack (the DMG is built from the already-signed app).
+Setting `APPLE_SIGNING_IDENTITY` overrides that identity, so adding the
+Developer ID secrets later needs no workflow change. Note that DMG signing is
+skipped for an ad-hoc identity; that is expected.
+
+```sh
+# once, after the first push
+gh secret set TAURI_SIGNING_PRIVATE_KEY --repo juliendf/FinanceTrackerApp \
+  < ~/.config/financetrackerapp/updater.key
+
+# to cut a release
+git tag v0.4.0 && git push origin v0.4.0
+```
+
+If a run fails, use **Re-run all jobs** on the workflow run; delete and re-push
+the tag only when the tag itself is wrong.
 
 ## Release checklist
 
 1. `npm test`, `npm run typecheck`, `cargo test` (in `src-tauri`).
-2. Bump `version` in `src-tauri/tauri.conf.json`.
-3. `npm run tauri build`; launch the app; check the dashboard numbers against
-   the golden fixtures.
-4. Tag `v<version>` and push; the workflow publishes a draft.
-5. Publish the draft, then confirm **Check for updates** finds it.
+2. Bump the version in `src-tauri/tauri.conf.json`, `package.json` and
+   `src-tauri/Cargo.toml` — the release workflow refuses a tag that does not
+   match `tauri.conf.json`.
+3. `npm run tauri build`, launch the app, and walk `docs/PARITY_CHECKLIST.md`.
+4. Tag `v<version>` and push; the workflow runs the suite and creates a draft
+   release with the DMG, `latest.json` and the signed updater artifacts.
+5. Download the DMG from the draft, mount it, launch the copy inside, then
+   publish the draft.
+6. Confirm **Check for updates** on a previous install finds the new version.

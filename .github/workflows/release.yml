@@ -1,9 +1,17 @@
 # Builds, signs and publishes a macOS release when a tag is pushed.
 #
-# Nothing here has been run: the repository has no remote yet. See docs/RELEASE.md
-# for the secrets it expects and for the local build it mirrors.
+#   git tag v0.4.0 && git push origin v0.4.0
 #
-#   git tag v0.1.0 && git push origin v0.1.0
+# The tag must match `version` in src-tauri/tauri.conf.json; the first step
+# fails otherwise. The release is created as a draft: publish it from the
+# Releases page once the DMG looks right. `latest.json` only becomes visible to
+# the in-app updater when the release is published (not a draft).
+#
+# Secrets: TAURI_SIGNING_PRIVATE_KEY (required — update artifacts are signed),
+# TAURI_SIGNING_PRIVATE_KEY_PASSWORD (only if the key was generated with one),
+# and optionally the Apple signing/notarisation set documented in
+# docs/RELEASE.md. Without an Apple certificate, tauri.release.conf.json signs
+# ad hoc, which is what macOS Apple silicon requires for a downloaded app.
 
 name: release
 
@@ -11,10 +19,13 @@ on:
   push:
     tags:
       - "v*"
-  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   macos:
@@ -22,45 +33,61 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Tag matches the app version
+        run: |
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match tauri.conf.json version v$version"
+            exit 1
+          fi
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin,x86_64-apple-darwin
+          targets: aarch64-apple-darwin
 
-      - uses: swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
 
       - run: npm ci
 
       # Tests first: a release that fails its own suite should never be signed.
-      - run: npm test
       - run: npm run typecheck
+      - run: npm test
       - run: cargo test --manifest-path src-tauri/Cargo.toml
 
-      - name: Build, sign, notarise and publish
-        uses: tauri-apps/tauri-action@v0
+      - name: Build, sign and publish the draft release
+        uses: tauri-apps/tauri-action@v1
         env:
-          # Signing (Developer ID Application certificate, base64 .p12)
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Update artifacts (latest.json, .app.tar.gz.sig). The private key is
+          # outside the repository on purpose; see docs/RELEASE.md.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Optional, once a Developer ID exists: set the secrets and these
+          # env vars take precedence over the ad-hoc identity in
+          # tauri.release.conf.json.
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
-          # Notarisation (App Store Connect API key or Apple ID + app password)
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Updater signing key; the private key never enters the repository.
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "FinanceTracker ${{ github.ref_name }}"
+          releaseBody: |
+            macOS 11+ on Apple silicon. The build is signed ad hoc, so the first
+            launch needs right-click → Open (or System Settings → Privacy &
+            Security → Open Anyway).
+
+            Existing installs update from **Check for updates** on the Data page.
+          generateReleaseNotes: true
           releaseDraft: true
           prerelease: false
-          # Universal binary: Apple silicon + Intel from one artifact.
-          args: --target universal-apple-darwin --config src-tauri/tauri.release.conf.json
+          args: --target aarch64-apple-darwin --config src-tauri/tauri.release.conf.json
