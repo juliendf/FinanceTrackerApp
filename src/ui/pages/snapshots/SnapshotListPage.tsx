@@ -10,11 +10,11 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Decimal from "decimal.js";
 import { listInstitutions } from "../../../db/repositories/institutions";
 import { deleteSnapshot, deleteSnapshots, listSnapshotRows } from "../../../db/repositories/snapshots";
 import { todayIso } from "../../../domain/dates";
 import { formatDate, formatMinorAsCurrency, formatSymbolAmount, relativeDate } from "../../../domain/format";
+import { fromMinorUnits } from "../../../domain/money";
 import { paginate } from "../../../domain/pagination";
 import {
   csvFileName,
@@ -483,7 +483,7 @@ export function SnapshotListPage() {
                 date: pendingDelete.date,
                 amount: formatSymbolAmount(
                   symbolOf(pendingDelete.currency),
-                  new Decimal(pendingDelete.amount_minor).dividedBy(100),
+                  fromMinorUnits(pendingDelete.amount_minor) ?? 0,
                 ),
               }
             : null

@@ -26,8 +26,8 @@ import {
   formatPercentValue,
   relativeDate,
 } from "../../../domain/format";
-import Decimal from "decimal.js";
 import { formatSymbolAmount } from "../../../domain/format";
+import { fromMinorUnits } from "../../../domain/money";
 import { messages } from "../../../domain/snapshots";
 import { SnapshotDeleteModal } from "../../components/SnapshotDeleteModal";
 import { AssetDeleteModal } from "../../components/AssetDeleteModal";
@@ -407,7 +407,7 @@ export function AssetDetailPage() {
                 date: snapshotToDelete.date,
                 amount: formatSymbolAmount(
                   ({ EUR: "€", USD: "$", CHF: "CHF" } as Record<string, string>)[asset.currency] ?? asset.currency,
-                  new Decimal(snapshotToDelete.amount_minor).dividedBy(100),
+                  fromMinorUnits(snapshotToDelete.amount_minor) ?? 0,
                 ),
               }
             : null

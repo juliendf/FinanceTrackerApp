@@ -167,7 +167,8 @@ export function nextSort(
   return { sort_by: clicked, sort_order: flip ? "desc" : "asc" };
 }
 
-const amountOf = (row: SnapshotListRow): Decimal => new Decimal(row.amount_minor).dividedBy(100);
+const amountOf = (row: SnapshotListRow): Decimal =>
+  fromMinorUnits(row.amount_minor) ?? new Decimal(0);
 
 /** `_apply_snapshot_filters`. */
 export function filterSnapshots(
@@ -365,7 +366,7 @@ export const messages = {
   duplicate: (date: string) =>
     `A snapshot for this asset already exists on ${date}. Please choose a different date or edit the existing snapshot.`,
   created: (assetName: string, date: string, currency: string, amountMinor: number) =>
-    `Snapshot created successfully for ${assetName} on ${date}: ${formatSymbolAmount(symbolOf(currency), new Decimal(amountMinor).dividedBy(100))}`,
+    `Snapshot created successfully for ${assetName} on ${date}: ${formatSymbolAmount(symbolOf(currency), fromMinorUnits(amountMinor) ?? new Decimal(0))}`,
   updated: (
     assetName: string,
     currency: string,
@@ -373,8 +374,8 @@ export const messages = {
     after: { date: string; amountMinor: number },
   ) => {
     const sym = symbolOf(currency);
-    const was = new Decimal(before.amountMinor).dividedBy(100);
-    const now = new Decimal(after.amountMinor).dividedBy(100);
+    const was = fromMinorUnits(before.amountMinor) ?? new Decimal(0);
+    const now = fromMinorUnits(after.amountMinor) ?? new Decimal(0);
     return (
       `Snapshot updated successfully for ${assetName}. ` +
       `Date: ${before.date} → ${after.date}, ` +
@@ -382,7 +383,7 @@ export const messages = {
     );
   },
   deleted: (assetName: string, date: string, currency: string, amountMinor: number) =>
-    `Snapshot deleted successfully: ${assetName} on ${date} (${formatSymbolAmount(symbolOf(currency), new Decimal(amountMinor).dividedBy(100))})`,
+    `Snapshot deleted successfully: ${assetName} on ${date} (${formatSymbolAmount(symbolOf(currency), fromMinorUnits(amountMinor) ?? new Decimal(0))})`,
   bulkDeleted: (count: number) => `Successfully deleted ${count} snapshots.`,
   bulkCreated: (count: number) => `Successfully created ${count} snapshots.`,
   bulkUpdated: (count: number) => `Successfully updated ${count} snapshots.`,

@@ -6,6 +6,7 @@
  */
 
 import Decimal from "decimal.js";
+import { fromMinorUnits } from "./money";
 
 const SYMBOLS: Record<string, string> = {
   USD: "$",
@@ -69,7 +70,7 @@ export function formatMinorAsCurrency(
   currencyCode = "USD",
 ): string {
   if (minor === null || minor === undefined) return "N/A";
-  return formatCurrency(new Decimal(minor).dividedBy(100), currencyCode);
+  return formatCurrency(fromMinorUnits(minor) ?? 0, currencyCode);
 }
 
 /**

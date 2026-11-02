@@ -8,7 +8,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Decimal from "decimal.js";
 import { listAssets } from "../../../db/repositories/assets";
 import { listCategories } from "../../../db/repositories/categories";
 import { listInstitutions } from "../../../db/repositories/institutions";
@@ -20,6 +19,7 @@ import {
 import { displayName, sortAssets } from "../../../domain/assets";
 import { todayIso } from "../../../domain/dates";
 import { formatMinorAsCurrency } from "../../../domain/format";
+import { fromMinorUnits } from "../../../domain/money";
 import { latestBefore, messages, validateBulkEntry, type BulkError } from "../../../domain/snapshots";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
@@ -82,7 +82,7 @@ export function BulkEntryPage() {
     const next = { ...amounts };
     for (const a of visible) {
       const found = previous.get(a.id);
-      if (found) next[a.id] = new Decimal(found.amount_minor).dividedBy(100).toFixed(2);
+      if (found) next[a.id] = (fromMinorUnits(found.amount_minor) ?? 0).toFixed(2);
     }
     setAmounts(next);
   };

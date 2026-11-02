@@ -29,6 +29,7 @@ import { buildHistoryMessages } from "./history";
 import { runTurn, type ChatTransport } from "./chatLoop";
 import { buildExtractionMessages, buildKnownContext, buildSystemPrompt } from "./prompts";
 import { executeTool, type ToolResult } from "./tools";
+import { fromMinorUnits } from "../domain/money";
 import Decimal from "decimal.js";
 import { listAssets } from "../db/repositories/assets";
 
@@ -249,12 +250,12 @@ async function applyConfirmedAction(action: PendingActionRow): Promise<ConfirmRe
     const previous = await getSnapshotOn(assetId, date);
 
     const symbol = ({ EUR: "€", USD: "$", CHF: "CHF" } as Record<string, string>)[asset.currency] ?? asset.currency;
-    const shown = formatSymbolAmount(symbol, new Decimal(amountMinor).dividedBy(100));
+    const shown = formatSymbolAmount(symbol, fromMinorUnits(amountMinor) ?? 0);
     let message: string;
     let wasUpdate = false;
     if (previous) {
       await updateSnapshot(previous.id, date, amountMinor);
-      message = `Snapshot for ${displayName(asset)} on ${date} updated from ${formatNumber(new Decimal(previous.amount_minor).dividedBy(100))} to ${shown}.`;
+      message = `Snapshot for ${displayName(asset)} on ${date} updated from ${formatNumber(fromMinorUnits(previous.amount_minor) ?? new Decimal(0))} to ${shown}.`;
       wasUpdate = true;
     } else {
       await createSnapshot(assetId, date, amountMinor);

@@ -3,9 +3,9 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import Decimal from "decimal.js";
 import { listSnapshotRows, updateSnapshotAmountsBulk } from "../../../db/repositories/snapshots";
 import { formatMinorAsCurrency } from "../../../domain/format";
+import { fromMinorUnits } from "../../../domain/money";
 import { messages, snapshotAssetName, validateBulkEdit, type BulkError } from "../../../domain/snapshots";
 import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
@@ -108,7 +108,7 @@ export function BulkEditPage() {
                     <td>
                       <input type="number" step="0.01" className="form-control form-control-sm"
                         aria-label={`New amount for ${snapshotAssetName(r)} ${r.date}`}
-                        placeholder={new Decimal(r.amount_minor).dividedBy(100).toFixed(2)}
+                        placeholder={(fromMinorUnits(r.amount_minor) ?? 0).toFixed(2)}
                         value={amounts[r.id] ?? ""}
                         onChange={(e) => setAmounts({ ...amounts, [r.id]: e.target.value })} />
                     </td>

@@ -9,6 +9,7 @@
  */
 
 import Decimal from "decimal.js";
+import { fromMinorUnits, toMinorUnits } from "../domain/money";
 import { listAssets } from "../db/repositories/assets";
 import {
   createPendingAction,
@@ -202,7 +203,7 @@ export interface ToolContext {
 }
 
 const round2 = (value: Decimal): number => value.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN).toNumber();
-const major = (minor: number): Decimal => new Decimal(minor).dividedBy(100);
+const major = (minor: number): Decimal => fromMinorUnits(minor) ?? new Decimal(0);
 
 /**
  * A money value as the app would display it, for the model to copy.
@@ -430,7 +431,7 @@ async function proposeSnapshot(
       ". If the user confirms, it will be updated.";
   }
 
-  const amountMinor = new Decimal(amount).toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN).times(100).toNumber();
+  const amountMinor = toMinorUnits(amount);
   const id = await createPendingAction({
     conversationId: ctx.conversationId,
     actionType: "create_snapshot",

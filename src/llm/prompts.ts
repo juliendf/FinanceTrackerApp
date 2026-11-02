@@ -9,6 +9,7 @@
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
 import { ageFromBirthDate } from "../domain/age";
 import { formatNumber } from "../domain/format";
+import { fromMinorUnits } from "../domain/money";
 import { countryLabel } from "../domain/countries";
 import { todayIso } from "../domain/dates";
 import Decimal from "decimal.js";
@@ -50,13 +51,13 @@ export const SYSTEM_PROMPT_TEMPLATE =
 
 /** `"100,000"` — `{:,.0f}`, used for goal targets. */
 function formatWhole(minor: number): string {
-  const value = new Decimal(minor).dividedBy(100).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
+  const value = (fromMinorUnits(minor) ?? new Decimal(0)).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN);
   return value.toNumber().toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
 /** `"12,345.67"` — the `{:,.2f}` the source builds its salary line with. */
 const money = (minor: number | null): string =>
-  formatNumber(new Decimal(minor ?? 0).dividedBy(100));
+  formatNumber(fromMinorUnits(minor ?? 0) ?? new Decimal(0));
 
 /** `self_employed` → `self-employed`, and the same for the rest of the list. */
 const EMPLOYMENT_LABELS: Record<string, string> = {

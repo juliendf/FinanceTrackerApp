@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Decimal from "decimal.js";
+import { fromMinorUnits } from "../../../domain/money";
 import { listAssets } from "../../../db/repositories/assets";
 import { deleteSnapshot, getSnapshotRow, listRelatedSnapshots } from "../../../db/repositories/snapshots";
 import { daysSince, formatDate, formatSymbolAmount } from "../../../domain/format";
@@ -15,7 +15,7 @@ import { useToast } from "../../layout/Toasts";
 
 const SYMBOLS: Record<string, string> = { EUR: "€", USD: "$", CHF: "CHF" };
 const WEEKDAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-const major = (minor: number) => new Decimal(minor).dividedBy(100);
+const major = (minor: number) => fromMinorUnits(minor) ?? 0;
 /** `%Y-%m-%d %H:%M` of a stored timestamp. */
 const stamp = (value: string | null) => (value ? value.slice(0, 16).replace("T", " ") : "Unknown");
 

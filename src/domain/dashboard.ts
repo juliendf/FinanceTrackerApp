@@ -16,6 +16,7 @@
 import Decimal from "decimal.js";
 import type { CurrencyConverter } from "./currency";
 import { addDays } from "./dates";
+import { fromMinorUnits } from "./money";
 import { SYSTEM_ROLES, SYSTEM_ROLE_LABELS } from "./systemCategory";
 
 /** One snapshot with every dimension a dashboard groups by. */
@@ -30,7 +31,7 @@ export interface Fact {
   system_role: string | null;
 }
 
-const major = (minor: number): Decimal => new Decimal(minor).dividedBy(100);
+const major = (minor: number): Decimal => fromMinorUnits(minor) ?? new Decimal(0);
 const round2 = (value: Decimal): Decimal => value.toDecimalPlaces(2, Decimal.ROUND_HALF_EVEN);
 
 /** Days between two ISO calendar dates (`b - a`). */

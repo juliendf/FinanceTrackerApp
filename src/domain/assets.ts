@@ -12,7 +12,7 @@
 import Decimal from "decimal.js";
 import { z } from "zod";
 import { convertStrict, NoRateError, type RateTable } from "./currency";
-import { fromMinorUnits } from "./money";
+import { fromMinorUnits, toMinorUnits } from "./money";
 
 /** What the list screen needs per asset, tags included. */
 export interface AssetRow {
@@ -244,7 +244,7 @@ export function summariseAssetList(
         total = total.plus(convertStrict(major, bucket.currency, baseCurrency, rates));
       }
       combined = {
-        totalMinor: total.times(100).toDecimalPlaces(0, Decimal.ROUND_HALF_EVEN).toNumber(),
+        totalMinor: toMinorUnits(total),
         currency: baseCurrency,
       };
     } catch (error) {

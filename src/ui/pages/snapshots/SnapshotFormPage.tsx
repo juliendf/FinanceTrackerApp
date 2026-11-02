@@ -8,6 +8,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Decimal from "decimal.js";
+import { fromMinorUnits } from "../../../domain/money";
 import { listAssets } from "../../../db/repositories/assets";
 import {
   createSnapshot,
@@ -32,7 +33,7 @@ import { useToast } from "../../layout/Toasts";
 
 const SYMBOLS: Record<string, string> = { EUR: "€", USD: "$", CHF: "CHF" };
 const symbolOf = (code: string) => SYMBOLS[code] ?? code;
-const major = (minor: number) => new Decimal(minor).dividedBy(100);
+const major = (minor: number): Decimal => fromMinorUnits(minor) ?? new Decimal(0);
 
 type Errors = Partial<Record<"asset_id" | "date" | "amount", string>>;
 type Mode = "list" | "another" | "asset";

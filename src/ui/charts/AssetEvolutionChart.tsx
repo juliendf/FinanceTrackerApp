@@ -15,6 +15,7 @@ import {
 import { Line } from "react-chartjs-2";
 import { useThemeName } from "../../lib/useTheme";
 import { formatCurrency } from "../../domain/format";
+import { fromMinorUnits } from "../../domain/money";
 import { mergeConfig, themeConfig } from "./chartTheme";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Filler, Tooltip, Legend);
@@ -43,7 +44,7 @@ export function AssetEvolutionChart({
       {
         labels: ordered.map((point) => point.date),
         // Chart.js needs numbers; this is the display boundary.
-        datasets: [{ label: "Asset Value", data: ordered.map((p) => p.amountMinor / 100), fill: true }],
+        datasets: [{ label: "Asset Value", data: ordered.map((p) => fromMinorUnits(p.amountMinor)?.toNumber() ?? 0), fill: true }],
       },
       {
         plugins: {

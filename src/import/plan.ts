@@ -6,8 +6,7 @@
  * makes the "all or nothing" promise hold without a transaction handle.
  */
 
-import Decimal from "decimal.js";
-import { isExactAtTwoDecimals, toMinorUnits } from "../domain/money";
+import { isExactAtTwoDecimals, roundMoney } from "../domain/money";
 import type { BackupData, ParsedBackup } from "./schema";
 
 const VALID_CURRENCIES = new Set(["EUR", "USD", "CHF"]);
@@ -112,16 +111,16 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
 
     const amount = String(snapshot.amount);
     if (!isExactAtTwoDecimals(amount)) {
-      try {
-        const rounded = new Decimal(toMinorUnits(amount)).dividedBy(100).toFixed(2);
+      const rounded = roundMoney(amount);
+      if (!rounded) {
+        errors.push(`Snapshot ${snapshot.id} has an unreadable amount "${amount}".`);
+      } else {
         roundingIssues.push({
           entity: "snapshot",
           id: snapshot.id,
           value: amount,
-          rounded,
+          rounded: rounded.toFixed(2),
         });
-      } catch {
-        errors.push(`Snapshot ${snapshot.id} has an unreadable amount "${amount}".`);
       }
     }
   }
