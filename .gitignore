@@ -38,3 +38,6 @@ snapshots_export_*.csv
 updater.key
 updater.key.pub
 
+
+# Playwright MCP scratch: console logs and page dumps are not source
+.playwright-mcp/

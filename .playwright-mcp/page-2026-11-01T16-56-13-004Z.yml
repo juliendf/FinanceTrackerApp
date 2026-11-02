@@ -1,5 +1,0 @@
-- alert [ref=e4]:
-  - generic [aria-hidden] [ref=e5]: 
-  - strong [ref=e6]: "Error:"
-  - text: could not prepare the database.
-  - generic [ref=e7]: Cannot read properties of undefined (reading 'invoke')
