@@ -1,6 +1,6 @@
 # Architecture
 
-FinanceTracker is a native macOS desktop port of a Flask web app. It is a single-user, offline-first Tauri v2 app. The source app is the behavioural specification; see `docs/ANALYSIS.md` for the analysis and `docs/DEVIATIONS.md` for every intentional difference.
+FinanceTracker is a native macOS desktop app: single user, offline-first, Tauri v2, and your data stays on your Mac.
 
 ## Principle: thin Rust
 
@@ -8,7 +8,7 @@ The UI and all business logic are TypeScript. Rust does only what a webview cann
 
 | Concern | Where | Why |
 |---|---|---|
-| UI, routing, forms, validation | `src/ui` (React 19, react-bootstrap) | Same Bootstrap classes as the source, so `custom.css` applies unchanged |
+| UI, routing, forms, validation | `src/ui` (React 19, react-bootstrap) | Bootstrap classes are shared with `custom.css` |
 | Business logic, money math, formatting | `src/domain` (pure TypeScript) | Pure functions, unit-tested, no I/O |
 | SQL | `src/db/repositories` | One file per aggregate, typed SQL only, no business logic |
 | Atomic multi-statement writes | Rust `run_transaction` | One transaction on one guarded connection (see below) |
@@ -20,7 +20,7 @@ The UI and all business logic are TypeScript. Rust does only what a webview cann
 
 ```
 src/ui/pages/*        screens (one folder per area)
-src/ui/components/*   ports of the Jinja macros (FormCard, DataTable, modals, StatCard)
+src/ui/components/*   shared widgets (FormCard, DataTable, modals, StatCard)
 src/ui/layout/*       AppShell, sidebar, toolbar, toasts, theme toggle
         |
         v  (TanStack Query for reads and invalidation)
@@ -46,11 +46,11 @@ Rules the code follows:
 - `domain` imports nothing from `ui` or `db`. It is what the tests and the oracles exercise.
 - Pages never write SQL. Repositories never format or validate.
 - Reads go through TanStack Query; every write invalidates the affected query keys (`snapshot-rows`, `assets`, `snapshot-points`, ...).
-- Filters, sort and page live in the URL query (hash router), as in the web app.
+- Filters, sort and page live in the URL query (hash router).
 
 ## Data model
 
-SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by `sqlx::migrate!` from `Builder::setup`, before the window exists). Differences from the source schema:
+SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by `sqlx::migrate!` from `Builder::setup`, before the window exists). Schema notes:
 
 - **Money is `INTEGER` minor units** (`amount_minor`). Conversion happens at the edge in `src/domain/money.ts`, half-even rounding, `decimal.js`. No float money anywhere.
 - **Exchange rates are `TEXT` decimals.**
@@ -63,8 +63,8 @@ SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetrac
 
 ## Transactions
 
-The webview holds no database handle: the SQL plugin is not installed (see
-`docs/DEVIATIONS.md`), so every statement crosses the IPC boundary as text. Rust
+The webview holds no database handle: the SQL plugin is not installed, so every
+statement crosses the IPC boundary as text. Rust
 enforces three boundaries on that text — `db_select` runs on a read-only
 connection with a read-only authorizer, `execute_write` admits only single
 `INSERT`/`UPDATE`/`DELETE` statements, and `run_transaction` runs a list
@@ -77,11 +77,11 @@ Used by: the backup importer (196 statements, atomic), asset create/update (asse
 
 New asset ids are allocated inside the transaction (`nextId` / `justInserted` against `sqlite_sequence` in `src/db/transaction.ts`), so later statements can reference the id without a round trip.
 
-## Money and parity
+## Money
 
-- All displayed numbers go through `src/domain/format.ts`, a port of the Python template filters.
-- Behaviour is verified against the source, not assumed: independent Python oracles in `tests/oracle/` recompute results from a real backup file and the tests compare (asset filters; snapshot CSV byte-for-byte). The dashboards go further: `tests/oracle/dashboard.py` runs the *source's own code* with the clock frozen and the TypeScript is compared with the JSON its endpoints return.
-- Oracle-backed tests are opt-in via environment variables and skip otherwise, so the default suite needs no private data.
+- Amounts are `INTEGER` minor units in SQLite; conversion happens at the edge in
+  `src/domain/money.ts`, half-even, with `decimal.js`. No float money anywhere.
+- All displayed numbers go through `src/domain/format.ts`.
 
 ## The chat turn, end to end
 
@@ -124,10 +124,9 @@ Four layers, cheapest first:
 | Unit | `src/domain/*.test.ts`, `src/llm/*.test.ts` | Pure logic: money, filters, dashboards, prompt text, the loop with an injected transport |
 | Component | `src/ui/**/*.test.tsx` (jsdom) | Screens with repositories mocked: filters, validation, confirm cards |
 | Rust | `src-tauri/tests/*.rs`, module tests | One transaction or none, the statement guard, migrations, stream parsing and cancellation |
-| Oracle / live | `tests/oracle/*.py`, `*.golden.test.ts`, `cargo test --test live` | Agreement with the source app on real data, and with a real provider |
+| Live | `cargo test --test live`, `GEMINI_API_KEY` | A real provider, opt-in |
 
-The oracle tests are opt-in (`FINANCETRACKER_BACKUP`, `SNAPSHOT_ROWS`,
-`GEMINI_API_KEY`, …) so the default suite needs no private data or network.
+The live tests are opt-in so the default suite needs no network.
 `src/docs.test.ts` keeps the version in three files in step and fails on a broken
 relative link.
 
@@ -136,12 +135,8 @@ relative link.
 ```
 src/              React app
 src-tauri/        Rust: commands, migrations, capabilities, tests
-tests/oracle/     independent Python re-implementations of source behaviour
-docs/             analysis, brief, deviations, parity checklist, import format
+tests/            Python round-trip check and fixtures
+docs/             release notes, import format, troubleshooting, changelog
 ```
 
 Stack: Tauri 2, React 19, TypeScript, Vite, react-router (hash), TanStack Query, react-hook-form + zod, react-bootstrap, Chart.js, decimal.js, SQLite via `sqlx` (Rust only) and `keyring`.
-
-## Phases
-
-0 spike, 1 schema/shell/components, 1b importer, 2 reference data, 3 assets, 4 snapshots, 5 dashboards, 6 settings and data, 7 AI chat, 8 packaging (all done); 9 optional MCP remains and is not built. Status per screen: `docs/PARITY_CHECKLIST.md`.

@@ -1,10 +1,10 @@
 /**
  * Documentation guards.
  *
- * Docs drift silently: four statements in DEVIATIONS.md and SECURITY.md had gone
- * stale before anyone noticed. These checks are cheap and only cover what can be
- * verified mechanically — version consistency and links that resolve. Prose
- * accuracy still needs a human.
+ * Docs drift silently: prose statements had gone stale before anyone noticed.
+ * These checks are cheap and only cover what can be verified mechanically —
+ * version consistency and links that resolve. Prose accuracy still needs a
+ * human.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -45,10 +45,7 @@ describe("documents", () => {
     "docs/TROUBLESHOOTING.md",
     "docs/RELEASE.md",
     "docs/CHANGELOG.md",
-    "docs/DEVIATIONS.md",
-    "docs/PARITY_CHECKLIST.md",
     "docs/IMPORT_FORMAT.md",
-    "docs/code-review-fixes-2026-11-01.md",
   ];
 
   it("all exist", () => {
@@ -71,10 +68,7 @@ describe("links", () => {
       "docs/TROUBLESHOOTING.md",
       "docs/RELEASE.md",
       "docs/CHANGELOG.md",
-      "docs/DEVIATIONS.md",
-      "docs/PARITY_CHECKLIST.md",
       "docs/IMPORT_FORMAT.md",
-      "docs/code-review-fixes-2026-11-01.md",
     ];
   }
 

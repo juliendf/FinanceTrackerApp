@@ -170,7 +170,7 @@ row, restores the defaults and removes provider keys from the Keychain.
 
 The pre-flight refuses structural problems (an asset pointing at a missing
 institution, duplicate ids, unparseable amounts) rather than half-writing. The
-wizard lists them; fix the file or re-export from the web app.
+wizard lists them; fix the file or import it again.
 
 **Amounts look wrong after an import**
 

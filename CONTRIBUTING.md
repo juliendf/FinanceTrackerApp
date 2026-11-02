@@ -1,9 +1,8 @@
 # Contributing
 
-A single-author port of the Flask `FinanceTracker` web app to a native macOS
-Tauri app. The original app is the specification: when behaviour is ambiguous,
-read the source, and when you deliberately depart from it, write the reason in
-[`docs/DEVIATIONS.md`](docs/DEVIATIONS.md).
+A single-author native macOS app (Tauri 2 + React + TypeScript + SQLite). The
+tests are the contract: when behaviour is ambiguous, read the code and the tests
+that pin it, and record a deliberate departure in `docs/CHANGELOG.md`.
 
 ## Layout
 
@@ -19,8 +18,8 @@ read the source, and when you deliberately depart from it, write the reason in
 | `src/import/`, `src/export/` | Backup parse/plan/execute, and the v3 writer |
 | `src-tauri/src/commands/` | Rust: `db` (selects, guarded writes, transactions, path), `files` (dialogs), `secrets` (Keychain), `llm` (HTTP streaming) |
 | `src-tauri/migrations/` | Schema, applied by `sqlx::migrate!` from `Builder::setup` before the window exists |
-| `tests/oracle/`, `tests/roundtrip/` | Independent Python oracles and the backup round-trip diff |
-| `docs/` | Analysis, brief, deviations, parity checklist, release notes |
+| `tests/roundtrip/` | Backup round-trip diff |
+| `docs/` | Release notes, import format, troubleshooting, changelog |
 
 ## Ground rules
 
@@ -43,9 +42,6 @@ read the source, and when you deliberately depart from it, write the reason in
 - **Query keys are part of the contract.** One key, one shape: `["assets"]` is
   always `AssetRow[]`, counts use their own key. Reusing a key for a different
   shape crashes a screen (this happened with the Data page).
-- **Parity first, deviation second.** If the source does something odd, port it,
-  then fix it as a separate, documented deviation — `docs/DEVIATIONS.md` records
-  both the intent and the current behaviour.
 
 ## Adding a screen
 
@@ -56,12 +52,10 @@ read the source, and when you deliberately depart from it, write the reason in
    after writes.
 5. Test it in `src/ui/pages/<area>/<Name>.test.tsx` with `// @vitest-environment
    jsdom`, `afterEach(cleanup)`, mocked repositories.
-6. Add the row to [`docs/PARITY_CHECKLIST.md`](docs/PARITY_CHECKLIST.md).
 
 ## Adding a chat tool
 
-1. Add the schema to `TOOL_DEFINITIONS` in `src/llm/tools.ts`, verbatim from the
-   source's `app/services/tools.json`.
+1. Add the schema to `TOOL_DEFINITIONS` in `src/llm/tools.ts`.
 2. Add a status label to `TOOL_STATUS` — a test fails if one is missing.
 3. Implement the executor in the same file. Read-only tools answer with JSON;
    **write tools only stage a pending action** and must not touch the tables.
@@ -86,8 +80,6 @@ cd src-tauri && cargo test
 
 Optional, and skipped without their environment:
 
-- Oracles: `tests/oracle/*.py` recompute behaviour from a real backup, and the
-  `*.golden.test.ts` files compare. Each test's header names its variables.
 - Backup round-trip: `tests/roundtrip/compare.py ORIGINAL.db REBUILT.db`.
 - Live provider tests: `cargo test --test live -- --ignored` needs Ollama, or
   `GEMINI_API_KEY` for the two Gemini tests.
@@ -112,15 +104,10 @@ fix: never send extra_content as null to Gemini
 docs: bring README up to date for 0.2.7
 ```
 
-Phases were committed with a `Phase N: ...` subject; keep that convention if you
-resume the plan.
-
 ## Documents to update
 
 | Change | Update |
 |---|---|
-| Intentional behaviour difference | `docs/DEVIATIONS.md` |
-| Screen added, finished or dropped | `docs/PARITY_CHECKLIST.md` |
 | Anything a user will notice | `docs/CHANGELOG.md` + version bump |
 | Command, install or data path | `README.md` |
 | Layer, schema or transaction model | `ARCHITECTURE.md` |

@@ -1,8 +1,7 @@
 # Backup format
 
-The desktop app reads the backup written by the web app
-(`FinanceTracker/app/services/data_export.py`) and writes its own backups in the
-same envelope. This file documents both, so the web-app change for v3 can follow
+The app writes version 3 backups and reads version 2 backups. Both use the same
+envelope; this file documents the fields so an older export can be imported
 without guessing.
 
 ## Envelope
@@ -69,7 +68,7 @@ reproduce every exported table row for row (`tests/roundtrip/compare.py`).
 | `profile.default_currency` | `profile.currency` | |
 | `profile.salary`, `monthly_savings_target` | `*_minor` | half-even, 2 dp |
 | `profile.job_title`, `profile.financial_goals` | `profile.job_title`, `profile.financial_goals` | added in migration 5; both feed the assistant's profile section |
-| `profile.birth_date` | `profile.birth_date` | not in the source; written by this app so age survives a round-trip |
+| `profile.birth_date` | `profile.birth_date` | absent from v2; written by this app so age survives a round-trip |
 | `profile.username`, `email` | **dropped** | no account any more; listed in the report |
 | `categories` (no `system_role`) | asks the user to map roles after import | the Résumé view needs them |
 
@@ -77,10 +76,11 @@ Row ids are preserved rather than remapped, because the import only runs on an
 empty database. That keeps `asset_tags` and `snapshots` foreign keys correct
 without an id map.
 
-## What v3 should add
+## What version 3 adds
 
-v3 is what the desktop app will write in Phase 6. To let the importer skip the
-category-role step and stop reporting lost data, the web app's export should add:
+Version 3 is what this app writes. Compared with v2 it carries the fields that
+remove the category-role mapping step and the "not included in this backup"
+warnings:
 
 ```jsonc
 {
@@ -109,12 +109,5 @@ category-role step and stop reporting lost data, the web app's export should add
 }
 ```
 
-And it should **omit `llm_providers.api_key`** (or gate it behind an explicit
-"include credentials" option), because a backup is copied around and the key is
-the one item that must not travel in plaintext.
-
-The desktop importer already accepts these fields today. Returning
-`system_role` alone removes the role-mapping step; adding `memories` and `goals`
-removes the last two "not included in this backup" warnings.
-
-Note: the desktop app's own exports never contain keys.
+Keys are never written into a backup: they stay in the macOS Keychain. The
+importer accepts a v2 file that carries one only to move it there.

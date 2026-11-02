@@ -168,7 +168,7 @@ the tag only when the tag itself is wrong.
 2. Bump the version in `src-tauri/tauri.conf.json`, `package.json` and
    `src-tauri/Cargo.toml` — the release workflow refuses a tag that does not
    match `tauri.conf.json`.
-3. `npm run tauri build`, launch the app, and walk `docs/PARITY_CHECKLIST.md`.
+3. `npm run tauri build`, launch the app, and walk the main screens.
 4. Tag `v<version>` and push; the workflow runs the suite and creates a draft
    release with the DMG, `latest.json` and the signed updater artifacts.
 5. Download the DMG from the draft, mount it, launch the copy inside, then

@@ -1,6 +1,6 @@
 # FinanceTracker (desktop)
 
-A native macOS app for tracking assets and their value over time, ported feature-for-feature from the Flask web app FinanceTracker. Single user, offline, data stays on your Mac.
+A native macOS app for tracking assets and their value over time. Single user, offline, data stays on your Mac.
 
 Version 0.4.0 · MIT · macOS 11+ (Apple silicon)
 
@@ -86,23 +86,11 @@ Rust tests cover the transaction primitive, the statement guard, migrations and
 the keychain move; the ones needing the network, a live provider or the login
 keychain are `#[ignore]`d (`cargo test -- --ignored`).
 
-Parity tests against real data are opt-in. They compare the app with independent Python oracles in `tests/oracle/`:
-
-```sh
-python3 tests/oracle/snapshots_csv.py backup.json out.csv > filters.json
-SNAPSHOT_ROWS=... ORACLE_CSV=out.csv ORACLE_FILTERS=filters.json \
-  npx vitest run src/domain/snapshots.golden.test.ts
-```
-
 The backup round-trip can be re-checked on real data: export the database, import it into a fresh one, diff the rows.
 
 ```sh
 python3 tests/roundtrip/compare.py ORIGINAL.db REBUILT.db
 ```
-
-The dashboards are checked against the *source app's own output*. `tests/oracle/dashboard.py` runs the real Flask code (read-only, throwaway SQLite database, clock frozen) against a backup and writes the chart endpoints' JSON; `src/domain/dashboard.golden.test.ts` compares the TypeScript results with it at several pinned dates. It needs a Python 3.12 venv with the source's requirements plus `freezegun`; the header of the script has the command.
-
-See the header of each `*.golden.test.ts` for the exact variables.
 
 ## AI
 
@@ -118,7 +106,7 @@ Keys live in the macOS Keychain, never in the database or a backup.
 
 - Database: `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`
 - Provider API keys: macOS Keychain, service `ch.julien.financetrackerapp`
-- Import a Flask backup (JSON v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
+- Import a legacy JSON backup (v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
 
 ## Troubleshooting
 
@@ -143,8 +131,3 @@ shows the error boundary.
 ## License
 
 MIT — see [LICENSE](LICENSE).
-
-This app is a port of a personal Flask app that serves as the behavioural
-specification. The two share no code: the Python oracles under `tests/oracle/`
-import the Flask app at runtime to produce reference output, and nothing from it
-is vendored here.
