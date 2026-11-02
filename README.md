@@ -4,7 +4,7 @@ A native macOS app for tracking assets and their value over time, ported feature
 
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
-Contents: [Install](#install) · [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation)
+Contents: [Install](#install) · [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)
 
 ## Install
 
@@ -145,3 +145,12 @@ shows the error boundary.
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Layout, conventions, how to add a screen, tool or migration |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Symptoms, causes, fixes |
 | [docs/CHANGELOG.md](docs/CHANGELOG.md) | Release-by-release summary |
+
+## License
+
+MIT — see [LICENSE](LICENSE).
+
+This app is a port of a personal Flask app that serves as the behavioural
+specification. The two share no code: the Python oracles under `tests/oracle/`
+import the Flask app at runtime to produce reference output, and nothing from it
+is vendored here.
