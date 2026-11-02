@@ -2,11 +2,8 @@
  * Asset screens' pure logic: display names, filtering, summary tiles, the form
  * schema, and the snapshot history deltas.
  *
- * Ports of `Asset.display_name` (`models/core.py`), the query in `list_assets`
- * (`routes/assets.py`), `AssetForm` (`forms/asset_forms.py`) and the arithmetic
- * in `templates/assets/detail.html`. The source filters in SQL; here the whole
- * asset set is a few hundred rows at most, so it is filtered in memory, which
- * keeps this module pure and testable.
+ * The list filters in memory rather than in SQL: the whole asset set is a few
+ * hundred rows at most, which keeps this module pure and testable.
  */
 
 import Decimal from "decimal.js";
@@ -86,7 +83,7 @@ export const EMPTY_FILTERS: AssetFilters = {
   perPage: DEFAULT_PER_PAGE,
 };
 
-/** Flask's `request.args.get(..., type=int)`: anything unparseable falls back. */
+/** Read an integer query parameter: anything unparseable falls back. */
 function intParam(value: string | null, fallback: number): number {
   if (value === null || !/^[+-]?\d+$/.test(value.trim())) return fallback;
   return Number.parseInt(value, 10);
@@ -121,7 +118,7 @@ export function assetFiltersToParams(filters: Partial<AssetFilters>): URLSearchP
   return params;
 }
 
-/** Collation-insensitive text compare, close to the source's database ordering. */
+/** Collation-insensitive text compare, close to the database's ordering. */
 function compareText(a: string, b: string): number {
   return a.localeCompare(b, undefined, { sensitivity: "base" });
 }
@@ -182,7 +179,7 @@ export function activeFilterChips(filters: AssetFilters): FilterChip[] {
   return chips;
 }
 
-/** Distinct currencies across *all* assets, as the source's filter dropdown does. */
+/** Distinct currencies across *all* assets, as the filter dropdown offers them. */
 export function currencyOptions(rows: readonly Pick<AssetRow, "currency">[]): string[] {
   return [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort();
 }
@@ -194,7 +191,7 @@ export interface CurrencyBucket {
   totalMinor: number;
   /** Assets that contributed a latest snapshot. */
   assets: number;
-  /** Snapshots counted — one per asset here, as in the source. */
+  /** Snapshots counted — one per asset here. */
   snapshots: number;
 }
 
@@ -341,9 +338,9 @@ export interface HistoryRow {
 /**
  * Snapshot history, newest first, each row compared with the next-older one.
  *
- * Fixes a source bug: `detail.html` computes `(Δ / previous) * 100` and then
- * passes the result through the `percentage` filter, which multiplies by 100
- * again, so +5 % rendered as "+500.0%". Here the fraction goes to the filter.
+ * The delta is a fraction (`Δ / previous`) and is rendered through the
+ * percentage filter, which multiplies by 100. Passing an already-multiplied
+ * percentage through that filter would render +5 % as "+500.0%".
  */
 export function buildHistory(
   snapshots: ReadonlyArray<{ id: number; date: string; amount_minor: number }>,

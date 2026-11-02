@@ -1,4 +1,4 @@
-/** Settings read through TanStack Query, with the source's default fallbacks. */
+/** Settings read through TanStack Query, with the shipped defaults as fallbacks. */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getAllSettings, setSetting } from "../db/repositories/settings";

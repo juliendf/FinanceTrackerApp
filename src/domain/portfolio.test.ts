@@ -124,7 +124,7 @@ describe("snapshotDateRange", () => {
   });
 
   it("shows the real range even when every asset shares one latest date", () => {
-    // The bug this replaced: source-derived range collapsed to a single day.
+    // The bug this replaced: a range derived from latest dates collapsed to a single day.
     expect(
       snapshotDateRange([
         { date: "2025-01-01" },
@@ -144,7 +144,7 @@ describe("daysSince", () => {
     expect(daysSince("2025-05-16", today)).toBe(30);
   });
 
-  it("clamps future dates to zero, as filters.py does", () => {
+  it("clamps future dates to zero", () => {
     expect(daysSince("2025-07-01", today)).toBe(0);
   });
 
@@ -156,7 +156,7 @@ describe("daysSince", () => {
 describe("freshness", () => {
   const today = new Date("2025-06-15T00:00:00Z");
 
-  it("matches the source thresholds: <=30 current, <=90 outdated, else stale", () => {
+  it("uses the thresholds: <=30 current, <=90 outdated, else stale", () => {
     expect(freshness("2025-06-15", today)).toBe("current");
     expect(freshness("2025-05-16", today)).toBe("current"); // 30 days
     expect(freshness("2025-05-15", today)).toBe("outdated"); // 31 days

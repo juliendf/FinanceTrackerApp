@@ -1,9 +1,7 @@
 /**
  * Placeholder for screens not built yet.
  *
- * Phase 1 needs the shell and the component library, not every screen. Routes
- * exist so navigation never dead-ends; each is replaced phase by phase and each
- * has a row in docs/PARITY_CHECKLIST.md.
+ * Keeps navigation from dead-ending until the real screen exists.
  */
 
 import { PageHeader } from "./FormCard";

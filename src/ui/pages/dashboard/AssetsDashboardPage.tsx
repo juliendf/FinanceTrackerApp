@@ -1,9 +1,5 @@
 /**
- * Asset breakdown: port of `templates/dashboard/assets.html`.
- *
- * The source's page is a shell: its script says "fetch breakdown data and
- * initialize chart here" and does nothing, so the page is blank. This one
- * draws the chart (docs/DEVIATIONS.md).
+ * Asset breakdown: a distribution pie with a group selector.
  */
 
 import { useMemo, useState } from "react";

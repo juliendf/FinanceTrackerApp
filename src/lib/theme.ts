@@ -1,6 +1,5 @@
 /**
- * Theme preference handling — a direct port of `ThemeManager` from
- * FinanceTracker's `templates/base.html`.
+ * Theme preference handling.
  *
  * Three states cycle light -> dark -> auto. Three DOM attributes must stay in
  * lockstep: `data-theme` (design tokens in custom.css), `data-bs-theme`
@@ -64,7 +63,7 @@ export function applyTheme(preference: ThemePreference): ThemeName {
   window.__themePreference = preference;
   window.__themeResolved = resolved;
 
-  // ChartUtils.retheme() listens for this, mirroring the web app.
+  // Chart helpers listen for this.
   document.dispatchEvent(
     new CustomEvent("themechange", { detail: { preference, theme: resolved } }),
   );

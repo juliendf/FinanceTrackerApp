@@ -1,10 +1,10 @@
 /**
  * Apply the `theme` setting stored in the database once it has loaded.
  *
- * The web app's theme is a setting. Here the inline script in `index.html` has
- * to paint before any database call, so it uses localStorage; the stored setting
- * then wins as soon as it is known. Without a stored row, nothing changes, so a
- * toggle made before settings exist is not undone.
+ * The inline script in `index.html` has to paint before any database call, so it
+ * uses localStorage; the stored setting then wins as soon as it is known.
+ * Without a stored row, nothing changes, so a toggle made before settings exist
+ * is not undone.
  */
 
 import { useEffect } from "react";

@@ -1,4 +1,4 @@
-/** Delete confirmation — port of `delete_confirmation_modal` in `components/table.html`. */
+/** Delete confirmation dialog. */
 
 import { useState, type ReactNode } from "react";
 import { Modal } from "react-bootstrap";

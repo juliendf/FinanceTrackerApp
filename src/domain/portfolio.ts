@@ -1,15 +1,12 @@
 /**
  * Portfolio aggregations. Pure functions, no Tauri imports, unit-tested.
  *
- * Phase 0 covers the two things the spike needs: a portfolio value series for
- * the chart and the summary tiles for the asset list. The full port
- * (`latest-per-asset`, distribution by dimension, résumé/annualised
- * performance) is Phase 5 and will extend this module.
+ * Covers a portfolio value series for the chart, the summary tiles for the
+ * asset list, and the résumé / annualised performance figures.
  *
- * Deliberate limitation, tracked in docs/DEVIATIONS.md: there is no currency
- * conversion yet (the exchange_rates table arrives in Phase 1), so the series
- * sums raw minor units across currencies. `mixedCurrencies` is surfaced so the
- * UI can say so instead of showing a silently wrong total.
+ * Deliberate limitation: the series sums raw minor units across currencies
+ * rather than converting them, so `mixedCurrencies` is surfaced for the UI to
+ * say so instead of showing a silently wrong total.
  */
 
 import Decimal from "decimal.js";
@@ -38,10 +35,9 @@ export interface PortfolioSeries {
  * Total portfolio value over time, carrying each asset's last known value
  * forward.
  *
- * One pass over the points sorted by date, instead of the source's
- * O(dates x assets x snapshots) loop in `routes/api.py:74-157`. Output is the
- * same: a point per date that has at least one snapshot, each asset
- * contributing its most recent value on or before that date.
+ * One pass over the points sorted by date, rather than a per-date scan of every
+ * asset's snapshots. Output: a point per date that has at least one snapshot,
+ * each asset contributing its most recent value on or before that date.
  */
 export function buildPortfolioSeries(
   points: readonly SnapshotPoint[],
@@ -99,13 +95,12 @@ export interface AssetSummary {
 }
 
 /**
- * KPI tiles for the asset list, mirroring `list_assets()` in
- * `app/routes/assets.py` minus the cross-currency conversion.
+ * KPI tiles for the asset list, without cross-currency conversion.
  *
- * Note: no date range here. The source derived one from the min/max of each
- * asset's *latest* snapshot date (`assets.py:137`), which prints the same day
- * twice whenever every asset was updated together. We show the real snapshot
- * range instead — see `snapshotDateRange` and docs/DEVIATIONS.md.
+ * Note: no date range here. An earlier attempt derived one from the min/max of
+ * each asset's *latest* snapshot date, which prints the same day twice whenever
+ * every asset was updated together. The real snapshot range is shown instead —
+ * see `snapshotDateRange`.
  */
 export function summariseAssets(
   rows: readonly AssetSummaryInput[],
@@ -148,8 +143,8 @@ export interface DateRange {
 }
 
 /**
- * First and last snapshot date across the whole portfolio. This is what the
- * source *looked* like it meant, and what the KPI tile claims to show.
+ * First and last snapshot date across the whole portfolio — what the KPI tile
+ * shows.
  */
 export function snapshotDateRange(
   points: readonly { date: string }[],
@@ -171,8 +166,7 @@ export { daysSince };
 export type FreshnessStatus = "current" | "outdated" | "stale" | "no-data";
 
 /**
- * Source thresholds from `templates/assets/list.html`: green under 30 days,
- * yellow under 90, red beyond. Kept identical so the badges read the same.
+ * Freshness thresholds: green under 30 days, yellow under 90, red beyond.
  */
 export function freshness(date: string | null, today = new Date()): FreshnessStatus {
   if (!date) return "no-data";

@@ -1,9 +1,8 @@
 /**
  * Root route: first-run screen while the database is empty, dashboard after.
  *
- * The source had no concept of "empty" — a new user registered and landed on an
- * empty dashboard. Here the first launch has a decision to make, so it gets its
- * own screen.
+ * The first launch has a decision to make — start empty or import a backup — so
+ * it gets its own screen.
  */
 
 import { useQuery } from "@tanstack/react-query";

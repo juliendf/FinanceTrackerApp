@@ -5,7 +5,7 @@
  * compared as strings and shifted in UTC to avoid DST and timezone surprises.
  */
 
-/** The user's local calendar date, the equivalent of Python's `date.today()`. */
+/** The user's local calendar date. */
 export function todayIso(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;

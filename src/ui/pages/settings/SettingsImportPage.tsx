@@ -1,8 +1,8 @@
 /**
- * Import settings: port of `settings/import.html` and `import_settings`.
+ * Import settings.
  *
- * Paste JSON or pick a file; keys this build does not know are ignored, exactly
- * as the source does. Values are written in one transaction.
+ * Paste JSON or pick a file; keys this build does not know are ignored. Values
+ * are written in one transaction.
  */
 
 import { useState } from "react";

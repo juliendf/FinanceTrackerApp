@@ -1,4 +1,4 @@
-/** A value-over-time line, themed like the web app's charts. */
+/** A value-over-time line, themed from the design tokens. */
 
 import { useEffect, useMemo, useRef } from "react";
 import {

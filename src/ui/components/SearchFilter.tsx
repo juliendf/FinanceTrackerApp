@@ -1,10 +1,9 @@
 /**
- * Search + filter bar — port of `search_filter` in
- * `templates/components/search_filter.html`.
+ * Search + filter bar.
  *
- * Filter state lives in the URL query in the web app. Here the caller owns the
- * state (react-router search params on real screens), so this component is
- * presentational: it renders the controls and reports changes.
+ * The caller owns the filter state (react-router search params on real
+ * screens), so this component is presentational: it renders the controls and
+ * reports changes.
  */
 
 import type { ReactNode } from "react";
@@ -252,7 +251,7 @@ export function TagBadge({ name, color }: { name: string; color?: string | null 
   );
 }
 
-/** Small info tooltip. The source uses Bootstrap tooltips; this is the same idea, dependency-free. */
+/** Small info tooltip, dependency-free. */
 export function InfoTooltip({ text, children }: { text: string; children?: ReactNode }) {
   return (
     <span className="info-tooltip d-inline-flex align-items-center gap-1" title={text}>
@@ -262,7 +261,7 @@ export function InfoTooltip({ text, children }: { text: string; children?: React
   );
 }
 
-/** Chart wrapper — port of `components/chart_container.html`. */
+/** Chart wrapper with a fixed height and loading / error states. */
 export function ChartContainer({
   children,
   height = 400,

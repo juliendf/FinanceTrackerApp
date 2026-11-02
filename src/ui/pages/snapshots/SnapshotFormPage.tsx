@@ -1,7 +1,5 @@
 /**
- * New / edit snapshot: port of `snapshots/new.html`, `edit.html` and the
- * `new_snapshot` / `create_snapshot` / `edit_snapshot` / `update_snapshot`
- * routes.
+ * New / edit snapshot form.
  */
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";

@@ -1,10 +1,9 @@
 /**
- * Institutions list — port of `templates/admin/institutions.html`.
+ * Institutions list.
  *
- * Behaviour from `routes/admin.py`:
  *   * names are unique, and a duplicate is reported on the field;
- *   * deletion is refused while assets reference the institution
- *     (`delete_institution` checks the count and flashes an error).
+ *   * deletion is refused while assets reference the institution (the count is
+ *     checked first and an error shown).
  */
 
 import { useState } from "react";

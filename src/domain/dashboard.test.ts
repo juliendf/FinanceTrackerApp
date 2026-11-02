@@ -95,7 +95,7 @@ describe("portfolioEvolution", () => {
     const e = portfolioEvolution(facts, eur(), "ALL", "2026-06-01", D(999));
     expect(e.points[2].value.toString()).toBe("999");
   });
-  it("source behaviour (carryIn: false): assets whose last snapshot predates the cut-off vanish", () => {
+  it("carryIn: false drops assets whose last snapshot predates the cut-off", () => {
     const e = portfolioEvolution(facts, eur(), "1M", "2026-03-15", D(170), { carryIn: false });
     expect(e.points.map((p) => [p.date, p.value.toString()])).toEqual([["2026-03-01", "170"]]);
   });

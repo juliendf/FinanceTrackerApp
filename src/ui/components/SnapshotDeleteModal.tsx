@@ -51,7 +51,7 @@ function Shell({
   );
 }
 
-/** One snapshot — port of the modal on `snapshots/detail.html`. */
+/** Confirmation for deleting one snapshot. */
 export function SnapshotDeleteModal({
   target,
   onCancel,
@@ -79,7 +79,7 @@ export function SnapshotDeleteModal({
   );
 }
 
-/** Several snapshots — the list's bulk delete, which the source asks with `confirm()`. */
+/** Confirmation for the list's bulk delete. */
 export function BulkDeleteModal({
   count,
   onCancel,

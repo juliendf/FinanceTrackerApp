@@ -79,7 +79,7 @@ describe("AssetFormPage — create", () => {
     createAsset.mockResolvedValue(42);
   });
 
-  it("shows the source's validation messages and writes nothing", async () => {
+  it("shows the validation messages and writes nothing", async () => {
     renderAt("/assets/new");
     await screen.findByRole("option", { name: "UBS" });
     // untick so only the required selects and name are in play

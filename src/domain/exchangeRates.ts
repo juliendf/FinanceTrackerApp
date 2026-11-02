@@ -1,8 +1,8 @@
 /**
- * Exchange-rate validation, ported from `forms/exchange_rate_forms.py`.
+ * Exchange-rate validation.
  *
- * Rates are positive decimals stored as TEXT. The source's `DecimalField(places=6)`
- * displays six places and its validator rejects anything below 0.000001.
+ * Rates are positive decimals stored as TEXT, displayed with six places. The
+ * validator rejects anything below 0.000001.
  */
 
 import Decimal from "decimal.js";
@@ -30,8 +30,8 @@ export interface RateError {
 /**
  * Validate every posted rate.
  *
- * A blank or unparseable rate is "Rate is required"; a zero or negative one is
- * "Rate must be positive" (`NumberRange(min=0.000001)`).
+ * A blank or unparseable rate is "Rate is required"; anything below 0.000001 is
+ * "Rate must be positive".
  */
 export function validateRates(rows: ReadonlyArray<{ from: string; to: string; rate: string }>): RateError[] {
   const errors: RateError[] = [];

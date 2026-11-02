@@ -1,16 +1,15 @@
 /**
- * Write a backup in the same envelope as the web app, at version 3.
+ * Write a backup in the app's own envelope, at version 3.
  *
- * Field names and shapes follow `services/data_export.py` exactly, so the file
- * this app writes is one the web app (and this app's own importer) can read:
- * amounts as JSON numbers, rates as decimal strings, denormalised labels kept
- * for readability, ids preserved.
+ * Field names and shapes follow the v2 format exactly, so this app's own
+ * importer can read what it writes: amounts as JSON numbers, rates as decimal
+ * strings, denormalised labels kept for readability, ids preserved.
  *
- * Two deliberate differences, both in docs/DEVIATIONS.md:
- *   * **No API keys.** The source writes `api_key` in plaintext; the desktop app
- *     keeps keys in the Keychain and never exports them.
+ * Two deliberate choices:
+ *   * **No API keys.** Keys live in the Keychain and are never exported; a
+ *     plaintext `api_key` in an imported file is moved there and dropped.
  *   * **`system_role` on categories.** v2 has no roles, which is why importing a
- *     web backup asks the user to map them; this export carries them so a
+ *     v2 backup asks the user to map them; this export carries them so a
  *     round-trip keeps the Résumé working.
  */
 
@@ -150,7 +149,7 @@ export function buildBackup(
   return { version: EXPORT_VERSION, exported_at: exportedAt, data };
 }
 
-/** `finance_tracker_data_{YYYYMMDD_HHMMSS}.json`, as the source names it. */
+/** `finance_tracker_data_{YYYYMMDD_HHMMSS}.json` */
 export function backupFileName(now: Date = new Date()): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   const stamp =

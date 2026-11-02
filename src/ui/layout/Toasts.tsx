@@ -1,10 +1,8 @@
 /**
- * Toasts — replaces the server-side `flash()` flow.
+ * Toasts: a queue of short-lived messages.
  *
- * The web app flashes a message and redirects, so the message survives one
- * request. There is no request boundary here, so a toast queue is the
- * equivalent, keeping the same alert markup and the 5 s auto-dismiss the source
- * uses in `flash_messages.html`.
+ * A toast renders each message with the alert markup and dismisses it
+ * automatically after 5 s.
  */
 
 import {
@@ -57,7 +55,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (type: ToastType, message: string, title?: string) => {
       const id = nextId.current++;
       setToasts((current) => [...current, { id, type, message, title }]);
-      // The source auto-closes alerts after 5 seconds.
+      // Alerts auto-close after 5 seconds.
       const timer = window.setTimeout(() => dismiss(id), 5000);
       timers.current.push(timer);
     },

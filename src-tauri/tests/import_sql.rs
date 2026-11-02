@@ -267,7 +267,7 @@ async fn a_failing_snapshot_rolls_back_the_asset_and_its_tags() {
     let error = execute_statements(&url, &create_asset_statements("not-a-date")).await.unwrap_err();
     assert!(error.contains("statement 4 of 4"), "got: {error}");
 
-    // The Phase 0 compensating delete is gone: nothing was ever committed.
+    // Nothing was ever committed.
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM assets").await, 0);
     assert_eq!(scalar(&url, "SELECT COUNT(*) FROM asset_tags").await, 0);
 }
@@ -328,7 +328,7 @@ async fn updating_an_asset_replaces_its_tags_atomically() {
 }
 
 // ---------------------------------------------------------------------------
-// Phase 4: snapshots
+// Snapshots
 // ---------------------------------------------------------------------------
 
 async fn seed_two_assets(url: &str) {

@@ -3,7 +3,7 @@ import {
   amountError,
   csvField,
   filterSnapshots,
-  flaskPageNumbers,
+  pageNumbers,
   generateSnapshotsCsv,
   latestBefore,
   nextSort,
@@ -115,8 +115,8 @@ describe("sortSnapshots", () => {
   });
 });
 
-describe("flaskPageNumbers (Flask-SQLAlchemy iter_pages defaults)", () => {
-  const f = flaskPageNumbers;
+describe("pageNumbers (default iter_pages windows)", () => {
+  const f = pageNumbers;
   it("small and empty", () => {
     expect(f(1, 0)).toEqual([]);
     expect(f(1, 1)).toEqual([1]);
@@ -168,7 +168,7 @@ describe("single-snapshot form", () => {
     expect(amountError("1000000000")).toBeNull();
     expect(amountError("abc")).toBe("Please enter a valid amount.");
   });
-  it("duplicate message matches the source", () => {
+  it("duplicate message", () => {
     expect(messages.duplicate("2026-01-01")).toBe(
       "A snapshot for this asset already exists on 2026-01-01. Please choose a different date or edit the existing snapshot.",
     );

@@ -2,10 +2,8 @@
  * Snapshot screens' pure logic: URL filters, filtering, sorting, pagination
  * window, CSV export, form validation and the bulk entry / bulk edit rules.
  *
- * Ports of `routes/snapshots.py`, `forms/snapshot_forms.py` and
- * `utils/snapshot_helpers.py`. The source filters in SQL; the desktop dataset is
- * small, so the joined rows are filtered in memory. That keeps these functions
- * pure and testable against an independent oracle.
+ * The dataset is small, so joined rows are filtered in memory rather than in
+ * SQL, which keeps these functions pure and testable.
  */
 
 import Decimal from "decimal.js";
@@ -32,7 +30,7 @@ export interface SnapshotListRow {
   currency: string;
 }
 
-/** `asset.display_name`, or the source's 'Unknown Asset'. */
+/** The asset's display name, or 'Unknown Asset'. */
 export function snapshotAssetName(row: SnapshotListRow): string {
   return displayName({
     name: row.asset_name,
@@ -78,13 +76,13 @@ export const DEFAULT_SNAPSHOT_FILTERS: SnapshotFilters = {
 
 export const MAX_PER_PAGE = 100;
 
-/** Flask's `type=int`: anything unparseable becomes "absent". */
+/** Read an integer query parameter: anything unparseable becomes "absent". */
 function intOrNull(value: string | null): number | null {
   if (value === null || !/^[+-]?\d+$/.test(value.trim())) return null;
   return Number.parseInt(value, 10);
 }
 
-/** Flask's `type=float`. Kept as text so the input shows what was typed. */
+/** Read a float query parameter. Kept as text so the input shows what was typed. */
 function floatText(value: string | null): string {
   if (value === null || value.trim() === "") return "";
   return Number.isFinite(Number(value)) ? value.trim() : "";
@@ -92,11 +90,11 @@ function floatText(value: string | null): string {
 
 export interface ParsedSnapshotFilters {
   filters: SnapshotFilters;
-  /** What `_apply_snapshot_filters` flashes for a malformed date. */
+  /** Warnings to show for a malformed date. */
   warnings: string[];
 }
 
-/** Read the URL query the way `list_snapshots` reads `request.args`. */
+/** Read the list filters out of the URL query. */
 export function parseSnapshotFilters(params: URLSearchParams): ParsedSnapshotFilters {
   const warnings: string[] = [];
 
@@ -113,10 +111,10 @@ export function parseSnapshotFilters(params: URLSearchParams): ParsedSnapshotFil
 
   const sortBy = params.get("sort_by");
   const sort_by: SortBy = sortBy === "amount" || sortBy === "asset" ? sortBy : "date";
-  // `if sort_order == 'desc'` — anything else, including a typo, sorts ascending.
+  // Anything other than 'desc', including a typo, sorts ascending.
   const sort_order: SortOrder = (params.get("sort_order") ?? "desc") === "desc" ? "desc" : "asc";
 
-  // Flask-SQLAlchemy `paginate`: per_page capped at 100, below 1 falls back to 20,
+  // Pagination: per_page capped at 100, below 1 falls back to 20,
   // a page below 1 becomes 1.
   const perPageRaw = intOrNull(params.get("per_page")) ?? 20;
   const per_page = perPageRaw < 1 ? 20 : Math.min(perPageRaw, MAX_PER_PAGE);
@@ -205,10 +203,10 @@ function compareText(a: string, b: string): number {
 /**
  * `ORDER BY` for the list.
  *
- * Sorting by asset uses the *custom* name column, which is NULL for most assets;
- * PostgreSQL (the source) puts NULLs last ascending and first descending. The
- * source gives no tie-break, so equal keys come back in arbitrary order there;
- * here they fall back to newest date, then id, which is deterministic.
+ * Sorting by asset uses the *custom* name column, which is NULL for most assets,
+ * and NULLs sort last ascending and first descending. There is no tie-break in
+ * the SQL, so equal keys would come back in arbitrary order; here they fall back
+ * to newest date, then id, which is deterministic.
  */
 export function sortSnapshots(
   rows: readonly SnapshotListRow[],
@@ -244,7 +242,7 @@ export interface SnapshotSummary {
   dateRange: { start: string | null; end: string | null };
 }
 
-/** The only tile the template still renders: count and date range. */
+/** The list's summary tile: count and date range. */
 export function summariseSnapshots(rows: readonly Pick<SnapshotListRow, "date">[]): SnapshotSummary {
   if (rows.length === 0) return { totalCount: 0, dateRange: { start: null, end: null } };
   let start = rows[0].date;
@@ -262,11 +260,11 @@ export function snapshotCurrencyOptions(rows: readonly Pick<SnapshotListRow, "cu
 }
 
 /**
- * Flask-SQLAlchemy 3 `Pagination.iter_pages` with its defaults
- * (`left_edge=2, left_current=2, right_current=4, right_edge=2`), `null` marking
- * a gap. The asset list uses a different helper, `assetPageNumbers`.
+ * Page numbers for the list pager: a left edge of 2, a window from
+ * `current - 2` to `current + 4`, a right edge of 2, with `null` marking a gap.
+ * The asset list uses a different helper, `assetPageNumbers`.
  */
-export function flaskPageNumbers(
+export function pageNumbers(
   current: number,
   totalPages: number,
   { leftEdge = 2, leftCurrent = 2, rightCurrent = 4, rightEdge = 2 } = {},
@@ -309,9 +307,8 @@ export const CSV_HEADERS = [
 ] as const;
 
 /**
- * One field as Python's `csv.writer` (default "excel" dialect, QUOTE_MINIMAL)
- * writes it: quoted only when it holds a comma, a double quote or a line break,
- * with embedded quotes doubled.
+ * One CSV field: quoted only when it holds a comma, a double quote or a line
+ * break, with embedded quotes doubled.
  */
 export function csvField(value: string): string {
   return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
@@ -324,10 +321,10 @@ export function csvTimestamp(value: string | null | undefined): string {
 }
 
 /**
- * `SnapshotHelper.generate_csv_export`.
+ * The CSV export.
  *
- * Rows end in `\r\n`, which is what `csv.writer` emits whatever the platform,
- * and the export is newest first. The amount is `f"{amount:.2f}"`.
+ * Rows end in `\r\n`, the CSV convention on every platform, and the export is
+ * newest first. The amount is fixed to two decimals.
  */
 export function generateSnapshotsCsv(rows: readonly SnapshotListRow[]): string {
   const lines = [CSV_HEADERS.map(csvField).join(",")];
@@ -357,7 +354,7 @@ export function csvFileName(today: string): string {
 
 // --- messages ----------------------------------------------------------------
 
-/** `Asset.formatted_currency` for the flash messages. */
+/** The currency symbol used in the toast messages. */
 function symbolOf(currency: string): string {
   return ({ EUR: "€", USD: "$", CHF: "CHF" } as Record<string, string>)[currency] ?? currency;
 }
@@ -391,7 +388,7 @@ export const messages = {
 
 // --- single-snapshot form ----------------------------------------------------
 
-/** `validate_amount`'s upper bound. */
+/** Upper bound for a snapshot amount. */
 export const MAX_AMOUNT = new Decimal(1_000_000_000);
 const MIN_AMOUNT = new Decimal("0.01");
 
@@ -457,13 +454,11 @@ export interface BulkEntryResult {
 }
 
 /**
- * `BulkSnapshotForm` + `validate_selected_assets_from_request`.
+ * Bulk entry validation.
  *
  * Every row is validated before anything is written, and one bad row blocks the
- * whole batch, which is what the source's pre-check does for duplicates and what
- * the brief asks for ("nothing is written"). Differences from the source are
- * recorded in docs/DEVIATIONS.md: a zero or negative amount is flagged on its
- * row instead of being silently dropped.
+ * whole batch. A zero or negative amount is flagged on its own row rather than
+ * silently dropped.
  */
 export function validateBulkEntry(input: {
   date: string;
@@ -523,10 +518,10 @@ export interface BulkEditResult {
 }
 
 /**
- * `bulk_edit_snapshots` (POST): only filled fields change, each must be above 0.
+ * Bulk edit validation: only filled fields change, each must be above 0.
  *
- * The source commits the valid rows and flashes the rest; here any invalid row
- * blocks the batch so the result is all-or-nothing, like bulk entry.
+ * Any invalid row blocks the batch so the result is all-or-nothing, like bulk
+ * entry.
  */
 export function validateBulkEdit(rows: readonly BulkEditRow[]): BulkEditResult {
   const errors: BulkError[] = [];

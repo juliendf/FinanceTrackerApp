@@ -1,9 +1,8 @@
 /**
- * LLM providers list: port of `settings/llm_providers.html` and its routes.
+ * LLM providers list.
  *
- * Also hosts the global `llm_timeout` setting (`LLMConfigForm` in the source).
- * Test and fetch-models go through Rust, so the key never has to leave the
- * Keychain for a check.
+ * Also hosts the global `llm_timeout` setting. Test and fetch-models go through
+ * Rust, so the key never has to leave the Keychain for a check.
  */
 
 import { useEffect, useState } from "react";

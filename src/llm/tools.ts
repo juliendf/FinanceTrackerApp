@@ -1,6 +1,5 @@
 /**
- * Tool definitions and executors — port of `app/services/tools.json` and
- * `services/chat_tools.py`.
+ * Tool definitions and executors.
  *
  * Write tools never write. `propose_snapshot` and `remember_fact` create a
  * `pending_actions` row and return its id; the UI's confirm card is the only
@@ -215,18 +214,17 @@ const major = (minor: number): Decimal => fromMinorUnits(minor) ?? new Decimal(0
  */
 function displayMoney(amountMinor: number | null, currency: string): string | null {
   if (amountMinor === null) return null;
-  // `formatCurrency` is a port of the source's filter, whose CHF symbol carries a
-  // trailing space; trim it, since this string goes into prose.
+  // The CHF symbol carries a trailing space; trim it, since this string goes
+  // into prose.
   return formatCurrency(major(amountMinor), currency).trim();
 }
 
 /**
  * The start of a look-back window.
  *
- * The source computes `today.replace(day=max(1, today.day - days))`, which only
- * ever shifts the day *within the same month*: on the 31st, "90 days" becomes
- * the 1st of that month and history is nearly empty. That is a bug, not a
- * behaviour worth keeping, so this subtracts real days (docs/DEVIATIONS.md).
+ * Shifting the day within the same month (`day - days`, clamped at 1) only ever
+ * moves within that month: on the 31st, "90 days" becomes the 1st of the month
+ * and history is nearly empty. This subtracts real days instead.
  */
 function lookBack(today: string, days: number): string {
   return addDays(today, -Math.max(0, days));

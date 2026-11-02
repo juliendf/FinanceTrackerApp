@@ -128,9 +128,9 @@ function assetColumns(input: AssetWriteInput): string[] {
 /**
  * Create an asset, its tags and (optionally) its first snapshot — atomically.
  *
- * Replaces the Phase 0 compensating-delete: the asset id is allocated inside the
- * transaction (`nextId`) and referenced afterwards (`justInserted`), so a failed
- * snapshot insert rolls the whole thing back instead of leaving an asset behind.
+ * The asset id is allocated inside the transaction (`nextId`) and referenced
+ * afterwards (`justInserted`), so a failed snapshot insert rolls the whole thing
+ * back instead of leaving an asset behind.
  */
 export async function createAsset(input: CreateAssetInput): Promise<number> {
   const statements: string[] = [

@@ -1,5 +1,5 @@
 /**
- * Bulk snapshot entry: port of `snapshots/bulk.html` and `bulk_entry`.
+ * Bulk snapshot entry.
  *
  * One date, one amount per asset; blank rows are skipped. The batch is written
  * in one transaction, so one bad row writes nothing.

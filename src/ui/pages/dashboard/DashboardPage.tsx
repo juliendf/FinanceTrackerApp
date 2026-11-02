@@ -1,5 +1,5 @@
 /**
- * Home dashboard: port of `templates/dashboard.html` and `static/js/dashboard.js`.
+ * Home dashboard.
  *
  * KPI tiles, a breakdown pie with a group selector, and the portfolio evolution
  * line with its range buttons and percent badge.

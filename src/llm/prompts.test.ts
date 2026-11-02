@@ -25,7 +25,7 @@ const profile: Profile = {
 };
 
 describe("prompt sections", () => {
-  it("summarises the profile in the source's wording", () => {
+  it("summarises the profile in one line", () => {
     expect(buildProfileContext(profile, [])).toBe(
       "## User financial context\nname: Julien Doe; annual salary: 120,000.00 CHF; risk profile: growth; monthly savings target: 1,500.00\n",
     );
@@ -56,7 +56,7 @@ describe("prompt sections", () => {
     );
     expect(text).toContain("job: Senior SRE");
     expect(text).toContain("financial goals: Retire comfortably, buy a house.");
-    // Source order: name, job, salary, risk profile, financial goals, savings.
+    // Order: name, job, salary, risk profile, financial goals, savings.
     expect(text.indexOf("job:")).toBeLessThan(text.indexOf("financial goals:"));
   });
 

@@ -1,9 +1,8 @@
 /**
- * Exchange rates: port of `settings/exchange_rates.html` and the list/history
- * routes.
+ * Exchange rates.
  *
- * The list route creates the CHF<->USD pairs at rate 0 when missing, so they
- * always appear; the history view is the same table ordered by last update.
+ * The list creates the CHF<->USD pairs at rate 0 when missing, so they always
+ * appear; the history view is the same table ordered by last update.
  */
 
 import { useEffect } from "react";

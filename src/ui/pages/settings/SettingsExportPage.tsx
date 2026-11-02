@@ -1,8 +1,7 @@
 /**
- * Export settings: port of `settings/export.html`.
+ * Export settings.
  *
- * The source renders the JSON on the page and offers `?format=json` as a
- * download. Here the JSON is shown and a button saves it through a native dialog.
+ * The JSON is shown on the page and a button saves it through a native dialog.
  */
 
 import { useQuery } from "@tanstack/react-query";

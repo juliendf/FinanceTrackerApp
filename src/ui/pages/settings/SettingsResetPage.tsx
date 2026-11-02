@@ -1,8 +1,8 @@
 /**
- * Reset settings to defaults: port of `settings/reset.html` and `reset_confirm`.
+ * Reset settings to defaults.
  *
- * The source requires a checkbox, then deletes the settings rows so the defaults
- * apply again. Data is untouched.
+ * The user must tick a checkbox, then the settings rows are deleted so the
+ * defaults apply again. Data is untouched.
  */
 
 import { useState } from "react";

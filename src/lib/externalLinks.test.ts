@@ -61,7 +61,7 @@ describe("external link guard", () => {
   });
 
   it("ignores relative links the markdown renderer creates", () => {
-    const prevented = click(Object.assign(document.createElement("a"), { href: "/docs/DEVIATIONS.md" }));
+    const prevented = click(Object.assign(document.createElement("a"), { href: "/docs/IMPORT_FORMAT.md" }));
 
     expect(prevented).toBe(false);
     expect(invoke).not.toHaveBeenCalled();

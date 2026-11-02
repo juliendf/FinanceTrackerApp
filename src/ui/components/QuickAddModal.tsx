@@ -1,9 +1,8 @@
 /**
- * Quick-add modals — port of `components/quick_add_modal.html`.
+ * Quick-add modals.
  *
- * In the source these are Bootstrap modals posted to `/admin/api/institutions`
- * and `/admin/api/categories`, which return the new row so the calling form can
- * select it without a page reload. Same behaviour here, minus the HTTP hop.
+ * Each one is a Bootstrap modal that creates the row and returns it, so the
+ * calling form can select it without a reload.
  */
 
 import { useState } from "react";
@@ -44,7 +43,7 @@ export function QuickAddInstitutionModal({
     setBusy(true);
     setError(null);
     try {
-      // The source returns 400 "Institution already exists" rather than 500.
+      // A duplicate name is a validation error, not a server failure.
       if (await institutionNameExists(trimmed)) {
         setError("Institution already exists");
         return;
@@ -132,7 +131,7 @@ export function QuickAddCategoryModal({
         setError("Category already exists");
         return;
       }
-      // The source's AJAX endpoint creates with the model default colour.
+      // Categories are created with the default colour.
       const id = await createCategory(trimmed, QUICK_ADD_CATEGORY_COLOR);
       onCreated({ id, name: trimmed });
       toast.success(`Category "${trimmed}" created.`);

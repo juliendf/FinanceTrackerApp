@@ -1,9 +1,9 @@
 /**
- * System prompt construction — port of `chat_service.py`'s template and its
- * `_build_*_context` helpers, with the text kept verbatim.
+ * System prompt construction: the profile, style and memories sections and the
+ * wording around them.
  *
- * The sections are assembled in the same order (profile, style, memories) so
- * the model sees the same prompt the web app sent.
+ * The sections are assembled in order (profile, style, memories) so the model
+ * sees one stable prompt.
  */
 
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
@@ -55,7 +55,7 @@ function formatWhole(minor: number): string {
   return value.toNumber().toLocaleString("en-US", { maximumFractionDigits: 0 });
 }
 
-/** `"12,345.67"` — the `{:,.2f}` the source builds its salary line with. */
+/** `"12,345.67"` — two decimals, grouped. */
 const money = (minor: number | null): string =>
   formatNumber(fromMinorUnits(minor ?? 0) ?? new Decimal(0));
 
@@ -262,7 +262,7 @@ export function buildExtractionMessages(
   ];
 }
 
-/** Suggested questions, ported from `routes/chat.py`'s `QUICK_PROMPTS`. */
+/** Suggested questions offered under the composer. */
 export const QUICK_PROMPTS = [
   {
     id: "portfolio-review",

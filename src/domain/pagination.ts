@@ -1,8 +1,7 @@
 /**
  * Pagination and sorting helpers — pure, no Tauri imports.
  *
- * Port of `app/utils/pagination.py` and `app/utils/tables.py` behaviour:
- * page/per_page are 1-based, `iter_pages` shows edges and a window around the
+ * page/per_page are 1-based, the pager shows edges and a window around the
  * current page with nulls for gaps.
  */
 
@@ -39,8 +38,7 @@ export function paginate<T>(items: readonly T[], page: number, perPage: number):
 
 /**
  * Page numbers to render, with `null` marking a gap.
- * Mirrors Flask-SQLAlchemy's `iter_pages(left_edge=1, right_edge=1,
- * left_current=1, right_current=2)`.
+ * An edge of 1 on each side, one page before the current one and two after.
  */
 export function pageNumbers(
   current: number,
@@ -84,7 +82,7 @@ export interface SortState {
   direction: SortDirection;
 }
 
-/** Cycle a column: none -> asc -> desc -> none, as the source's table JS does. */
+/** Cycle a column: none -> asc -> desc -> none, as the sortable headers do. */
 export function nextSortState(current: SortState, key: string): SortState {
   if (current.key !== key) return { key, direction: "asc" };
   if (current.direction === "asc") return { key, direction: "desc" };
@@ -129,13 +127,12 @@ export function paginationLabel(page: Page<unknown>): string {
 }
 
 /**
- * `PaginationHelper.iter_pages` from `app/utils/pagination.py`, as the asset
- * list uses it: edges of 2, a window from `current - 2` to `current + 2`.
+ * Page numbers for the asset list: edges of 2, a window from `current - 2` to
+ * `current + 2`.
  *
- * The source only yields the numbers and never the gaps, so its pager shows
- * "1 2 5 6 7 8 9 20 21" with nothing marking the jumps. This returns `null` for
- * a gap so the UI can print the ellipsis its own template already anticipates
- * (`{% if page_num %} … {% else %}…`).
+ * Only the numbers are produced, never the gaps, so a pager built from this
+ * shows "1 2 5 6 7 8 9 20 21" with nothing marking the jumps. This returns
+ * `null` for a gap so the UI can print an ellipsis instead.
  */
 export function assetPageNumbers(
   current: number,

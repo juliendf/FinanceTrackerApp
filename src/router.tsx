@@ -30,11 +30,10 @@ import { ResumePage } from "./ui/pages/dashboard/ResumePage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
 
 /**
- * Hash router, mirroring the web app's URL structure.
+ * Hash router, mapping each screen to its URL.
  *
- * Routes whose screens are not ported yet render `PlaceholderPage` so the
- * navbar never dead-ends. Each one has a row in docs/PARITY_CHECKLIST.md with
- * the phase that replaces it.
+ * Routes whose screens are not built yet render `PlaceholderPage` so the navbar
+ * never dead-ends.
  */
 export const router = createHashRouter([
   {

@@ -1,11 +1,9 @@
 /**
  * Sidebar: the app's primary navigation.
  *
- * The source only reached its sidebar through `layouts/main.html`, which no live
- * page extends (see docs/DEVIATIONS.md). A desktop app belongs in a sidebar
- * rather than a top nav — a top bar forces every page into one narrow column and
- * leaves the window mostly empty on a wide screen — so it is the default shell
- * here. The collapse state is remembered across launches.
+ * A sidebar rather than a top nav: a top bar forces every page into one narrow
+ * column and leaves the window mostly empty on a wide screen. The collapse
+ * state is remembered across launches.
  */
 
 import { useEffect, useState } from "react";

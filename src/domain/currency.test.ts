@@ -1,9 +1,8 @@
 /**
  * Currency conversion tests.
  *
- * Expected values come from `ExchangeRate.get_rate` and `CurrencyConverter` in
- * the source: identity, direct, inverse (`1 / rate`), then — for the converter
- * only — a hop through EUR/USD/CHF, then the unconverted amount.
+ * Expected values: identity, direct, inverse (`1 / rate`), then — for the
+ * converter only — a hop through EUR/USD/CHF, then the unconverted amount.
  */
 
 import Decimal from "decimal.js";

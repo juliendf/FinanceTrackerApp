@@ -1,9 +1,8 @@
 /**
- * First-run seed — port of `app/services/user_defaults.py`.
+ * First-run seed.
  *
- * The source seeded a new *user*: settings, the six directional rate pairs and
- * one key-less LLM provider. There is one user here, so the same rules apply
- * globally and the function is idempotent: it inserts only what is missing.
+ * Seeds settings, the six directional rate pairs and one key-less LLM provider.
+ * The function is idempotent: it inserts only what is missing.
  *
  * The seeded provider never carries a credential — an API key is opt-in and goes
  * to the Keychain, never to SQLite.
@@ -111,7 +110,7 @@ export async function seedFirstRun(): Promise<SeedCounts> {
     counts.provider += 1;
   }
 
-  // Profile row: the source created it at registration.
+  // Profile row: created on first run.
   const profileRows = await db.select<Array<{ n: number }>>(
     `SELECT COUNT(*) AS n FROM profile`,
   );

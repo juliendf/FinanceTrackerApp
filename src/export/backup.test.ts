@@ -74,7 +74,7 @@ describe("buildBackup", () => {
     expect(Object.keys(data).sort()).toEqual(["institutions", "settings"]);
   });
 
-  it("names the file like the source", () => {
+  it("names the file with a timestamp", () => {
     expect(backupFileName(new Date(2026, 9, 26, 20, 58, 43))).toBe("finance_tracker_data_20261026_205843.json");
   });
 });

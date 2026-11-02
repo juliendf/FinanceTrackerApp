@@ -1,10 +1,9 @@
 /**
- * Form field components — ports of the Jinja macros in
- * `templates/components/form_fields.html`.
+ * Form field components.
  *
  * The markup is deliberately hand-written rather than delegated to react-bootstrap
- * so the classes match the macros exactly: `input-group`, `input-group-text`,
- * `is-invalid`, `form-text`, `invalid-feedback`. custom.css targets those.
+ * so the classes stay stable: `input-group`, `input-group-text`, `is-invalid`,
+ * `form-text`, `invalid-feedback`. custom.css targets those.
  */
 
 import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";

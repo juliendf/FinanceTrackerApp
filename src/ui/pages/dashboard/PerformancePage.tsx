@@ -1,10 +1,8 @@
 /**
- * Performance analytics: a stub, as in the source.
+ * Performance analytics: an honest placeholder.
  *
- * The source's page charts three hard-coded numbers ({1M: 2%, 3M: 5%, 1Y: 12%})
- * that have nothing to do with the user's data. Showing invented returns in a
- * finance app is worse than showing nothing, so this is an honest placeholder;
- * the real figures live on the Résumé screen. See docs/DEVIATIONS.md.
+ * Showing made-up returns in a finance app is worse than showing nothing, so
+ * this page shows no figures at all; the real ones live on the Résumé screen.
  */
 
 import { Link } from "react-router-dom";

@@ -1,5 +1,5 @@
 /**
- * The chat tool loop — port of the round loop in `chat_service.py`.
+ * The chat tool loop.
  *
  * The transport and the tool executor are injected, so tests can drive both
  * without Rust, a network or a database.
@@ -8,7 +8,7 @@
 import type { ChatMessage, StreamEvent, ToolCall } from "./client";
 import { TOOL_DEFINITIONS, type ToolResult } from "./tools";
 
-/** Source limit: `CHAT_MAX_TOOL_ROUNDS`, five tool rounds per user turn. */
+/** Five tool rounds per user turn. */
 export const MAX_TOOL_ROUNDS = 5;
 
 export interface TransportResponse {
@@ -64,7 +64,7 @@ export function parseToolArgs(raw: string): Record<string, unknown> {
   }
 }
 
-/** Pending actions a tool result describes, mirroring the source's collection step. */
+/** Pending actions a tool result describes. */
 export function pendingActionsFrom(result: unknown): unknown[] {
   if (typeof result !== "object" || result === null) return [];
   const record = result as Record<string, unknown>;

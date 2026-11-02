@@ -1,10 +1,8 @@
 /**
  * Integer count-up used by the dashboard tiles.
  *
- * The source's script targets `.stat-number span`, which its own template never
- * renders, so the animation never ran there; the brief asks for it. It runs
- * only when the `enable_animations` setting is on and the OS has not asked for
- * reduced motion, and it settles on the exact value.
+ * It runs only when the `enable_animations` setting is on and the OS has not
+ * asked for reduced motion, and it settles on the exact value.
  */
 
 import { useEffect, useState } from "react";

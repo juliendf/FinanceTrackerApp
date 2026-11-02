@@ -1,16 +1,13 @@
 /**
  * Dashboard aggregations: summary tiles, distribution, portfolio evolution and
- * the Résumé. Ports of `services/dashboard_service.py` and the chart endpoints
- * in `routes/api.py`.
+ * the Résumé.
  *
- * Everything is pure and takes "today" as an argument, so the same function can
- * be checked against the source with the clock pinned. Amounts are Decimal
- * major units internally; results are rounded to 2 dp half-even at the same
- * points the source rounds.
+ * Everything is pure and takes "today" as an argument, so results are
+ * reproducible with the clock pinned. Amounts are Decimal major units
+ * internally; results are rounded to 2 dp half-even where they are displayed.
  *
- * The source re-scans every snapshot for every date (O(dates x assets x
- * snapshots)). The evolution here sorts once and sweeps, keeping a running
- * total, with the same output.
+ * The evolution sorts once and sweeps with a running total rather than
+ * re-scanning every snapshot for every date, with the same output.
  */
 
 import Decimal from "decimal.js";
@@ -69,10 +66,10 @@ export interface DashboardSummary {
 }
 
 /**
- * `DashboardService.get_summary`.
+ * Summary tiles: total value, per-currency totals and counts.
  *
- * `assetCurrencies` is every asset's currency, snapshot or not: the source counts
- * the distinct currencies of the assets table, and so do the tiles.
+ * `assetCurrencies` is every asset's currency, snapshot or not: the tiles count
+ * the distinct currencies of the assets table.
  */
 export function summarise(
   facts: readonly Fact[],
@@ -104,10 +101,10 @@ export interface DistributionSlice {
 }
 
 /**
- * `distribution/by-*`: the latest snapshot of each asset, summed per group.
+ * Distribution: the latest snapshot of each asset, summed per group.
  *
- * By currency the amounts stay native (no conversion), as in the source. Slices
- * keep first-seen order, like the source's dict; the UI sorts for display.
+ * By currency the amounts stay native (no conversion). Slices keep first-seen
+ * order; the UI sorts for display.
  */
 export function distribution(
   facts: readonly Fact[],
@@ -145,7 +142,7 @@ export type EvolutionRange = (typeof EVOLUTION_RANGES)[number];
 
 const RANGE_DAYS: Record<string, number> = { "1W": 7, "1M": 30, "3M": 90, "6M": 180, "1Y": 365 };
 
-/** The cut-off date for a range, or null for "no lower bound". Unknown values mean no bound, as in the source. */
+/** The cut-off date for a range, or null for "no lower bound". Unknown values mean no bound. */
 export function evolutionCutoff(range: string, today: string): string | null {
   const upper = range.toUpperCase();
   if (upper === "YTD") return `${today.slice(0, 4)}-01-01`;
@@ -168,22 +165,21 @@ export interface EvolutionOptions {
   /**
    * Start each asset from its last value *before* the cut-off (default true).
    *
-   * The source only reads snapshots on or after the cut-off, so an asset whose
-   * last snapshot is older than that vanishes from the whole series, and a short
-   * range starts absurdly low (Julien's data shows 1Y as +737%). Its own
-   * docstring says it carries each asset's latest snapshot forward, which is
-   * what `true` does. `false` reproduces the source exactly and is what the
-   * golden test uses to prove parity.
+   * With `false`, only snapshots on or after the cut-off are read, so an asset
+   * whose last snapshot is older than that vanishes from the whole series and a
+   * short range starts absurdly low (one year can read +737%). With `true`,
+   * each asset is carried forward from its latest snapshot, which is what the
+   * chart is meant to show.
    */
   carryIn?: boolean;
 }
 
 /**
- * `/api/charts/portfolio-evolution`.
+ * Portfolio evolution over a range.
  *
  * One point per date that has a snapshot inside the range, each asset
  * contributing its most recent value up to that date, and the final point forced
- * to the summary value (as the source does).
+ * to the summary value.
  */
 export function portfolioEvolution(
   facts: readonly Fact[],
@@ -277,11 +273,11 @@ export interface ResumeMetrics {
 }
 
 /**
- * `DashboardService.get_resume_metrics`.
+ * Résumé metrics for a range.
  *
  * "Invested capital" is the portfolio value at the start date, not money paid
- * in, exactly as in the source; so the performance includes any deposits made
- * during the period. The annualised figure uses 365.25-day years.
+ * in, so the performance includes any deposits made during the period. The
+ * annualised figure uses 365.25-day years.
  */
 export function resumeMetrics(
   facts: readonly Fact[],

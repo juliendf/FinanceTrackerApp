@@ -1,11 +1,12 @@
 /**
- * Asset detail — port of `templates/assets/detail.html` and `view_asset()`.
+ * Asset detail.
  *
- * Three source display bugs are fixed here and recorded in docs/DEVIATIONS.md:
- *   * Cost/Charges is a percentage but the template ran it through `currency`;
- *   * Interest Rate went through `percentage`, which multiplies by 100, so a
- *     stored 1.25 printed as "125.00%";
- *   * the snapshot "% Change" column applied ×100 twice ("+500.0%" for +5 %).
+ * Three display details the page depends on:
+ *   * Cost/Charges is a percentage, formatted as such, not as currency;
+ *   * Interest Rate is a stored percentage value, so it must not be scaled by
+ *     100 — a stored 1.25 shows as "1.25%";
+ *   * the snapshot "% Change" column passes a fraction to the percentage
+ *     filter, which multiplies by 100 once, so +5 % shows as "+5.0%".
  */
 
 import { useState } from "react";

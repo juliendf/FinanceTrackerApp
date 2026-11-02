@@ -1,8 +1,8 @@
 /**
- * Sortable data table — port of `render_table` in `templates/components/table.html`.
+ * Sortable data table.
  *
- * Column types (`currency`, `date`, `percentage`, `badge`, `link`) are mirrored
- * so a screen can be ported by copying its column list.
+ * Column types (`currency`, `date`, `percentage`, `badge`, `link`) let a screen
+ * declare its column list and get the right rendering and sorting.
  */
 
 import type { ReactNode } from "react";

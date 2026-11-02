@@ -1,9 +1,9 @@
 /**
- * General settings: port of `settings/index.html` and the `settings.index` route.
+ * General settings.
  *
- * The API key section is deliberately absent: there is no REST API in this build
- * (docs/DEVIATIONS.md). Everything else matches: the six fields, save, reset to
- * defaults, and settings JSON export/import.
+ * The API key section is deliberately absent: there is no REST API in this
+ * build. Everything else is here: the six fields, save, reset to defaults, and
+ * settings JSON export/import.
  */
 
 import { useEffect, useState, type FormEvent } from "react";

@@ -3,8 +3,8 @@
  * Institutions screen behaviour.
  *
  * The repository layer is mocked; what is under test is the screen's logic and
- * the two rules from `routes/admin.py`: a duplicate name is reported on the
- * field, and a referenced institution cannot be deleted.
+ * two rules: a duplicate name is reported on the field, and a referenced
+ * institution cannot be deleted.
  */
 
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";

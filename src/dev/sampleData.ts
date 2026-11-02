@@ -1,10 +1,8 @@
 /**
  * Dev-only sample data.
  *
- * Ports the *spirit* of `app/demo_data.py` (deterministic, seeded, never runs
- * on its own) without the user/profile/chat parts, which have no tables yet.
- * Exists so the spike chart has something to draw and so screenshots look real.
- * Phase 1 replaces this with the "Load sample data" action in Settings.
+ * Deterministic, seeded, and never runs on its own. Exists so the chart has
+ * something to draw and screenshots look real.
  */
 
 import { executeWrite } from "../db/client";
@@ -127,7 +125,7 @@ export async function loadSampleData(): Promise<void> {
   }
 }
 
-/** Remove everything, for repeated spike runs. */
+/** Remove everything, for repeated sample-data runs. */
 export async function resetData(): Promise<void> {
   await executeWrite(`DELETE FROM snapshots`);
   await executeWrite(`DELETE FROM assets`);

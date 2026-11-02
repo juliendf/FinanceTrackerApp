@@ -1,9 +1,9 @@
 /**
- * Port of `app/utils/constants.py` (`SystemCategory`).
+ * The fixed system taxonomy for categories.
  *
- * Fixed taxonomy used by the Résumé view to compute Cash, Emergency Fund and
- * standardised breakdowns independently of user-defined categories. The labels
- * stay French because the Résumé screen is French in the source.
+ * Used by the Résumé view to compute Cash, Emergency Fund and standardised
+ * breakdowns independently of user-defined categories. The labels stay French
+ * because the Résumé screen is French.
  */
 
 export const SYSTEM_ROLES = {

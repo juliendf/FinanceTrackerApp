@@ -1,5 +1,5 @@
 /**
- * Résumé: port of `templates/dashboard/resume.html`. French UI, as in the source.
+ * Résumé. French UI.
  *
  * The period lives in `?range=`. Amounts use the `currency` filter, so the base
  * currency symbol placement follows `formatCurrency`.
@@ -45,7 +45,7 @@ function Row({ label, tip, children, last = false, className = "" }: { label: st
 
 const sign = (value: { greaterThanOrEqualTo(n: number): boolean }) => (value.greaterThanOrEqualTo(0) ? "text-success" : "text-danger");
 
-/** Python's `'%+.2f' | format(x)`. */
+/** Always signed, two decimals: "+12.00" or "-3.50". */
 const signed = (value: { toFixed(n: number): string; isNegative(): boolean }) =>
   `${value.isNegative() ? "" : "+"}${value.toFixed(2)}`;
 

@@ -1,16 +1,9 @@
 /**
- * `format.ts` parity tests.
+ * `format.ts` tests.
  *
- * The expected strings on the left of each `match` case were produced by
- * running the *real* `currency_filter` from
- * `FinanceTracker/app/utils/filters.py` — not rewritten by hand. See
- * "Python oracle" below for the exact snippet.
- *
- * Python oracle:
- *   src = open('app/utils/filters.py').read()
- *   fn  = src[src.index('def currency_filter'):src.index('\ndef relative_date_filter')]
- *   ns  = {}; exec("from decimal import Decimal, InvalidOperation\n" + fn, ns)
- *   ns['currency_filter'](1234.5, 'USD')   # -> '$1,234.50'
+ * The expected strings on the left of each case are the canonical output for
+ * each input, cross-checked against an independent implementation of the same
+ * rules rather than written by hand.
  */
 
 import Decimal from "decimal.js";
@@ -24,9 +17,9 @@ import {
   relativeDate,
 } from "./format";
 
-describe("formatCurrency — Python oracle parity", () => {
+describe("formatCurrency", () => {
   const cases: Array<[Decimal.Value | null, string, string]> = [
-    // value, currency, expected (as emitted by filters.py)
+    // value, currency, expected
     [null, "USD", "N/A"],
     [0, "USD", "$0.00"],
     [1234.5, "USD", "$1,234.50"],
@@ -48,7 +41,7 @@ describe("formatCurrency — Python oracle parity", () => {
     });
   }
 
-  it("puts the minus sign after the symbol, as Python does", () => {
+  it("puts the minus sign after the symbol", () => {
     expect(formatCurrency(-1234.567, "USD")).toBe("$-1,234.57");
     expect(formatCurrency(-1234.567, "EUR")).toBe("€-1,234.57");
     expect(formatCurrency(-1234.567, "CHF")).toBe("-1,234.57 CHF ");
@@ -63,28 +56,26 @@ describe("formatCurrency — Python oracle parity", () => {
   });
 });
 
-describe("formatCurrency — documented divergences from Python", () => {
+describe("formatCurrency — half-even tie rounding", () => {
   /**
-   * Python converts a *float* to Decimal with the float's exact binary value,
-   * so a value whose decimal expansion sits exactly on a half-rounding tie
-   * drifts in whichever direction the binary representation leans. We parse the
-   * shortest decimal representation instead, so these three round half-even on
-   * the decimal value.
+   * A value whose decimal expansion sits exactly on a half-rounding tie is
+   * parsed by its shortest decimal representation and rounds half-even on that
+   * decimal value, so 12.345 -> 12.34 and 0.005 -> 0.00, rather than drifting
+   * with a binary float representation.
    *
    * These inputs cannot occur through the app: amounts are stored as INTEGER
    * minor units and rates as decimal strings, so every value reaching this
-   * function is exact at 2 dp. Recorded here so the difference is explicit
-   * rather than discovered during Phase 5 golden tests.
+   * function is exact at 2 dp. The cases are pinned so the behaviour is explicit.
    */
-  it("12.345 EUR rounds half-even to 12.34, Python's float gives 12.35", () => {
+  it("12.345 EUR rounds half-even to 12.34", () => {
     expect(formatCurrency(12.345, "EUR")).toBe("€12.34");
   });
 
-  it("0.005 EUR rounds half-even to 0.00, Python's float gives 0.01", () => {
+  it("0.005 EUR rounds half-even to 0.00", () => {
     expect(formatCurrency(0.005, "EUR")).toBe("€0.00");
   });
 
-  it("0.015 EUR rounds half-even to 0.02, Python's float gives 0.01", () => {
+  it("0.015 EUR rounds half-even to 0.02", () => {
     expect(formatCurrency(0.015, "EUR")).toBe("€0.02");
   });
 });
@@ -101,8 +92,7 @@ describe("formatMinorAsCurrency", () => {
   });
 });
 
-describe("formatPercentage — percentage filter", () => {
-  // Oracle: percentage_filter from app/utils/filters.py
+describe("formatPercentage", () => {
   it("scales by 100 and appends %", () => {
     expect(formatPercentage(0)).toBe("0.00%");
     expect(formatPercentage(12.3456)).toBe("1234.56%");
@@ -126,9 +116,8 @@ describe("formatPercentage — percentage filter", () => {
   });
 });
 
-describe("formatDate — format_date filter", () => {
-  it("defaults to %Y-%m-%d, the source's default", () => {
-    // format_date_filter(date(2026, 10, 1)) -> '2026-10-01'
+describe("formatDate", () => {
+  it("defaults to %Y-%m-%d", () => {
     expect(formatDate("2026-10-01")).toBe("2026-10-01");
   });
 
@@ -144,7 +133,7 @@ describe("formatDate — format_date filter", () => {
   });
 });
 
-describe("relativeDate — relative_date filter", () => {
+describe("relativeDate", () => {
   const today = new Date("2026-10-24T12:00:00Z");
 
   it("returns Never for a missing date", () => {
@@ -161,7 +150,7 @@ describe("relativeDate — relative_date filter", () => {
     expect(relativeDate("2026-10-18", today)).toBe("6 days ago");
   });
 
-  it("switches to weeks, with the source's pluralisation", () => {
+  it("switches to weeks, pluralising only the unit", () => {
     expect(relativeDate("2026-10-17", today)).toBe("1 week ago");
     expect(relativeDate("2026-10-10", today)).toBe("2 weeks ago");
   });
@@ -176,7 +165,7 @@ describe("relativeDate — relative_date filter", () => {
     expect(relativeDate("2023-10-24", today)).toBe("3 years ago");
   });
 
-  it("clamps future dates to Today, as the source clamps negatives", () => {
+  it("clamps future dates to Today", () => {
     expect(relativeDate("2026-12-01", today)).toBe("Today");
   });
 });

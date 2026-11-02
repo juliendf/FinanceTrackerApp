@@ -1,7 +1,7 @@
 /**
  * Settings > Data.
  *
- * Import (including the desktop app's own v3 backups), export at v3, and the
+ * Import (including this app's own v3 backups), export at v3, and the
  * typed-confirmation reset. Settings JSON export/import lives under /settings.
  */
 

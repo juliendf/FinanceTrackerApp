@@ -1,5 +1,5 @@
 /**
- * The history window sent to the model — port of `_build_history_messages`.
+ * The history window sent to the model.
  *
  * Two things matter, and both are load-bearing:
  *

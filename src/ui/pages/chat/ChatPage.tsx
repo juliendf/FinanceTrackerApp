@@ -1,6 +1,5 @@
 /**
- * Chat: port of `templates/chat/index.html` and `static/js/chat.js`, with
- * streaming instead of polling.
+ * Chat, with streamed replies.
  *
  * Conversations live in the URL (`/chat/:conversationId`). The transcript is the
  * `messages` table; the streaming bubbles live in local state until the turn

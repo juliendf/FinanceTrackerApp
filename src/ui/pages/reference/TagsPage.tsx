@@ -1,9 +1,9 @@
 /**
- * Tags list — port of `templates/tags/list.html` and `routes/tags.py`.
+ * Tags list.
  *
  * Unlike institutions and categories, a tag *can* be deleted while assets use
- * it: `tag_delete` removes the association from every asset first, which the
- * `asset_tags` cascade does here.
+ * it: the association is removed from every asset first, which the `asset_tags`
+ * cascade does here.
  */
 
 import { useState } from "react";

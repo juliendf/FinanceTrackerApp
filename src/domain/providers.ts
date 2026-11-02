@@ -10,8 +10,7 @@
  * Gemini's native base URL answers on `/v1beta/chat/completions`, which is not
  * OpenAI-shaped. Every request in this app speaks the OpenAI schema, so a
  * `gemini` provider is pointed at Gemini's OpenAI-compatible surface
- * (`.../v1beta/openai`) — the alternative the brief asks for instead of porting
- * litellm's Gemini special case.
+ * (`.../v1beta/openai`).
  */
 export function normaliseBaseUrl(providerType: string, baseUrl: string): string {
   const trimmed = baseUrl.trim().replace(/\/+$/, "");

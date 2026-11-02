@@ -1,4 +1,4 @@
--- Phase 0 verification fixture.
+-- Seed verification fixture.
 --
 -- Loaded into the app's real database with sqlite3 after the app has run its
 -- migration at least once, so the chart, the KPI tiles and the table all have

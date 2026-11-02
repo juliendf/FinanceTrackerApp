@@ -28,7 +28,7 @@ describe("parseMoney", () => {
 });
 
 describe("roundMoney", () => {
-  it("rounds half-even, matching Python's Decimal default", () => {
+  it("rounds half-even", () => {
     // Half-even only differs from half-up on exact ties at the 3rd decimal.
     expect(roundMoney("2.505")?.toString()).toBe("2.5"); // 0 is even
     expect(roundMoney("2.515")?.toString()).toBe("2.52"); // 1 is odd

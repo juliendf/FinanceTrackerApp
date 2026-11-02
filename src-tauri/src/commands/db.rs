@@ -7,8 +7,8 @@
 //!   * a single string holding several statements only runs the first one
 //!     (sqlite3 prepares one statement and the tail is discarded).
 //!
-//! Both matter for bulk writes — the backup importer and the Phase 4 bulk
-//! snapshot grid must be all-or-nothing. This module takes a list of statements
+//! Both matter for bulk writes — the backup importer and the bulk snapshot grid
+//! must be all-or-nothing. This module takes a list of statements
 //! and runs them inside one real `sqlx` transaction on a dedicated connection,
 //! with foreign keys enforced so a bad reference fails the import instead of
 //! being written silently.

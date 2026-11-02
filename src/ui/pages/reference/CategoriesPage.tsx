@@ -1,9 +1,8 @@
 /**
- * Categories list — port of `templates/admin/categories.html`.
+ * Categories list.
  *
  * Categories carry a colour and an optional `system_role` (French labels, used
- * by the Résumé view). Deletion is refused while assets reference the category,
- * as `delete_category` does.
+ * by the Résumé view). Deletion is refused while assets reference the category.
  */
 
 import { useState } from "react";

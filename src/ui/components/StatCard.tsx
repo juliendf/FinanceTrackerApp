@@ -1,4 +1,4 @@
-/** KPI tile, mirroring the `stat-card` markup in templates/assets/list.html. */
+/** KPI tile with a label, a value and an optional subtitle. */
 
 import type { ReactNode } from "react";
 

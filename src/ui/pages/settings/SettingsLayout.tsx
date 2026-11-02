@@ -1,5 +1,5 @@
 /**
- * Shared shell for the settings screens: port of `settings/_layout.html`.
+ * Shared shell for the settings screens.
  *
  * One page header, a left nav listing every settings area, and the page's own
  * content. The nav marks the current page.

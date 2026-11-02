@@ -9,7 +9,7 @@ import "@fontsource/inter/700.css";
 import "@fontsource/inter/800.css";
 
 // Bootstrap + icons from node_modules, then custom.css (which overrides both).
-// Order matters and matches templates/base.html.
+// Order matters: tokens and overrides must come last.
 import "bootstrap/dist/css/bootstrap.min.css";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./styles/custom.css";

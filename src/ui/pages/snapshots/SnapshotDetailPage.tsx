@@ -1,4 +1,4 @@
-/** Snapshot detail: port of `snapshots/detail.html` and the `detail` route. */
+/** Snapshot detail. */
 
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";

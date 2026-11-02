@@ -144,7 +144,7 @@ describe("SnapshotFormPage (new)", () => {
     expect(snap.createSnapshot).not.toHaveBeenCalled();
   });
 
-  it("rejects a duplicate date with the source's message", async () => {
+  it("rejects a duplicate date with the app's message", async () => {
     const user = userEvent.setup();
     snap.snapshotExists.mockResolvedValue(true);
     renderAt("/snapshots/new?asset_id=1", <SnapshotFormPage />, "/snapshots/new");

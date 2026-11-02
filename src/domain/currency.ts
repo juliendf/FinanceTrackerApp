@@ -1,12 +1,11 @@
 /**
- * Currency conversion — port of `app/utils/currency.py` and
- * `ExchangeRate.get_rate` (`models/core.py`).
+ * Currency conversion.
  *
- * Two behaviours, both from the source:
+ * Two behaviours:
  *
- *   * `convertStrict` is `convert_amount`: same currency, a direct rate, or the
- *     inverse of the opposite pair; anything else throws. The asset list summary
- *     uses it and hides its combined total when it throws.
+ *   * `convertStrict`: same currency, a direct rate, or the inverse of the
+ *     opposite pair; anything else throws. The asset list summary uses it and
+ *     hides its combined total when it throws.
  *   * `CurrencyConverter.convert` is the dashboard path: direct, then a hop
  *     through EUR/USD/CHF, then — rather than crash a page — the *unconverted*
  *     amount, recorded so the UI can badge it.
@@ -91,7 +90,7 @@ export function isSupportedCurrency(code: string): boolean {
 }
 
 /**
- * The pairs the source's list and edit pages always show, created at rate 0 when
+ * The rate pairs the list and edit screens always show, created at rate 0 when
  * missing. `RateTable` ignores non-positive rates, so such a pair behaves as "no
  * rate" until the user sets one.
  */
@@ -139,7 +138,7 @@ export class CurrencyConverter {
       if (first && second) return value.times(first).times(second);
     }
 
-    // Source behaviour: log and return the amount unchanged rather than crash.
+    // Log and return the amount unchanged rather than crash.
     if (!this.warnings.some((w) => w.from === from && w.to === target)) {
       this.warnings.push({ from, to: target });
     }

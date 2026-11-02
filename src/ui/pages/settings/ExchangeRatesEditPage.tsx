@@ -1,8 +1,9 @@
 /**
- * Bulk edit exchange rates: port of `settings/exchange_rates_edit.html`.
+ * Bulk edit exchange rates.
  *
- * One rate per pair, saved in one transaction. Pairs the source always shows
- * (CHF<->USD) are created if missing. Validation mirrors `ExchangeRateForm`.
+ * One rate per pair, saved in one transaction. The required pairs (CHF<->USD)
+ * are created if missing. Validation rejects a blank rate and anything below
+ * 0.000001.
  */
 
 import { useEffect, useState, type FormEvent } from "react";

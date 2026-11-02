@@ -45,10 +45,6 @@ export function AboutModal({ show, onHide }: { show: boolean; onHide: () => void
         <p className="text-muted small mb-2">
           Database: <span className="font-monospace">{dbPath.data ?? "…"}</span>
         </p>
-        <p className="text-muted small mb-0">
-          Source app: the original FinanceTracker Flask project. See the parity checklist and the deviations log
-          in <code>docs/</code>.
-        </p>
       </Modal.Body>
       <Modal.Footer>
         <Link to="/settings/data" className="btn btn-secondary" onClick={onHide}>

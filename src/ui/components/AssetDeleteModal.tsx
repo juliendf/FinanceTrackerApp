@@ -1,4 +1,4 @@
-/** Delete confirmation — port of the modal in `templates/assets/list.html`. */
+/** Delete confirmation for an asset. */
 
 import { useState } from "react";
 import { Modal } from "react-bootstrap";

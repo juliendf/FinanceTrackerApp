@@ -1,4 +1,4 @@
-/** Bulk snapshot edit: port of `snapshots/bulk_edit.html` and `bulk_edit_snapshots`. */
+/** Bulk snapshot edit. */
 
 import { useMemo, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";

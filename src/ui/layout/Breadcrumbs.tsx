@@ -1,4 +1,4 @@
-/** Breadcrumbs — port of `components/breadcrumb.html`. */
+/** Breadcrumbs. */
 
 import { Link } from "react-router-dom";
 

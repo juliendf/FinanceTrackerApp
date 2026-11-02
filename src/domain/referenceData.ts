@@ -1,14 +1,13 @@
 /**
- * Validation for the three reference entities, ported from
- * `app/forms/admin_forms.py` and `app/forms/tag_forms.py`.
+ * Validation for the three reference entities.
  *
- * Note the asymmetry, which is in the source and therefore kept:
- *   * `CategoryForm.color` is `^#[0-9A-Fa-f]{6}$` — exactly six digits;
- *   * `TagForm.color` is `^#(?:[0-9a-fA-F]{3}){1,2}$` — three or six.
+ * Note the colour asymmetry, which is deliberate:
+ *   * a category colour is `^#[0-9A-Fa-f]{6}$` — exactly six digits;
+ *   * a tag colour is `^#(?:[0-9a-fA-F]{3}){1,2}$` — three or six.
  *
- * Uniqueness is case-sensitive here, as in the source (`filter_by(name=...)` is
- * an exact match on a BINARY collation). The database's UNIQUE constraint is the
- * final arbiter, and the UI also maps a constraint failure back onto the field.
+ * Uniqueness is case-sensitive: names are matched exactly on a BINARY
+ * collation. The database's UNIQUE constraint is the final arbiter, and the UI
+ * also maps a constraint failure back onto the field.
  */
 
 import { z } from "zod";
@@ -73,12 +72,12 @@ export type InstitutionInput = z.infer<typeof institutionSchema>;
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type TagInput = z.infer<typeof tagSchema>;
 
-/** `#007bff`, the default `CategoryForm` applies on the create page. */
+/** `#007bff`, the default applied when a category is created from the form. */
 export const DEFAULT_CATEGORY_COLOR = "#007bff";
 
 /**
- * `#6c757d`, the *model* default. The AJAX quick-add endpoint calls
- * `Category(name=...)` without a colour, so it gets this one, not the form's.
+ * `#6c757d`, the default when no colour is given at all: quick-add creates a
+ * category without one, so it gets this rather than the form's.
  */
 export const QUICK_ADD_CATEGORY_COLOR = "#6c757d";
 

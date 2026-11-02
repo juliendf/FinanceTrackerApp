@@ -1,13 +1,10 @@
 /**
  * Money handling. Amounts are INTEGER minor units (cents) in SQLite; there is
- * no float anywhere in the money path.
+ * no float anywhere in the money path. Storing money as Float is the bug this
+ * design avoids.
  *
- * The source app stores Float on Postgres (`Snapshot.amount`,
- * `ExchangeRate.rate`, `cost_charges`, `interest_rate`), which is the bug this
- * port fixes. See docs/ANALYSIS.md section 2.
- *
- * Rounding is half-even (banker's), matching Python's `Decimal` default so the
- * importer's numbers line up with what the Flask app displayed.
+ * Rounding is half-even (banker's), so imported decimal amounts land on the
+ * same cents they were written with.
  */
 
 import Decimal from "decimal.js";

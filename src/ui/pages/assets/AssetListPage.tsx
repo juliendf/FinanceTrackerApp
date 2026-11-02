@@ -1,9 +1,9 @@
 /**
- * Assets list — port of `templates/assets/list.html` and `list_assets()`
- * in `routes/assets.py`.
+ * Assets list.
  *
- * Filter, page and page-size state live in the URL query (`?search=&currency=…`),
- * as in the web app, so a filtered view survives a reload and a back-button.
+ * Filter, page and page-size state live in the URL query
+ * (`?search=&currency=…`), so a filtered view survives a reload and a
+ * back-button.
  */
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";

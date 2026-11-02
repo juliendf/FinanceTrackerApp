@@ -1,9 +1,8 @@
 /**
  * Reference-data validation tests.
  *
- * Constraints transcribed from `app/forms/admin_forms.py` and
- * `app/forms/tag_forms.py`. The colour asymmetry is deliberate: categories
- * require six hex digits, tags accept three or six.
+ * The colour asymmetry is deliberate: categories require six hex digits, tags
+ * accept three or six.
  */
 
 import { describe, expect, it } from "vitest";

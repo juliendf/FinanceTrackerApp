@@ -1,17 +1,16 @@
 /**
- * FinanceTracker backup format — v2 and v3.
+ * Backup file format — v2 and v3.
  *
- * Envelope: `{ version, exported_at, data }`, produced by
- * `FinanceTracker/app/services/data_export.py` (`EXPORT_VERSION = 2`).
+ * Envelope: `{ version, exported_at, data }`.
  *
- * What v2 actually contains, verified against a real export rather than the
- * planning documents: institutions, categories, tags, assets, snapshots,
- * exchange_rates, llm_providers, settings and **profile**. It does *not* contain
- * `Category.system_role`, memories, or goals as list entities (`financial_goals`
- * survives only as free text on the profile).
+ * What v2 contains, verified against a real export: institutions, categories,
+ * tags, assets, snapshots, exchange_rates, llm_providers, settings and
+ * **profile**. It does *not* contain `Category.system_role`, memories, or goals
+ * as list entities (`financial_goals` survives only as free text on the
+ * profile).
  *
- * v3 is the format the desktop app writes: v2 plus `system_role`, `memories`,
- * `goals`, and API keys omitted. See docs/IMPORT_FORMAT.md.
+ * v3 is the format this app writes: v2 plus `system_role`, `memories`, `goals`,
+ * and API keys omitted. See docs/IMPORT_FORMAT.md.
  */
 
 import { z } from "zod";
@@ -127,7 +126,7 @@ export const profileSchema = z.object({
   last_name: z.string().nullable().optional(),
   /** Free text; there is no goals array in v2. */
   financial_goals: z.string().nullable().optional(),
-  /** Not in the source app: a birth date, so advice can be age-aware. */
+  /** A birth date, so advice can be age-aware. */
   birth_date: z.string().nullable().optional(),
   job_title: z.string().nullable().optional(),
   tax_residence: z.string().max(2).nullable().optional(),

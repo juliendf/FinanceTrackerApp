@@ -1,8 +1,7 @@
 /**
- * "Export a backup": writes the version 3 envelope, with entity selection as on
- * `settings/data_backup.html`.
+ * "Export a backup": writes the version 3 envelope, with entity selection.
  *
- * API keys are never included (see docs/DEVIATIONS.md).
+ * API keys are never included.
  */
 
 import { useState } from "react";
@@ -54,8 +53,8 @@ export function BackupExportCard() {
           Export a backup
         </h5>
         <p className="text-muted">
-          Writes the same JSON envelope as the web app, at version 3. Provider API keys are never
-          included: they stay in your macOS Keychain. The file is plain text — keep it somewhere private.
+          Writes a version 3 JSON backup. Provider API keys are never included: they stay in your macOS
+          Keychain. The file is plain text — keep it somewhere private.
         </p>
         <div className="row g-2 mb-3">
           {SELECTABLE_ENTITIES.map((entity) => (

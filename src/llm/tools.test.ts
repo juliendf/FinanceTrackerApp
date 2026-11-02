@@ -133,7 +133,7 @@ describe("read tools", () => {
     expect((details.result as { latest_amount_display: string }).latest_amount_display).toBe("1,000.00 CHF");
   });
 
-  it("lists assets with the source's fields, sorted by institution then product", async () => {
+  it("lists assets with their fields, sorted by institution then product", async () => {
     const { result } = await executeTool("list_assets", {}, ctx);
     expect(result).toEqual([
       { asset_id: 2, name: "Boursorama - P2 (Cash)", institution: "Boursorama", category: "Cash", currency: "EUR", latest_amount: 1000, latest_amount_display: "€1,000.00", latest_date: "2026-09-30" },

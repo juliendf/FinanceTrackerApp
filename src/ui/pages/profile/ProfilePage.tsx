@@ -1,6 +1,5 @@
 /**
- * Profile: port of `templates/auth/profile.html`, minus the account/password
- * parts (there is no account here).
+ * Profile, minus the account/password parts (there is no account here).
  *
  * Three sections: the profile itself (identity, financial context, AI response
  * style), the memories the assistant can use, and the structured goals that are

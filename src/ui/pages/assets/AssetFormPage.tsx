@@ -1,10 +1,9 @@
 /**
- * New / edit asset — port of `templates/assets/new.html`, `edit.html` and the
- * `new_asset` / `edit_asset` routes.
+ * New / edit asset.
  *
  * One component serves both. Creation can also record a first snapshot; editing
- * cannot, and warns before the currency changes (the source does so with a
- * `confirm()` because existing snapshots are not converted).
+ * cannot, and warns before the currency changes, because existing snapshots are
+ * not converted.
  *
  * Writes go through `createAsset` / `updateAsset`, which run in one transaction
  * so an asset, its tags and its first snapshot land together or not at all.

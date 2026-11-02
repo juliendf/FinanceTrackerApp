@@ -1,8 +1,7 @@
 /**
- * Snapshots list: port of `templates/snapshots/list.html` and `list_snapshots`
- * / `export_csv` / `bulk_delete_snapshots` in `routes/snapshots.py`.
+ * Snapshots list.
  *
- * Filters, sort and page live in the URL query, as in the web app.
+ * Filters, sort and page live in the URL query.
  */
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
@@ -19,7 +18,7 @@ import { paginate } from "../../../domain/pagination";
 import {
   csvFileName,
   filterSnapshots,
-  flaskPageNumbers,
+  pageNumbers,
   generateSnapshotsCsv,
   messages,
   nextSort,
@@ -447,7 +446,7 @@ export function SnapshotListPage() {
                   <span className="page-link"><i className="bi bi-chevron-left" aria-hidden="true" /> Previous</span>
                 )}
               </li>
-              {flaskPageNumbers(page.page, page.pages).map((number, index) =>
+              {pageNumbers(page.page, page.pages).map((number, index) =>
                 number === null ? (
                   <li className="page-item disabled" key={`gap-${index}`}><span className="page-link">…</span></li>
                 ) : number === page.page ? (

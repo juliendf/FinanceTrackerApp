@@ -1,17 +1,17 @@
 /**
- * Application settings — port of `app/utils/settings.py`.
+ * Application settings.
  *
- * Values are stored as TEXT in the `settings` table and coerced on read, exactly
- * like the source: 'true'/'false' become booleans, all-digit strings become
- * integers, otherwise a float is attempted, otherwise the string stays.
+ * Values are stored as TEXT in the `settings` table and coerced on read:
+ * 'true'/'false' become booleans, all-digit strings become integers, otherwise a
+ * float is attempted, otherwise the string stays.
  *
- * The source cached per user in `flask.g`; there is one user here, so the
- * repository layer queries directly and TanStack Query caches for the UI.
+ * There is one user, so the repository layer queries directly and TanStack
+ * Query caches for the UI.
  */
 
 export type SettingValue = string | number | boolean;
 
-/** Port of `DEFAULT_SETTINGS`. */
+/** The shipped defaults. */
 export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   base_currency: "EUR",
   show_converted_amounts: true,
@@ -21,35 +21,34 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   theme: "light",
   enable_animations: true,
   /**
-   * Not in the source: a deliberate opt-in. Chat stays off until the user turns
-   * it on here, because using it sends portfolio data to a provider.
-   * See docs/DEVIATIONS.md.
+   * Deliberate opt-in. Chat stays off until the user turns it on here, because
+   * using it sends portfolio data to a provider.
    */
   ai_enabled: false,
   /** Stream answers token by token; off shows a spinner then the whole reply. */
   chat_streaming: true,
 };
 
-/** Port of `_parse_setting_value`. */
+/** Coerce one stored TEXT value to its typed form. */
 export function parseSettingValue(raw: string): SettingValue {
   const lowered = raw.toLowerCase();
   if (lowered === "true") return true;
   if (lowered === "false") return false;
   if (/^\d+$/.test(raw)) return Number.parseInt(raw, 10);
 
-  // Python's float('') raises, so an empty string stays a string.
+  // An empty string stays a string rather than becoming 0.
   if (raw.trim() === "") return raw;
 
   const asFloat = Number(raw);
   return Number.isNaN(asFloat) ? raw : asFloat;
 }
 
-/** Port of `_serialize_setting_value`: booleans are lowercase strings. */
+/** Booleans serialize as lowercase strings. */
 export function serializeSettingValue(value: SettingValue): string {
   return typeof value === "boolean" ? String(value).toLowerCase() : String(value);
 }
 
-/** Merge stored rows over the defaults, as `get_all_settings` does. */
+/** Merge stored rows over the defaults. */
 export function mergeSettings(
   rows: readonly { key: string; value: string }[],
 ): Record<string, SettingValue> {
@@ -60,7 +59,7 @@ export function mergeSettings(
   return merged;
 }
 
-/** Read one setting with the source's fallback chain: row, default, caller's. */
+/** Read one setting: the stored row, else the shipped default. */
 export function settingValue<K extends keyof typeof DEFAULT_SETTINGS & string>(
   settings: Record<string, SettingValue>,
   key: K,
@@ -106,7 +105,7 @@ export const EDITABLE_SETTINGS = [
   "enable_animations",
 ] as const;
 
-/** Port of `validate_setting`. */
+/** Whether a key is known and its value one of the allowed choices. */
 export function validateSetting(key: string, value: SettingValue): boolean {
   if (!(key in DEFAULT_SETTINGS)) return false;
   const text = String(value);
@@ -122,7 +121,7 @@ export function exportSettingsJson(settings: Record<string, SettingValue>): stri
 }
 
 export interface SettingsImport {
-  /** Keys the source would accept, with their values coerced. */
+  /** Keys this app knows, with their values coerced. */
   values: Record<string, SettingValue>;
   /** Keys dropped because this app has no default for them. */
   ignored: string[];

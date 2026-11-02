@@ -1,9 +1,8 @@
 /**
- * Settings parity tests.
+ * Settings tests.
  *
- * DEFAULT_SETTINGS and the parse/serialize rules are transcribed from
- * `app/utils/settings.py`; the expectations below were produced by running
- * `_parse_setting_value` / `_serialize_setting_value` from that file.
+ * The parse/serialize rules are pinned by the expectations below, which cover
+ * every casing and digit shape the settings screens can produce.
  */
 
 import { describe, expect, it } from "vitest";
@@ -20,7 +19,7 @@ import {
 } from "./settings";
 
 describe("DEFAULT_SETTINGS", () => {
-  it("matches the source dictionary exactly", () => {
+  it("has exactly the shipped keys", () => {
     expect(DEFAULT_SETTINGS).toEqual({
       base_currency: "EUR",
       show_converted_amounts: true,
@@ -29,8 +28,7 @@ describe("DEFAULT_SETTINGS", () => {
       llm_timeout: "120",
       theme: "light",
       enable_animations: true,
-      // Not in the source: the AI opt-in and the streaming preference
-      // (docs/DEVIATIONS.md).
+      // The AI opt-in and the streaming preference.
       ai_enabled: false,
       chat_streaming: true,
     });
@@ -38,10 +36,10 @@ describe("DEFAULT_SETTINGS", () => {
 });
 
 describe("parseSettingValue", () => {
-  it("parses the booleans the source writes", () => {
+  it("parses booleans in any casing", () => {
     expect(parseSettingValue("true")).toBe(true);
     expect(parseSettingValue("false")).toBe(false);
-    // The source compares `value_str.lower()`, so any casing parses.
+    // The value is lowercased first, so any casing parses.
     expect(parseSettingValue("True")).toBe(true);
     expect(parseSettingValue("TRUE")).toBe(true);
     expect(parseSettingValue("False")).toBe(false);
@@ -66,7 +64,7 @@ describe("parseSettingValue", () => {
 });
 
 describe("serializeSettingValue", () => {
-  it("lowercases booleans, as the source does", () => {
+  it("lowercases booleans", () => {
     expect(serializeSettingValue(true)).toBe("true");
     expect(serializeSettingValue(false)).toBe("false");
   });
@@ -109,7 +107,7 @@ describe("settingValue", () => {
 
 describe("ratePairs", () => {
   it("seeds six directional pairs from three one-way rates", () => {
-    // Port of DEFAULT_RATES + _rate_pairs() in user_defaults.py
+    // DEFAULT_RATES + inverse pairs, with four-decimal rounding
     expect(ratePairs()).toEqual([
       ["EUR", "USD", "1.1"],
       ["USD", "EUR", "0.9091"],
@@ -122,7 +120,7 @@ describe("ratePairs", () => {
 });
 
 describe("settings screen helpers", () => {
-  it("validates the choices the source validates", () => {
+  it("only accepts the offered choices", () => {
     expect(validateSetting("base_currency", "CHF")).toBe(true);
     expect(validateSetting("base_currency", "GBP")).toBe(false);
     expect(validateSetting("items_per_page", 50)).toBe(true);

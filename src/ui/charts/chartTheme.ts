@@ -1,15 +1,15 @@
 /**
- * Chart.js theming — a port of `static/js/charts.js` (ChartUtils).
+ * Chart.js theming.
  *
  * Charts read their colours from the CSS design tokens, so a light/dark switch
  * restyles every live chart instead of leaving a dark canvas with near-black
  * gridlines.
  *
- * Differences from the source, both noted in docs/DEVIATIONS.md:
+ * Two implementation notes:
  *   * `mergeConfig` deep-copies the defaults with `structuredClone` rather than
  *     `JSON.parse(JSON.stringify(...))`, same isolation, fewer surprises.
- *   * `retheme()` becomes `useThemeName()`, which re-renders the React chart.
- *     React owns the chart instance, so reconfiguring in place is redundant.
+ *   * `retheme()` is `useThemeName()`, which re-renders the React chart. React
+ *     owns the chart instance, so reconfiguring in place is redundant.
  */
 
 import type { ChartConfiguration, ChartOptions, ChartType } from "chart.js";
@@ -89,7 +89,7 @@ export function withAlpha(color: string, alpha: number): string {
   return `rgba(${(value >> 16) & 255},${(value >> 8) & 255},${value & 255},${alpha})`;
 }
 
-/** Default options, identical to the source's `defaultOptions`. */
+/** Shared default chart options. */
 const defaultOptions: ChartOptions = {
   responsive: true,
   maintainAspectRatio: false,

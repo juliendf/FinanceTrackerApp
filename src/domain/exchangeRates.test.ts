@@ -4,7 +4,7 @@ import { formatRate, rateText, validateRates } from "./exchangeRates";
 describe("exchange rates", () => {
   it("shows up to 6 decimal places without trailing zeros", () => {
     expect(formatRate("0.9319")).toBe("0.9319");
-    // Half-even, like Python's DecimalField: the 7th digit is 5, the 6th is even.
+    // Half-even: the 7th digit is 5, the 6th is even.
     expect(formatRate("1.0730765")).toBe("1.073076");
     expect(formatRate("0.900000")).toBe("0.9");
     expect(formatRate("0")).toBe("0");

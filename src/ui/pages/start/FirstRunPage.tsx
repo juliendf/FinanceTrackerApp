@@ -1,9 +1,8 @@
 /**
  * First-run screen — shown while the database holds no assets.
  *
- * Two honest choices, as the brief asks: start empty, or import the web app's
- * backup. Importing is the recommended path because it makes every later parity
- * check run against real data.
+ * Two honest choices: start empty, or import a backup. Importing is the
+ * recommended path because it lands the user with real data to work with.
  */
 
 import { useState } from "react";
@@ -30,13 +29,11 @@ export function FirstRunPage() {
             <div className="card-body d-flex flex-column">
               <h5 className="card-title">
                 <i className="bi bi-upload me-2" aria-hidden="true" />
-                Import from FinanceTracker
+                Import a backup
               </h5>
               <p className="text-muted flex-grow-1">
-                Bring your existing data across from the web app using its JSON
-                backup. Institutions, categories, tags, assets, snapshots, rates,
-                providers, settings and profile are imported. Provider API keys move
-                to the macOS Keychain.
+                Bring existing data across from a JSON backup. Institutions, categories, tags, assets, snapshots,
+                rates, providers, settings and profile are imported. Provider API keys move to the macOS Keychain.
               </p>
               <button
                 type="button"

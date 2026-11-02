@@ -1,4 +1,4 @@
-/** Chart pages: ports of `charts/distribution.html` and `charts/asset_evolution.html`. */
+/** Chart pages: distribution and per-asset evolution. */
 
 import { useMemo, useState } from "react";
 import {
@@ -59,10 +59,8 @@ export function DistributionChartPage() {
 }
 
 /**
- * The source titles this page "Asset Evolution (in {base currency})" but its
- * per-asset endpoint returns the asset's own currency, so the title lied for
- * any asset not in the base currency. Per-asset charts here say which currency
- * they are in.
+ * Per-asset evolution. The title names the series' currency, since an asset
+ * need not be in the base currency.
  */
 export function AssetEvolutionPage() {
   const data = useDashboardData();
