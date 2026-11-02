@@ -145,7 +145,9 @@ Without the Apple secrets, `tauri.release.conf.json` sets
 bundle** — no manual repack (the DMG is built from the already-signed app).
 Setting `APPLE_SIGNING_IDENTITY` overrides that identity, so adding the
 Developer ID secrets later needs no workflow change. Note that DMG signing is
-skipped for an ad-hoc identity; that is expected.
+skipped for an ad-hoc identity; that is expected. Do **not** add the `APPLE_*`
+variables while they are empty: an empty `APPLE_SIGNING_IDENTITY` overrides the
+ad-hoc identity with an empty string and signing fails.
 
 ```sh
 # once, after the first push
