@@ -14,11 +14,13 @@ Download the latest `.dmg` from
 [Releases](https://github.com/juliendf/FinanceTrackerApp/releases), open it and
 drag the app to Applications.
 
-The build is signed ad hoc (no Apple Developer ID yet), so the first launch
-needs **right-click → Open** instead of a double-click, or System Settings →
-Privacy & Security → **Open Anyway**. After that macOS remembers the choice.
-Updates are signed separately and verified with the app's own key —
-**Check for updates** on the Data page.
+The build is signed ad hoc and not notarised (no Apple Developer ID yet), so
+macOS blocks the first launch with *"Apple could not verify that FinanceTracker
+is free of malware"*. Open **System Settings → Privacy & Security**, scroll down
+and click **Open Anyway**; on macOS 14 and older, right-clicking the app → **Open**
+does the same thing. macOS remembers the choice afterwards. Updates are signed
+separately and verified with the app's own key — **Check for updates** on the Data
+page.
 
 ## Requirements
 
@@ -62,9 +64,10 @@ npm run tauri build
 # src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
 ```
 
-The build is ad-hoc signed (no Apple Developer ID yet), so the first
-launch needs right-click → Open. Signing, notarisation, the updater keys and the
-GitHub Actions release are documented in [docs/RELEASE.md](docs/RELEASE.md).
+The build is ad-hoc signed (no Apple Developer ID yet), so the first launch is
+blocked by Gatekeeper until you allow it in System Settings → Privacy & Security.
+Signing, notarisation, the updater keys and the GitHub Actions release are
+documented in [docs/RELEASE.md](docs/RELEASE.md).
 
 ## Test
 

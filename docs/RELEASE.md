@@ -114,8 +114,9 @@ shasum -a 256 src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch
 ```
 
 With an ad-hoc signature, `spctl -a -vv "$APP"` reports `rejected` — expected, and
-the reason for the right-click → Open step. A Developer ID build reports
-`accepted` with `source=Notarized Developer ID`.
+the reason a downloaded build has to be allowed in System Settings → Privacy &
+Security on first launch. A Developer ID build reports `accepted` with
+`source=Notarized Developer ID`.
 
 Mount the image and verify the copy inside too: the packaging step can pick up a
 stale app if you signed after `tauri build` (see above).

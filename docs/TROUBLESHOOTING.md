@@ -36,11 +36,17 @@ into the binary — **restart** `tauri dev`, do not rely on hot reload.
 
 ## Installing
 
-**"FinanceTracker cannot be opened because the developer cannot be verified"**
+**"Apple could not verify that FinanceTracker is free of malware"**
 
 Expected: the build is ad-hoc signed, not notarised (there is no Developer ID
-certificate on this machine). Right-click the app → **Open** → **Open**, once.
-If macOS says the app is damaged, it carries a quarantine flag:
+certificate). **Done** in that dialog only dismisses it. Then:
+
+- macOS 15 and newer: **System Settings → Privacy & Security**, scroll down, click
+  **Open Anyway** next to FinanceTracker, authenticate, launch again. The
+  right-click → Open shortcut no longer exists.
+- macOS 14 and older: right-click the app → **Open** → **Open**.
+
+If macOS instead says the app is damaged, it carries a quarantine flag:
 
 ```sh
 xattr -dr com.apple.quarantine /Applications/FinanceTracker.app
@@ -51,8 +57,11 @@ A properly signed and notarised build removes all of this; see
 
 **The DMG installs an app that crashes or behaves like an old version**
 
-The image holds the app as it was *before* the post-build `codesign`, so it must
-be repacked after signing — `docs/RELEASE.md` has the recipe. Check what you have:
+Only relevant if you signed the app *after* `tauri build` by hand: the image then
+holds the app as it was *before* that `codesign`, so it must be repacked —
+`docs/RELEASE.md` has the recipe. The release build avoids this: it signs with
+`signingIdentity` during bundling, so the DMG is created from the signed app.
+Check what you have:
 
 ```sh
 /usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" \
