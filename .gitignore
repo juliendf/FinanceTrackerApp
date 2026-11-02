@@ -24,6 +24,7 @@ tests/golden/local/
 # Env / signing credentials — never commit these
 .env
 .env.*
+!.env.demo
 *.p12
 *.provisionprofile
 

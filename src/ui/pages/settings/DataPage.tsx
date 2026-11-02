@@ -16,6 +16,9 @@ import { useToast } from "../../layout/Toasts";
 import { resetDatabase } from "../../../db/reset";
 import { seedFirstRun } from "../../../db/seed";
 import { loadSampleData, resetData } from "../../../dev/sampleData";
+
+/** Demo build: its own bundle identifier, its own data directory, sample data available. */
+const demoBuild = import.meta.env.DEV || import.meta.env.VITE_DEMO === "true";
 import { countAssets } from "../../../db/repositories/assets";
 import { countSnapshots } from "../../../db/repositories/snapshots";
 
@@ -84,7 +87,7 @@ export function DataPage() {
 
       <BackupExportCard />
 
-      <UpdateCard />
+      {demoBuild ? null : <UpdateCard />}
 
       <div className="card card-finance mb-4">
         <div className="card-body">
@@ -120,16 +123,16 @@ export function DataPage() {
         </div>
       </div>
 
-      {import.meta.env.DEV ? (
+      {demoBuild ? (
         <div className="card card-finance mb-4">
           <div className="card-body">
             <h5 className="card-title">
               <i className="bi bi-bug me-2" aria-hidden="true" />
-              Sample data <span className="badge bg-secondary ms-1">development builds only</span>
+              Sample data <span className="badge bg-secondary ms-1">development and demo builds</span>
             </h5>
             <p className="text-muted">
               Replaces institutions, categories, assets and snapshots with a small deterministic
-              dataset, for screenshots. Not available in release builds.
+              dataset, for screenshots and demos. Not available in release builds.
             </p>
             <button type="button" className="btn btn-outline-secondary" onClick={() => sample.mutate()}>
               Load sample data

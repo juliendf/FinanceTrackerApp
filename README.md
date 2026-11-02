@@ -11,7 +11,7 @@ Version 0.4.3 · MIT · macOS 11+ (Apple silicon)
 
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
-Contents: [Install](#install) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)
+Contents: [Install](#install) · [Demo build](#demo-build) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)
 
 ## Install
 
@@ -26,6 +26,20 @@ and click **Open Anyway**; on macOS 14 and older, right-clicking the app → **O
 does the same thing. macOS remembers the choice afterwards. Updates are signed
 separately and verified with the app's own key — **Check for updates** on the Data
 page.
+
+## Demo build
+
+A second app with its own bundle identifier, its own data directory and sample
+data, so a demo never touches your real numbers:
+
+```sh
+npm run tauri build -- --config src-tauri/tauri.demo.conf.json
+```
+
+It installs as **FinanceTracker Demo** beside the normal app and stores its
+database in `~/Library/Application Support/ch.julien.financetrackerapp.demo/`.
+Load **Settings → Data & Backups → Sample data** to fill it. The LLM provider
+keys are shared with the normal app on purpose; the financial data is not.
 
 ## Requirements
 
