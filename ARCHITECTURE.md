@@ -11,7 +11,7 @@ The UI and all business logic are TypeScript. Rust does only what a webview cann
 | UI, routing, forms, validation | `src/ui` (React 19, react-bootstrap) | Same Bootstrap classes as the source, so `custom.css` applies unchanged |
 | Business logic, money math, formatting | `src/domain` (pure TypeScript) | Pure functions, unit-tested, no I/O |
 | SQL | `src/db/repositories` | One file per aggregate, typed SQL only, no business logic |
-| Atomic multi-statement writes | Rust `run_transaction` | The SQL plugin cannot hold a transaction (see below) |
+| Atomic multi-statement writes | Rust `run_transaction` | One transaction on one guarded connection (see below) |
 | Provider API keys | Rust `secret_*` (macOS Keychain) | Keys never enter SQLite |
 | LLM HTTP and streaming | Rust `chat_completion` (reqwest) | Streams over a Tauri channel; cancellable |
 | User-picked file read/write | Rust `pick_and_read_text_file`, `save_text_file` | The webview never supplies a path; Rust opens the dialog |
@@ -24,7 +24,7 @@ src/ui/components/*   ports of the Jinja macros (FormCard, DataTable, modals, St
 src/ui/layout/*       AppShell, sidebar, toolbar, toasts, theme toggle
         |
         v  (TanStack Query for reads and invalidation)
-src/db/repositories/* typed SQL -> tauri-plugin-sql  /  run_transaction
+src/db/repositories/* typed SQL -> db_select (read-only) / execute_write / run_transaction
         |
 src/domain/*          pure logic imported by both pages and repositories
 src/llm/*             chat loop, tools, pending actions (TypeScript)
@@ -50,7 +50,7 @@ Rules the code follows:
 
 ## Data model
 
-SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by the SQL plugin at startup). Differences from the source schema:
+SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by `sqlx::migrate!` from `Builder::setup`, before the window exists). Differences from the source schema:
 
 - **Money is `INTEGER` minor units** (`amount_minor`). Conversion happens at the edge in `src/domain/money.ts`, half-even rounding, `decimal.js`. No float money anywhere.
 - **Exchange rates are `TEXT` decimals.**
@@ -63,9 +63,14 @@ SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetrac
 
 ## Transactions
 
-`tauri-plugin-sql` runs one statement per call over a pool of connections and exposes no transaction handle, so `BEGIN`/`COMMIT` across calls can land on different connections. Instead:
+The webview holds no database handle: the SQL plugin is not installed (see
+`docs/DEVIATIONS.md`), so every statement crosses the IPC boundary as text. Rust
+enforces three boundaries on that text — `db_select` runs on a read-only
+connection with a read-only authorizer, `execute_write` admits only single
+`INSERT`/`UPDATE`/`DELETE` statements, and `run_transaction` runs a list
+atomically. Multi-statement writes go through `run_transaction`:
 
-1. Multi-statement writes build a statement list in TypeScript, with every value passed through the escaped literal builders in `src/db/literals.ts` (`sqlText`, `sqlInt`, ...).
+1. Build a statement list in TypeScript, with every value passed through the escaped literal builders in `src/db/literals.ts` (`sqlText`, `sqlInt`, ...).
 2. `run_transaction` (`src-tauri/src/commands/db.rs`) opens its own connection to the same file with foreign keys on and a 5 s busy timeout, runs the list in one transaction, and rolls back on the first failure, reporting `statement N of M`.
 
 Used by: the backup importer (196 statements, atomic), asset create/update (asset + tags + first snapshot), bulk snapshot create/update/delete.
@@ -135,7 +140,7 @@ tests/oracle/     independent Python re-implementations of source behaviour
 docs/             analysis, brief, deviations, parity checklist, import format
 ```
 
-Stack: Tauri 2, React 19, TypeScript, Vite, react-router (hash), TanStack Query, react-hook-form + zod, react-bootstrap, Chart.js, decimal.js, SQLite via `tauri-plugin-sql`, `sqlx` and `keyring` (Rust).
+Stack: Tauri 2, React 19, TypeScript, Vite, react-router (hash), TanStack Query, react-hook-form + zod, react-bootstrap, Chart.js, decimal.js, SQLite via `sqlx` (Rust only) and `keyring`.
 
 ## Phases
 

@@ -123,23 +123,24 @@ screens that hit them do not exist yet.
   scaling. Both are ported separately rather than unified.
 - **Every route is real.** The phase placeholders are gone; `PlaceholderPage` is
   used only by the catch-all 404. Rows live in `docs/PARITY_CHECKLIST.md`.
-- **Multi-statement writes go through Rust.** `tauri-plugin-sql` exposes no
-  transaction handle, so `run_transaction` opens its own connection and runs the
-  batch atomically (see ARCHITECTURE.md). Nothing writes statement-by-statement
-  any more.
+- **Multi-statement writes go through Rust.** `run_transaction` runs the batch
+  on one guarded connection and rolls back on the first failure (see
+  ARCHITECTURE.md). Nothing writes statement-by-statement any more. The original
+  reason was the SQL plugin's missing transaction handle; since the plugin was
+  removed, atomicity is simply a property of the command.
 
 ## Phase 1b (import from FinanceTracker)
 
-- **A real transaction primitive lives in Rust.** `tauri-plugin-sql` executes
-  one prepared statement per call on a pool of up to ten connections, so a
-  `BEGIN … COMMIT` split across calls can land on different connections, and a
-  single string holding several statements only runs the first one (sqlite3
-  prepares one statement and discards the tail). Both would have broken
-  "all or nothing". `src-tauri/src/commands/db.rs` therefore exposes
+- **A real transaction primitive lives in Rust.** The SQL plugin executed one
+  prepared statement per call on a pool of up to ten connections, so a
+  `BEGIN … COMMIT` split across calls could land on different connections, and
+  a single string holding several statements only ran the first one (sqlite3
+  prepares one statement and discards the tail). Both would have broken "all or
+  nothing", so `src-tauri/src/commands/db.rs` exposes
   `run_transaction(statements)`, which runs a list inside one sqlx transaction
   with foreign keys enforced. SQL is still generated in TypeScript; Rust only
-  executes it. This is the one place where Rust holds a storage concern, and it
-  is deliberate.
+  executes it. Since the plugin was removed (see Security hardening), every SQL
+  path is Rust-side and the command is no longer the odd one out.
 - **Row ids from the file are preserved, not remapped.** The brief asked for the
   remap logic from `data_export.py`. Preserving ids is simpler and safer here
   because the import only runs on an empty database, so nothing can collide, and
@@ -507,4 +508,17 @@ and changeable there.
 
 ## Security hardening (after Phase 4)
 
+- **The SQL plugin is gone; Rust owns the SQLite connection.** Decision 1 of the
+  brief ("SQLite is accessed through `tauri-plugin-sql`"; "Rust handles only
+  three things") is deliberately re-opened. The plugin's `select` ran every
+  statement in the string (`SELECT 1; DROP TABLE snapshots` returned `Ok` with
+  the table gone) on a pool outside any authorizer, and granting
+  `sql:allow-execute` to make writes work would have handed a compromised
+  webview arbitrary SQL. The plugin and every `sql:*` permission are removed
+  (78e8274, e141bc6). Reads go through `db_select` on a read-only connection;
+  writes go through `execute_write` / `run_transaction` behind a SQLite
+  authorizer that admits only single `INSERT` / `UPDATE` / `DELETE` statements
+  (f06f866); migrations run in Rust with `sqlx::migrate!` before the window
+  exists. The webview therefore holds no database handle at all — it can only
+  send SQL text to commands that police it.
 - **File dialogs live in Rust.** The brief lists `tauri-plugin-fs`; it is removed. The webview never passes a path, so a compromised webview cannot read or write arbitrary files. The dialog plugin stays, Rust-side only.

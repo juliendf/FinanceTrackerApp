@@ -14,11 +14,11 @@ read the source, and when you deliberately depart from it, write the reason in
 | `src/ui/layout/` | Shell: sidebar, toolbar, toasts, theme toggle |
 | `src/domain/` | Pure logic: money, formatting, filters, dashboards, chat prompts. No Tauri, no SQL |
 | `src/db/repositories/` | Typed SQL only, one file per aggregate |
-| `src/db/client.ts`, `transaction.ts`, `literals.ts` | Connection, `run_transaction`, escaped SQL literals |
+| `src/db/client.ts`, `transaction.ts`, `literals.ts` | Command bridge (`db_select`, `execute_write`, `run_transaction`), escaped SQL literals |
 | `src/llm/` | Chat loop, transport, tools, prompt building, service |
 | `src/import/`, `src/export/` | Backup parse/plan/execute, and the v3 writer |
-| `src-tauri/src/commands/` | Rust: `db` (transactions, path), `files` (dialogs), `secrets` (Keychain), `llm` (HTTP streaming) |
-| `src-tauri/migrations/` | Schema, applied by the SQL plugin at startup |
+| `src-tauri/src/commands/` | Rust: `db` (selects, guarded writes, transactions, path), `files` (dialogs), `secrets` (Keychain), `llm` (HTTP streaming) |
+| `src-tauri/migrations/` | Schema, applied by `sqlx::migrate!` from `Builder::setup` before the window exists |
 | `tests/oracle/`, `tests/roundtrip/` | Independent Python oracles and the backup round-trip diff |
 | `docs/` | Analysis, brief, deviations, parity checklist, release notes |
 
@@ -31,10 +31,13 @@ read the source, and when you deliberately depart from it, write the reason in
   oracles exercise.
 - **SQL lives only in repositories,** and repositories do no validation or
   formatting. Pages never build SQL.
-- **Multi-statement writes go through `run_transaction`.** Build the statement
-  list with `sqlText` / `sqlInt` from `src/db/literals.ts`; values are inlined
-  because the SQL plugin exposes no transaction handle. The Rust guard allows
-  only single `INSERT` / `UPDATE` / `DELETE` statements.
+- **SQL crosses IPC as text; Rust is the boundary.** Build statements with
+  `sqlText` / `sqlInt` from `src/db/literals.ts` — values are inlined because
+  the commands take a statement list, not bound parameters. Reads use the
+  read-only `db_select`; single writes use `execute_write`; multi-statement
+  writes go through `run_transaction`. The SQLite authorizer behind those
+  commands admits only single `INSERT` / `UPDATE` / `DELETE` statements, so a
+  compromised webview can neither run DDL nor read through a write path.
 - **Never call `window.confirm` or `alert`.** They route to the dialog plugin,
   which this app does not permit; use `DeleteConfirmModal`. A test enforces it.
 - **Query keys are part of the contract.** One key, one shape: `["assets"]` is
@@ -67,10 +70,11 @@ read the source, and when you deliberately depart from it, write the reason in
 
 ## Migrations
 
-Add `src-tauri/migrations/000N_<name>.sql` and register it in `migrations()` in
-`src-tauri/src/lib.rs` with the next version number. Never edit a migration that
-has shipped; the plugin records applied versions in `_sqlx_migrations`. Test the
-SQL against a copy of a real database before shipping it.
+Add `src-tauri/migrations/000N_<name>.sql`; `sqlx::migrate!` (`src-tauri/src/commands/db.rs`)
+picks it up by filename at compile time and the app applies it before the window
+opens. Never edit a migration that has shipped; the migrator records applied
+versions in `_sqlx_migrations`. Test the SQL against a copy of a real database
+before shipping it.
 
 ## Tests
 
