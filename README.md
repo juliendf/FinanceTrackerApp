@@ -4,6 +4,11 @@ A native macOS app for tracking assets and their value over time, ported feature
 
 Version 0.4.0 · MIT · macOS 11+ (Apple silicon)
 
+> **Alpha.** The app is under active development: features move, bugs are
+> expected, and a bad import can leave your data in a state you did not want.
+> Take a backup (Settings → Data & Backup) before trusting it with anything that
+> matters, and keep a copy of the JSON export somewhere else.
+
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
 Contents: [Install](#install) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)

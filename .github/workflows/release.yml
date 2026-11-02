@@ -83,6 +83,10 @@ jobs:
           tagName: ${{ github.ref_name }}
           releaseName: "FinanceTracker __VERSION__"
           releaseBody: |
+            **Alpha software.** Under active development: things can break, and a
+            release may change behaviour without notice. Take a backup from
+            Settings → Data & Backup before importing real data.
+
             A native macOS app for tracking assets and their value over time.
 
             - **Assets** with institutions, categories and tags
