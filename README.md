@@ -2,9 +2,11 @@
 
 A native macOS app for tracking assets and their value over time, ported feature-for-feature from the Flask web app FinanceTracker. Single user, offline, data stays on your Mac.
 
+Version 0.4.0 · MIT · macOS 11+ (Apple silicon)
+
 Stack: Tauri 2, React 19 + TypeScript + Vite, SQLite, Rust only for Keychain, LLM HTTP and file/transaction primitives.
 
-Contents: [Install](#install) · [Status](#status) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)
+Contents: [Install](#install) · [Requirements](#requirements) · [Run](#run) · [Build](#build) · [Test](#test) · [AI](#ai) · [Your data](#your-data) · [Troubleshooting](#troubleshooting) · [Documentation](#documentation) · [License](#license)
 
 ## Install
 
@@ -17,18 +19,6 @@ needs **right-click → Open** instead of a double-click, or System Settings →
 Privacy & Security → **Open Anyway**. After that macOS remembers the choice.
 Updates are signed separately and verified with the app's own key —
 **Check for updates** on the Data page.
-
-## Status
-
-Version 0.4.0. Phases 0 to 8 of the plan are done: backup import and export,
-institutions, categories and tags, assets, snapshots, dashboards, settings, the AI
-assistant (providers, chat with tools and confirm-before-write, profile, memories,
-goals), and packaging (icon, About, ad-hoc signing, updater wiring, release
-workflow). After Phase 8 the shell was rebuilt as a desktop app — sidebar
-navigation, overlay title bar, fixed-height content and chat, toasts out of the
-page flow — and the bugs found in daily use were fixed. See
-[docs/CHANGELOG.md](docs/CHANGELOG.md). The optional MCP server (Phase 9) is not
-built. Per-screen status is in [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md).
 
 ## Requirements
 
@@ -72,7 +62,7 @@ npm run tauri build
 # src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
 ```
 
-The build is ad-hoc signed (no Developer ID on this machine yet), so the first
+The build is ad-hoc signed (no Apple Developer ID yet), so the first
 launch needs right-click → Open. Signing, notarisation, the updater keys and the
 GitHub Actions release are documented in [docs/RELEASE.md](docs/RELEASE.md).
 
@@ -138,7 +128,6 @@ shows the error boundary.
 | [SECURITY.md](SECURITY.md) | Threat model, secrets, open issues |
 | [docs/RELEASE.md](docs/RELEASE.md) | Signing, notarisation, updater, releases |
 | [docs/ANALYSIS.md](docs/ANALYSIS.md) | Analysis of the source app and the porting decisions |
-| [docs/IMPLEMENTATION_PROMPT.md](docs/IMPLEMENTATION_PROMPT.md) | The brief and phase plan |
 | [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Every intentional difference from the source |
 | [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md) | Screen-by-screen status |
 | [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md) | Backup file format |
