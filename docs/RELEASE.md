@@ -98,8 +98,9 @@ and exposed as **Check for updates** on the Data page. It reads a static
    ```
 
    That writes `FinanceTracker.app.tar.gz` and its `.sig` next to the bundle.
-4. Install-on-demand is intentionally absent: the card reports and links, it
-   does not restart the app behind your back.
+4. The card checks on request, and installs on a second explicit click: it
+   downloads with progress, verifies the signature, replaces the bundle and
+   restarts the app. Nothing downloads or restarts behind the user's back.
 
 ## Verify an artifact
 

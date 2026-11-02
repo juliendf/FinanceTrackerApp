@@ -4,6 +4,12 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.4.2
+
+- **Check for updates** now installs: it shows the new version, downloads it with
+  progress when you ask, verifies the signature, replaces the bundle and restarts
+  the app. Before, it only linked to the releases page.
+
 ## 0.4.1
 
 - The app and its documentation no longer present it as a port: the About screen

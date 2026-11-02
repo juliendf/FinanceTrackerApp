@@ -22,6 +22,7 @@ vi.mock("../../../db/repositories/export", () => ({ readExportRows: async () => 
 vi.mock("@tauri-apps/api/core", () => ({ invoke: async () => "/tmp/x.db" }));
 vi.mock("@tauri-apps/api/app", () => ({ getName: async () => "FinanceTracker", getVersion: async () => "0.1.0", getTauriVersion: async () => "2" }));
 vi.mock("@tauri-apps/plugin-updater", () => ({ check: async () => null }));
+vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: async () => undefined }));
 vi.mock("../import/ImportWizard", () => ({ ImportWizard: () => null }));
 vi.mock("../../../db/seed", () => ({ seedFirstRun: async () => undefined }));
 vi.mock("../../../db/reset", () => ({ resetDatabase: async () => undefined }));

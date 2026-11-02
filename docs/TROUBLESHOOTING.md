@@ -70,11 +70,12 @@ Check what you have:
 
 ## Updates
 
-**"No update feed reachable yet"**
+**"No update feed reachable"**
 
-Two possible causes, both expected: no release has been published, or
-`plugins.updater.endpoints` in `src-tauri/tauri.conf.json` still says `OWNER`.
-Checking is harmless; nothing is downloaded.
+Two causes: no release is published yet (drafts are invisible to
+`releases/latest`), or `plugins.updater.endpoints` in `src-tauri/tauri.conf.json`
+points somewhere else. Checking is harmless; nothing is downloaded until you
+press **Install and restart**.
 
 ## AI assistant
 
