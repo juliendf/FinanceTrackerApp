@@ -1,10 +1,16 @@
 # Changelog
 
-Every version below is a local build, ad-hoc signed, never notarised and never
-published. Version numbers are bumped in `package.json`, `src-tauri/Cargo.toml`
-and `src-tauri/tauri.conf.json` together.
+Every build is ad-hoc signed and not notarised. Version numbers are bumped in
+`package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
+together.
 
-## Unreleased
+## 0.4.1
+
+- The app and its documentation no longer present it as a port: the About screen
+  does not name another project, the import and export cards talk about a
+  backup, and the internal porting notes are gone. No behaviour change.
+
+## 0.4.0 — first public release
 
 - "Extract memories" no longer proposes what the app already knows: the request
   carries the profile, the assets, the goals and the existing memories, the prompt

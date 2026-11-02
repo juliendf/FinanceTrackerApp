@@ -2,7 +2,7 @@
 
 A native macOS app for tracking assets and their value over time. Single user, offline, data stays on your Mac.
 
-Version 0.4.0 · MIT · macOS 11+ (Apple silicon)
+Version 0.4.1 · MIT · macOS 11+ (Apple silicon)
 
 > **Alpha.** The app is under active development: features move, bugs are
 > expected, and a bad import can leave your data in a state you did not want.
