@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { invoke } from "@tauri-apps/api/core";
+import { probeConnection, probeModels, providerConnection, providerModels } from "../../../llm/client";
 import {
   createProvider,
   deleteProvider,
@@ -120,11 +120,8 @@ export function LlmProviderFormPage() {
     setBusy("test");
     try {
       const message = canProbeSaved
-        ? await invoke<string>("provider_connection", { providerId: id })
-        : await invoke<string>("probe_connection", {
-            baseUrl: draft.base_url,
-            apiKey: typedKey(),
-          });
+        ? await providerConnection(id)
+        : await probeConnection(draft.base_url, typedKey());
       toast.success(message);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -148,8 +145,8 @@ export function LlmProviderFormPage() {
     try {
       const fetched =
         id !== null && target === existing.data?.base_url && !typedKey()
-          ? await invoke<string[]>("provider_models", { providerId: id })
-          : await invoke<string[]>("probe_models", { baseUrl: target, apiKey: typedKey() });
+          ? await providerModels(id)
+          : await probeModels(target, typedKey());
       if (fetched.length === 0) {
         // An empty answer is not evidence that nothing is available; keep what is
         // there rather than wiping the list.
