@@ -81,14 +81,26 @@ jobs:
           # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         with:
           tagName: ${{ github.ref_name }}
-          releaseName: "FinanceTracker ${{ github.ref_name }}"
+          releaseName: "FinanceTracker __VERSION__"
           releaseBody: |
-            macOS 11+ on Apple silicon. The build is signed ad hoc, so the first
-            launch needs right-click → Open (or System Settings → Privacy &
-            Security → Open Anyway).
+            A native macOS app for tracking assets and their value over time.
 
-            Existing installs update from **Check for updates** on the Data page.
-          generateReleaseNotes: true
+            - **Assets** with institutions, categories and tags
+            - **Snapshots** over time, bulk entry and CSV export
+            - **Dashboards**: portfolio, distribution, evolution, résumé, multi-currency
+            - **Import and export** of FinanceTracker backup files
+            - **Optional AI assistant** that records a snapshot only after you confirm
+
+            Everything stays on your Mac: a local SQLite database, provider API
+            keys in the macOS Keychain, no account and no telemetry. AI is off
+            until you configure a provider.
+
+            Requires macOS 11+ on Apple silicon. The build is signed ad hoc (no
+            Apple Developer ID yet), so the first launch needs right-click → Open.
+            Later updates arrive through **Check for updates** on the Data page.
+          # Turn on once releases carry user-facing changes worth auto-summarising;
+          # the first release describes the app instead of listing 70 commits.
+          generateReleaseNotes: false
           releaseDraft: true
           prerelease: false
           args: --target aarch64-apple-darwin --config src-tauri/tauri.release.conf.json
