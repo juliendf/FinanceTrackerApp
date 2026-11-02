@@ -127,9 +127,6 @@ shows the error boundary.
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, data model, transactions |
 | [SECURITY.md](SECURITY.md) | Threat model, secrets, open issues |
 | [docs/RELEASE.md](docs/RELEASE.md) | Signing, notarisation, updater, releases |
-| [docs/ANALYSIS.md](docs/ANALYSIS.md) | Analysis of the source app and the porting decisions |
-| [docs/DEVIATIONS.md](docs/DEVIATIONS.md) | Every intentional difference from the source |
-| [docs/PARITY_CHECKLIST.md](docs/PARITY_CHECKLIST.md) | Screen-by-screen status |
 | [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md) | Backup file format |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Layout, conventions, how to add a screen, tool or migration |
 | [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) | Symptoms, causes, fixes |
