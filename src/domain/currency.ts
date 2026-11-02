@@ -80,6 +80,35 @@ export function convertStrict(
 /** Currencies tried as a bridge when no direct route exists. */
 const FALLBACK_INTERMEDIATES = ["EUR", "USD", "CHF"] as const;
 
+/**
+ * The currencies the app understands. Every money path assumes 2 dp
+ * (`src/domain/money.ts`); the importer validates against this set.
+ */
+export const SUPPORTED_CURRENCIES = ["EUR", "USD", "CHF"] as const;
+
+export function isSupportedCurrency(code: string): boolean {
+  return (SUPPORTED_CURRENCIES as readonly string[]).includes(code);
+}
+
+/**
+ * The pairs the source's list and edit pages always show, created at rate 0 when
+ * missing. `RateTable` ignores non-positive rates, so such a pair behaves as "no
+ * rate" until the user sets one.
+ */
+export const REQUIRED_RATE_PAIRS: ReadonlyArray<readonly [string, string]> = [
+  ["CHF", "USD"],
+  ["USD", "CHF"],
+];
+
+/** Which required pairs are absent, given the `[from, to]` pairs already stored. */
+export function missingRatePairs(
+  existing: Iterable<readonly [string, string]>,
+): Array<readonly [string, string]> {
+  const seen = new Set<string>();
+  for (const [from, to] of existing) seen.add(`${from}>${to}`);
+  return REQUIRED_RATE_PAIRS.filter(([from, to]) => !seen.has(`${from}>${to}`));
+}
+
 export interface ConversionWarning {
   from: string;
   to: string;

@@ -1,11 +1,10 @@
 /**
  * SQL literal builders for multi-statement transactions (importer, asset writes).
  *
- * Why raw literals instead of bind parameters: `tauri-plugin-sql` exposes no
- * transaction handle, and a `BEGIN … COMMIT` split across separate `execute`
- * calls can land on different pooled connections. One `execute` call carrying
- * the whole batch runs on one connection, so wrapping it in `BEGIN … COMMIT`
- * gives real atomicity — at the cost of inlining values.
+ * Why raw literals instead of bind parameters: the Rust commands take a list of
+ * statement strings (`execute_write`, `run_transaction`) and no bound-parameter
+ * channel, so values are inlined. That is what lets the authorizer inspect one
+ * statement at a time — at the cost of escaping every value here.
  *
  * Every value therefore goes through one of the helpers below, and text is
  * escaped by doubling single quotes. `sqlText` is unit-tested against quotes,
@@ -63,15 +62,4 @@ export function amountMinor(value: number | string): string {
 /** A rate that must stay exact through intermediate maths. */
 export function exactMinor(value: Decimal): string {
   return sqlInt(value.toNumber());
-}
-
-/**
- * Guard for identifiers that are interpolated (table/column names are static
- * in this module, but ids come from the file).
- */
-export function assertKnownCurrency(currency: string): string {
-  if (!["EUR", "USD", "CHF"].includes(currency)) {
-    throw new Error(`unsupported currency: ${currency}`);
-  }
-  return currency;
 }

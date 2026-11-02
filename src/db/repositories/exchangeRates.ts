@@ -3,6 +3,7 @@
 import { executeWrite, getDb } from "../client";
 import { runTransaction } from "../transaction";
 import { sqlText } from "../literals";
+import { missingRatePairs } from "../../domain/currency";
 
 export interface ExchangeRate {
   id: number;
@@ -44,24 +45,17 @@ export async function countExchangeRates(): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-/** The pairs the source's list and edit pages always show, created at rate 0 when missing. */
-export const REQUIRED_PAIRS: ReadonlyArray<[string, string]> = [
-  ["CHF", "USD"],
-  ["USD", "CHF"],
-];
-
 /**
- * Make sure the placeholder pairs exist, as `exchange_rate_list` does. A rate of
- * 0 is what the source writes; `RateTable` ignores non-positive rates, so such a
- * pair behaves as "no rate" until the user sets one.
+ * Make sure the placeholder pairs exist, as `exchange_rate_list` does. The rule
+ * for which pairs are required, and what "missing" means, lives in
+ * `src/domain/currency.ts`; this function only reads and inserts.
  */
 export async function ensureRequiredPairs(): Promise<number> {
   const db = await getDb();
   const existing = await db.select<{ from_currency: string; to_currency: string }[]>(
     `SELECT from_currency, to_currency FROM exchange_rates`,
   );
-  const seen = new Set(existing.map((row) => `${row.from_currency}>${row.to_currency}`));
-  const missing = REQUIRED_PAIRS.filter(([from, to]) => !seen.has(`${from}>${to}`));
+  const missing = missingRatePairs(existing.map((row) => [row.from_currency, row.to_currency] as const));
   if (missing.length === 0) return 0;
   await runTransaction(
     missing.map(

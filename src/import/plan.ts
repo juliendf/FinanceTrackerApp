@@ -7,9 +7,8 @@
  */
 
 import { isExactAtTwoDecimals, roundMoney } from "../domain/money";
+import { isSupportedCurrency } from "../domain/currency";
 import type { BackupData, ParsedBackup } from "./schema";
-
-const VALID_CURRENCIES = new Set(["EUR", "USD", "CHF"]);
 
 export interface ImportCounts {
   institutions: number;
@@ -84,7 +83,7 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
         `Asset ${asset.id} ("${asset.product_name}") points at category ${asset.category_id}, which is not in the file.`,
       );
     }
-    if (!VALID_CURRENCIES.has(asset.currency)) {
+    if (!isSupportedCurrency(asset.currency)) {
       errors.push(
         `Asset ${asset.id} has currency "${asset.currency}". Only EUR, USD and CHF are supported.`,
       );
@@ -126,7 +125,7 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
   }
 
   for (const rate of data.exchange_rates) {
-    if (!VALID_CURRENCIES.has(rate.from_currency) || !VALID_CURRENCIES.has(rate.to_currency)) {
+    if (!isSupportedCurrency(rate.from_currency) || !isSupportedCurrency(rate.to_currency)) {
       errors.push(
         `Exchange rate ${rate.from_currency}->${rate.to_currency} uses an unsupported currency.`,
       );

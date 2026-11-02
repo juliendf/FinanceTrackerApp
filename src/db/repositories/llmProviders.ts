@@ -10,6 +10,7 @@
  */
 
 import { invoke } from "@tauri-apps/api/core";
+import { normaliseBaseUrl } from "../../domain/providers";
 import { getDb } from "../client";
 
 export interface LlmProvider {
@@ -29,21 +30,6 @@ export const PROVIDER_TYPES = [
   { value: "openai", label: "OpenAI-compatible (Ollama, LM Studio, OpenRouter, Gemini's /v1beta/openai…)" },
   { value: "gemini", label: "Google Gemini (native endpoint)" },
 ] as const;
-
-/**
- * Gemini's native base URL answers on `/v1beta/chat/completions`, which is not
- * OpenAI-shaped. Every request in this app speaks the OpenAI schema, so a
- * `gemini` provider is pointed at Gemini's OpenAI-compatible surface
- * (`.../v1beta/openai`) — the alternative the brief asks for instead of porting
- * litellm's Gemini special case.
- */
-export function normaliseBaseUrl(providerType: string, baseUrl: string): string {
-  const trimmed = baseUrl.trim().replace(/\/+$/, "");
-  if (providerType !== "gemini") return trimmed;
-  if (trimmed.endsWith("/openai")) return trimmed;
-  if (/\/v1beta$/.test(trimmed)) return `${trimmed}/openai`;
-  return trimmed;
-}
 
 export async function listProviders(): Promise<LlmProvider[]> {
   const db = await getDb();
