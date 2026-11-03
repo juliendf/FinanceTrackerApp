@@ -12,7 +12,7 @@ vi.mock("@tauri-apps/api/app", () => ({
   getTauriVersion: async () => "2.12.4",
 }));
 vi.mock("@tauri-apps/api/core", () => ({
-  invoke: async () => "/Users/test/Library/Application Support/ch.julien.financetrackerapp/financetracker.db",
+  invoke: async () => "/Users/test/Library/Application Support/app.financetracker/financetracker.db",
 }));
 
 import { AboutModal } from "./AboutModal";

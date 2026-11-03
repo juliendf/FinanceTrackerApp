@@ -63,7 +63,7 @@ reproduce every exported table row for row (`tests/roundtrip/compare.py`).
 | `snapshots.amount` (float) | `snapshots.amount_minor` (INTEGER) | half-even, 2 dp; non-exact values listed in the report |
 | `assets.cost_charges`, `interest_rate` | same columns, TEXT | float → decimal string |
 | `exchange_rates.rate` (float) | `exchange_rates.rate` (TEXT) | shortest round-trip representation, full precision kept |
-| `llm_providers.api_key` | macOS Keychain, service `ch.julien.financetrackerapp`, account `provider:<id>` | never written to SQLite; the row stores `keychain_ref` |
+| `llm_providers.api_key` | macOS Keychain, service `app.financetracker`, account `provider:<id>` | never written to SQLite; the row stores `keychain_ref` |
 | `settings` | `settings` | values inserted verbatim as text |
 | `profile.default_currency` | `profile.currency` | |
 | `profile.salary`, `monthly_savings_target` | `*_minor` | half-even, 2 dp |

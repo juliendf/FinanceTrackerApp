@@ -23,9 +23,9 @@ use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-/// Keychain service name. Matches the Tauri bundle identifier so the items are
-/// easy to find in Keychain Access.
-const SERVICE: &str = "ch.julien.financetrackerapp";
+/// Keychain service name. Deliberately the same for the normal and the demo
+/// build: both use the same provider settings, only the financial data differs.
+const SERVICE: &str = "app.financetracker";
 
 fn entry(account: &str) -> Result<Entry, String> {
     Entry::new(SERVICE, account).map_err(|e| format!("keyring: {e}"))
@@ -165,7 +165,7 @@ mod tests {
             "provider:abc",
             "provider:1/../x",
             "other:1",
-            "ch.julien.financetrackerapp",
+            "app.financetracker",
         ] {
             assert!(check_account(account).is_err(), "should refuse {account}");
         }

@@ -2,7 +2,7 @@
 
 A native macOS app for tracking assets and their value over time. Single user, offline, data stays on your Mac.
 
-Version 0.4.3 · MIT · macOS 11+ (Apple silicon)
+Version 0.5.0 · MIT · macOS 11+ (Apple silicon)
 
 > **Alpha.** The app is under active development: features move, bugs are
 > expected, and a bad import can leave your data in a state you did not want.
@@ -37,7 +37,7 @@ npm run tauri build -- --config src-tauri/tauri.demo.conf.json
 ```
 
 It installs as **FinanceTracker Demo** beside the normal app and stores its
-database in `~/Library/Application Support/ch.julien.financetrackerapp.demo/`.
+database in `~/Library/Application Support/app.financetracker.demo/`.
 Load **Settings → Data & Backups → Sample data** to fill it. The LLM provider
 keys are shared with the normal app on purpose; the financial data is not.
 
@@ -68,7 +68,7 @@ save. Rust changes restart the app.
 Two things to know:
 
 - **It uses the same database as the installed app** (same bundle identifier,
-  same `~/Library/Application Support/ch.julien.financetrackerapp/`). Testing
+  same `~/Library/Application Support/app.financetracker/`). Testing
   writes to your real data; take a backup from Settings → Data & Backup first if
   that matters.
 - **Running the UI alone with `npm run dev` in a browser only works for static
@@ -118,8 +118,8 @@ Keys live in the macOS Keychain, never in the database or a backup.
 
 ## Your data
 
-- Database: `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`
-- Provider API keys: macOS Keychain, service `ch.julien.financetrackerapp`
+- Database: `~/Library/Application Support/app.financetracker/financetracker.db`
+- Provider API keys: macOS Keychain, service `app.financetracker`
 - Import a legacy JSON backup (v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
 
 ## Troubleshooting

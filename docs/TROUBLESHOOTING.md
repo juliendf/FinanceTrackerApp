@@ -150,11 +150,11 @@ in-app modals now.
 **Where is my data?**
 
 ```
-~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db
+~/Library/Application Support/app.financetracker/financetracker.db
 ```
 
 The version line at the bottom of the sidebar opens About, which prints the path. Provider keys are in the
-macOS Keychain under service `ch.julien.financetrackerapp`, account
+macOS Keychain under service `app.financetracker`, account
 `provider:<id>`.
 
 **I want a copy before experimenting**

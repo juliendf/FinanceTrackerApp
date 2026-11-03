@@ -4,13 +4,13 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 ## Data at rest
 
-- The database is a plain SQLite file in `~/Library/Application Support/ch.julien.financetrackerapp/`. It is **not encrypted** by the app; protection is macOS user permissions and FileVault. Turn FileVault on.
+- The database is a plain SQLite file in `~/Library/Application Support/app.financetracker/`. It is **not encrypted** by the app; protection is macOS user permissions and FileVault. Turn FileVault on.
 - Time Machine and other backups of that folder include the database.
 - Backup exports (JSON) and CSV exports are plain text written wherever the user chooses. Treat them as sensitive.
 
 ## Secrets
 
-- Provider API keys are stored in the **macOS Keychain** (`keyring` with the Apple native store), service `ch.julien.financetrackerapp`, account `provider:<id>`. Only `provider:<id>` accounts can be written or deleted; anything else is refused.
+- Provider API keys are stored in the **macOS Keychain** (`keyring` with the Apple native store), service `app.financetracker`, account `provider:<id>`. Only `provider:<id>` accounts can be written or deleted; anything else is refused.
 - **A new endpoint is confirmed natively.** The key binding stops a stored key from following a changed `base_url`, but chat content goes wherever `base_url` points. So `provider_save` (a remote endpoint that is new or moved), `provider_set_default` (a keyless provider becoming the default) and `import_all` (a backup whose default is keyless and remote) raise a native Rust dialog that the webview cannot answer. Loopback endpoints never ask.
 - **A key is bound to the endpoint it was entered for.** The item holds `{"key": …, "origin": "scheme://host:port"}`. Every request compares the provider's current base URL with that origin and refuses to send the key anywhere else — a different scheme, host or port is refused; a path change (`/v1` → `/v2`) is not. Changing a provider's base URL drops the stored key, so the user re-enters it for the new endpoint.
 - SQLite stores only the reference (`keychain_ref`), never the key. Imports that carry a plaintext key in the source backup move it to the Keychain and drop it from the database; the app's own exports never contain keys.

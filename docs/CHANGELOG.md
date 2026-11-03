@@ -4,6 +4,15 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.5.0
+
+- **Identity change.** The bundle identifier is `app.financetracker` instead of
+  one carrying a personal name, so the data directory and the Keychain service
+  move with it. An existing install must copy its database once and re-enter
+  provider keys; until then it starts empty.
+- The demo build keeps sharing the Keychain with the normal app on purpose, as
+  before: same providers, separate financial data.
+
 ## 0.4.3
 
 - Validation release for the in-app updater: an installed 0.4.2 can fetch this

@@ -12,7 +12,7 @@ Artifacts:
 - `src-tauri/target/release/bundle/macos/FinanceTracker.app`
 - `src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg`
 
-The bundle identifier is `ch.julien.financetrackerapp` and the version comes from
+The bundle identifier is `app.financetracker` and the version comes from
 `src-tauri/tauri.conf.json` (`version`). Bump it there for a release; the tag and
 the About window both read from it. Keep it in step with `package.json` and
 `src-tauri/Cargo.toml`, which carry the same number for the toolchain.

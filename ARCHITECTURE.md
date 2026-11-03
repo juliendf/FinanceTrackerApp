@@ -50,7 +50,7 @@ Rules the code follows:
 
 ## Data model
 
-SQLite at `~/Library/Application Support/ch.julien.financetrackerapp/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by `sqlx::migrate!` from `Builder::setup`, before the window exists). Schema notes:
+SQLite at `~/Library/Application Support/app.financetracker/financetracker.db`, created by migrations in `src-tauri/migrations/` (applied by `sqlx::migrate!` from `Builder::setup`, before the window exists). Schema notes:
 
 - **Money is `INTEGER` minor units** (`amount_minor`). Conversion happens at the edge in `src/domain/money.ts`, half-even rounding, `decimal.js`. No float money anywhere.
 - **Exchange rates are `TEXT` decimals.**
