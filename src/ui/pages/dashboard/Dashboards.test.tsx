@@ -76,9 +76,10 @@ describe("DashboardPage", () => {
     const user = userEvent.setup();
     renderAt("/", <DashboardPage />, "/");
     await waitFor(() => expect(screen.getByTestId("line")).toBeTruthy());
-    // 1Y: cut-off 2025-10-26, so only 2026-10-01 is in range -> one point, no percent.
-    expect(screen.getByTestId("line").textContent).toBe("2026-10-01");
-    expect(document.getElementById("evoPercentBadge")).toBeNull();
+    // 1Y: cut-off 2025-10-26. The only snapshot in range is 2026-10-01, so the
+    // line opens at the cut-off with the value carried in from 2025-10-01.
+    expect(screen.getByTestId("line").textContent).toBe("2025-10-26,2026-10-01");
+    expect(document.getElementById("evoPercentBadge")?.textContent).toBe("+59.0%");
     await user.click(screen.getByRole("button", { name: "ALL" }));
     expect(screen.getByTestId("line").textContent).toBe("2025-10-01,2026-10-01");
     expect(document.getElementById("evoPercentBadge")?.textContent).toBe("+59.0%");

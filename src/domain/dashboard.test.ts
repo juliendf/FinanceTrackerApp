@@ -104,18 +104,35 @@ describe("portfolioEvolution", () => {
     // 1M from 2026-03-15 -> cut-off 2026-02-13: asset 2 (50 on 2026-02-01) and asset 1 (100 on 01-01) carry in.
     const e = portfolioEvolution(more, eur(), "1M", "2026-03-15", D(180));
     expect(e.points.map((p) => [p.date, p.value.toString()])).toEqual([
+      ["2026-02-13", "150"],
       ["2026-03-01", "170"],
       ["2026-03-10", "180"],
     ]);
-    expect(e.percentChange?.toFixed(2)).toBe("5.88");
+    expect(e.percentChange?.toFixed(2)).toBe("20.00");
+  });
+  it("opens the range with the carried-in value when no snapshot is on the cut-off", () => {
+    // One snapshot inside the window: without the opening point the chart had a
+    // single dot and no line.
+    const e = portfolioEvolution(facts, eur(), "1W", "2026-03-05", D(170));
+    expect(e.points.map((p) => [p.date, p.value.toString()])).toEqual([
+      ["2026-02-26", "150"],
+      ["2026-03-01", "170"],
+    ]);
+    expect(e.percentChange?.toFixed(2)).toBe("13.33");
+  });
+  it("draws a flat line to today when the range holds no snapshot at all", () => {
+    const e = portfolioEvolution(facts, eur(), "1W", "2026-12-01", D(170));
+    expect(e.points.map((p) => p.date)).toEqual(["2026-11-24", "2026-12-01"]);
+    expect(e.points[0].value.toString()).toBe("170");
+    expect(e.percentChange?.toString()).toBe("0");
   });
   it("carry-in does not change ALL", () => {
     const a = portfolioEvolution(facts, eur(), "ALL", "2026-06-01", D(170));
     const b = portfolioEvolution(facts, eur(), "ALL", "2026-06-01", D(170), { carryIn: false });
     expect(a).toEqual(b);
   });
-  it("has no points and no percent when nothing is in range", () => {
-    const e = portfolioEvolution(facts, eur(), "1W", "2026-12-01", D(0));
+  it("has no percent when there is no data at all", () => {
+    const e = portfolioEvolution([], eur(), "1W", "2026-12-01", D(0));
     expect(e.points).toEqual([]);
     expect(e.percentChange).toBeNull();
   });

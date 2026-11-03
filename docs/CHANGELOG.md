@@ -4,6 +4,13 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.5.3
+
+- **Fixed:** the portfolio chart on a short range (1W, 1M) showed a single dot
+  and no percent change when the range held one snapshot. The line now opens on
+  the cut-off date with the portfolio value carried in from the previous
+  snapshots, and runs flat to today when the range holds no snapshot at all.
+
 ## 0.5.2
 
 - Every release now publishes the demo build and its own update feed

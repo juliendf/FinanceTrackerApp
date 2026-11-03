@@ -208,6 +208,9 @@ export function portfolioEvolution(
     }
   }
 
+  /** What the portfolio was worth when the range opens, before any in-range snapshot. */
+  const carriedTotal = running;
+
   const points: EvolutionPoint[] = [];
 
   let i = 0;
@@ -221,6 +224,18 @@ export function portfolioEvolution(
       i += 1;
     }
     points.push({ date, value: round2(running) });
+  }
+
+  // A range whose first snapshot is after the cut-off still has a value on the
+  // day the range opens: the carried-in total. Without this point a week with a
+  // single snapshot drew one dot, no line and no percent.
+  if (carryIn && cutoff !== null && lastValue.size > 0) {
+    if (points.length === 0) {
+      points.push({ date: cutoff, value: round2(carriedTotal) });
+      if (today > cutoff) points.push({ date: today, value: summaryValue });
+    } else if (points[0].date !== cutoff) {
+      points.unshift({ date: cutoff, value: round2(carriedTotal) });
+    }
   }
 
   if (points.length > 0) points[points.length - 1].value = summaryValue;
