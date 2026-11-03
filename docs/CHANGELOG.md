@@ -4,6 +4,15 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.5.1
+
+- Toasts are opaque and sit at the bottom right: the theme tints are
+  translucent, so a toast over content was unreadable and covered the page
+  header's actions.
+- The toolbar no longer lets content show through while scrolling.
+- The provider form's Save bar is a normal footer instead of a sticky bar that
+  floated over the model list; the header's Save stays reachable.
+
 ## 0.5.0
 
 - **Identity change.** The bundle identifier is `app.financetracker` instead of
