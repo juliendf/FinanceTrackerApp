@@ -10,15 +10,21 @@ for agents; this file is the reasoning.
    once, serves the UI from Vite and reloads the frontend on save. Rust changes
    restart the app. It uses the real database directory (same identifier), so
    take a backup before poking at real data.
-2. **Write the test with the fix.** Domain rules, repositories and screens each
+2. **Build locally when you need a real bundle** (dock icon, updater card, the
+   Gatekeeper prompt): `npm run app:build` writes an ad-hoc signed
+   `FinanceTracker.app` under `src-tauri/target/release/bundle/macos/`,
+   `npm run app:local` builds and opens it, and `npm run app:install` replaces
+   the copy in `/Applications` (quit it first). No signing key is involved.
+3. **Write the test with the fix.** Domain rules, repositories and screens each
    have a test file next to the code; a UI change that a person would notice
    should be reproducible in jsdom.
-3. **Run the suite**: `npm run typecheck`, `npm test`, `cd src-tauri && cargo test`.
-   The release workflow runs the same three, so a green local run means a green
-   build.
-4. **Commit small, with a why.** Subjects are `type: sentence`, lowercase, no
+4. **Run the suite**: `npm run release:check` does `typecheck`, `npm test` and
+   `cargo test`. The release workflow runs the same three.
+5. **Commit small, with a why.** Subjects are `type: sentence`, lowercase, no
    trailing period. Docs that describe the change go in the same commit.
-5. **Release by tagging**, never by hand-building a DMG.
+6. **Release only to distribute.** Changes accumulate on `main`; a tag is a
+   publishing decision, not a test step. Testing the updater needs a published
+   release, so do that once per release, not once per fix.
 
 ## Rules that break installs if ignored
 
@@ -72,16 +78,15 @@ for agents; this file is the reasoning.
 
 ## Releasing
 
-1. Bump the three version files, the README version line and
-   `src-tauri/Cargo.lock` (`cargo metadata` in `src-tauri` refreshes it).
-2. Add the `docs/CHANGELOG.md` entry, user-facing, in the present tense.
-3. `npm run typecheck && npm test && (cd src-tauri && cargo test)`.
-4. Commit, `git tag v<x.y.z>`, `git push origin main`, `git push origin v<x.y.z>`.
-5. The `release` workflow runs the same checks, builds both apps, signs them and
+1. `npm run version:set <x.y.z>` (three files, README and the lockfile), then add
+   the `docs/CHANGELOG.md` entry, user-facing, in the present tense.
+2. `npm run release:check`.
+3. Commit, `git tag v<x.y.z>`, `git push origin main`, `git push origin v<x.y.z>`.
+4. The `release` workflow runs the same checks, builds both apps, signs them and
    creates a **draft** release, then uploads `latest.json` and `latest-demo.json`.
-6. Download the draft's DMG, mount it, launch the app, then publish the draft.
+5. Download the draft's DMG, mount it, launch the app, then publish the draft.
    Never publish an untested draft.
-7. Verify what the updater will see:
+6. Verify what the updater will see:
 
    ```sh
    curl -sL https://github.com/juliendf/FinanceTrackerApp/releases/latest/download/latest.json \

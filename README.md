@@ -84,10 +84,17 @@ Two things to know:
 ## Build
 
 ```sh
-npm run tauri build
+npm run app:local        # ad-hoc build, then open the app
+npm run app:install      # ad-hoc build and replace /Applications/FinanceTracker.app
+npm run app:build        # just the bundle, no signing key needed
+npm run tauri build      # the default bundle
 # src-tauri/target/release/bundle/macos/FinanceTracker.app
 # src-tauri/target/release/bundle/dmg/FinanceTracker_<version>_aarch64.dmg
 ```
+
+Iterating does not need a release: `npm run tauri dev` for the UI,
+`npm run app:local` when you want a real bundle with the dock icon and the
+updater card. A tag is only for distributing a version.
 
 The build is ad-hoc signed (no Apple Developer ID yet), so the first launch is
 blocked by Gatekeeper until you allow it in System Settings → Privacy & Security.

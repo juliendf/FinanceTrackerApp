@@ -16,7 +16,13 @@
     "tauri": "tauri",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit"
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
+    "app:build": "tauri build --config src-tauri/tauri.local.conf.json",
+    "app:local": "npm run app:build && open \"src-tauri/target/release/bundle/macos/FinanceTracker.app\"",
+    "app:install": "npm run app:build && rm -rf /Applications/FinanceTracker.app && ditto \"src-tauri/target/release/bundle/macos/FinanceTracker.app\" /Applications/FinanceTracker.app",
+    "release:check": "npm run typecheck && npm test && cargo test --manifest-path src-tauri/Cargo.toml",
+    "version:set": "node scripts/set-version.mjs",
+    "demo:build": "tauri build --config src-tauri/tauri.demo.conf.json"
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",

@@ -14,8 +14,12 @@ local data, MIT. Pre-1.0, alpha.
 ```sh
 npm install
 npm run tauri dev        # try a change first; uses the real data directory
+npm run app:local        # ad-hoc build of the real app, then open it
+npm run app:install      # ad-hoc build and replace the app in /Applications
+npm run demo:build       # the demo app, separate data directory
 npm run typecheck        # must pass
 npm test                 # vitest: domain, repositories, components, docs guards
+npm run release:check    # typecheck + vitest + cargo test, what CI runs
 cd src-tauri && cargo test
 npm run tauri build      # local bundle
 ```
@@ -39,9 +43,12 @@ npm run tauri build      # local bundle
 
 ## Workflow
 
-`tauri dev` → test → `typecheck` + `npm test` + `cargo test` → changelog + version
-bump → commit → tag `v<x.y.z>` → push both → CI builds, signs and drafts the
-release → test the DMG → publish → verify `latest.json` → test the in-app update.
+`tauri dev` → test → `npm run release:check` → changelog + version bump → commit →
+tag `v<x.y.z>` → push both → CI builds, signs and drafts the release → test the
+DMG → publish → verify `latest.json` → test the in-app update.
+
+A tag is for distributing, not for testing: keep small changes on `main` and use
+`npm run app:local` / `npm run app:install` to try a real bundle.
 
 Details, including the demo build and the verification commands:
 `docs/MAINTAINING.md`.
