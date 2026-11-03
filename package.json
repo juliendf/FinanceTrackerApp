@@ -22,7 +22,9 @@
     "app:install": "npm run app:build && rm -rf /Applications/FinanceTracker.app && ditto \"src-tauri/target/release/bundle/macos/FinanceTracker.app\" /Applications/FinanceTracker.app",
     "release:check": "npm run typecheck && npm test && cargo test --manifest-path src-tauri/Cargo.toml",
     "version:set": "node scripts/set-version.mjs",
-    "demo:build": "tauri build --config src-tauri/tauri.demo.conf.json"
+    "demo:build": "tauri build --config src-tauri/tauri.demo.conf.json",
+    "demo:local": "npm run demo:build && open \"src-tauri/target/release/bundle/macos/FinanceTracker Demo.app\"",
+    "demo:install": "npm run demo:build && rm -rf \"/Applications/FinanceTracker Demo.app\" && ditto \"src-tauri/target/release/bundle/macos/FinanceTracker Demo.app\" \"/Applications/FinanceTracker Demo.app\""
   },
   "dependencies": {
     "@fontsource/inter": "5.3.0",

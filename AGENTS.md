@@ -17,6 +17,7 @@ npm run tauri dev        # try a change first; uses the real data directory
 npm run app:local        # ad-hoc build of the real app, then open it
 npm run app:install      # ad-hoc build and replace the app in /Applications
 npm run demo:build       # the demo app, separate data directory
+npm run demo:install     # build the demo and replace it in /Applications
 npm run typecheck        # must pass
 npm test                 # vitest: domain, repositories, components, docs guards
 npm run release:check    # typecheck + vitest + cargo test, what CI runs

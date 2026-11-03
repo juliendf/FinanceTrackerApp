@@ -35,7 +35,9 @@ A second app with its own bundle identifier, its own data directory and sample
 data, so a demo never touches your real numbers:
 
 ```sh
-npm run tauri build -- --config src-tauri/tauri.demo.conf.json
+npm run demo:build      # bundle only
+npm run demo:local      # build and open it
+npm run demo:install    # build and replace /Applications/FinanceTracker Demo.app
 ```
 
 It installs as **FinanceTracker Demo** beside the normal app and stores its

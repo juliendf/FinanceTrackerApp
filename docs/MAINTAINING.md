@@ -111,8 +111,9 @@ for agents; this file is the reasoning.
 
 ## Demo build
 
-`npm run tauri build -- --config src-tauri/tauri.demo.conf.json` builds the demo
-locally (product name "FinanceTracker Demo", identifier `app.financetracker.demo`,
-sample data enabled, own data directory). Every release also publishes the demo
-DMG, its signed archive and `latest-demo.json`, so the installed demo updates
-itself like the normal app.
+`npm run demo:build` builds the demo locally (product name "FinanceTracker
+Demo", identifier `app.financetracker.demo`, sample data enabled, own data
+directory); `npm run demo:local` opens it and `npm run demo:install` replaces
+the copy in `/Applications`. Every release also publishes the demo DMG, its
+signed archive and `latest-demo.json`, so the installed demo updates itself like
+the normal app.
