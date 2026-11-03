@@ -1627,15 +1627,16 @@ select[multiple].form-select option {
 .alert .alert-link { color: inherit; font-weight: 650; text-decoration: underline; }
 
 /*
- * Toasts: a fixed stack under the toolbar, top right.
+ * Toasts: a fixed stack at the bottom right.
  *
  * They used to render in page flow at the bottom, so a "Settings saved" banner
- * sat on top of the form's own buttons and scrolled away with it. Fixed puts
- * them where a Mac user expects a transient notice and keeps the page clear.
+ * sat on top of the form's own buttons and scrolled away with it. Fixed keeps
+ * them where a Mac user expects a transient notice; the bottom right avoids the
+ * page header's actions, which sit at the top right.
  */
 .alert-container {
     position: fixed;
-    top: 60px;
+    bottom: 1rem;
     right: 1rem;
     z-index: 1080;
     display: flex;
@@ -1645,9 +1646,12 @@ select[multiple].form-select option {
     pointer-events: none;
 }
 
+/* Opaque: the theme's alert tints are translucent, so a toast over content was
+ * unreadable (the page showed through the text). */
 .alert-container .alert {
     margin-bottom: 0;
     pointer-events: auto;
+    background-color: var(--surface-1);
     box-shadow: var(--shadow-md, 0 8px 24px rgba(0, 0, 0, 0.28));
     animation: toast-in 140ms ease-out;
 }
@@ -1655,7 +1659,7 @@ select[multiple].form-select option {
 @keyframes toast-in {
     from {
         opacity: 0;
-        transform: translateY(-6px);
+        transform: translateY(6px);
     }
     to {
         opacity: 1;
@@ -3313,7 +3317,9 @@ body {
     height: 52px;
     padding: 0 1rem;
     border-bottom: 1px solid var(--border-color);
-    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+    /* Opaque: at 88% the page showed through the bar and made the title
+     * unreadable while scrolling. */
+    background: var(--surface-1);
     -webkit-app-region: drag;
 }
 
@@ -3669,15 +3675,10 @@ body {
    ========================================================================== */
 
 /*
- * Sticky, not fixed: it belongs to the form, so it appears at the bottom of the
- * scrollport once the form is taller than the window and scrolls away with it at
- * the end. `bottom: 0` and no negative bottom margin — the first attempt used
- * `bottom: -1rem`, which parked the whole bar just below the fold.
+ * A normal footer, not a sticky one: the page header already carries Save, and a
+ * bar pinned to the bottom of the scrollport floated over the model list.
  */
 .provider-form-actions {
-    position: sticky;
-    bottom: 0;
-    z-index: 5;
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -3686,10 +3687,9 @@ body {
     padding: 0.75rem 1.5rem;
     border-top: 1px solid var(--border-color);
     background: var(--surface-0);
-    box-shadow: 0 -8px 16px -12px rgba(0, 0, 0, 0.45);
 }
 
-/* Room so the last field is not hidden behind the sticky bar. */
+/* The last field must not sit flush against the footer. */
 .provider-form {
     padding-bottom: 0.5rem;
 }
