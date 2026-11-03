@@ -4,6 +4,13 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.5.4
+
+- **Fixed:** an update could fail with `Download request failed with status: 403
+  Forbidden`. The manifest pointed at GitHub's API asset URLs, limited to 60
+  anonymous requests per hour; both manifests now point at the release's own
+  download URLs.
+
 ## 0.5.3
 
 - **Fixed:** the portfolio chart on a short range (1W, 1M) showed a single dot

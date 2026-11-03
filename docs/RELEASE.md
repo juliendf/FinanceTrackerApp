@@ -144,9 +144,10 @@ Secrets (`gh secret set <NAME> --repo juliendf/FinanceTrackerApp`):
 
 The same job also builds the demo bundle and uploads it next to the normal
 assets: `FinanceTracker-Demo_<version>_aarch64.dmg`, its `.app.tar.gz` and
-`.sig`, and `latest-demo.json`. The demo config points its updater at
-`latest-demo.json`, since `tauri-action` only writes the manifest for the normal
-app; `scripts/demo-manifest.mjs` writes the second one.
+`.sig`, and `latest-demo.json`. Both manifests are written by
+`scripts/updater-manifest.mjs` and point at the release's own download URLs:
+`tauri-action`'s `latest.json` uses `api.github.com` asset URLs, which are
+rate-limited to 60 anonymous requests per hour and fail downloads with `403`.
 
 Without the Apple secrets, `tauri.release.conf.json` sets
 `bundle.macOS.signingIdentity: "-"`, so the app is signed ad hoc **during the

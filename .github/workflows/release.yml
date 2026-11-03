@@ -110,6 +110,26 @@ jobs:
           prerelease: false
           args: --target aarch64-apple-darwin --config src-tauri/tauri.release.conf.json
 
+      # tauri-action publishes `latest.json` with api.github.com asset URLs,
+      # which are rate-limited to 60 requests/hour unauthenticated; downloads then
+      # fail with 403. Replace it with direct release-download URLs.
+      - name: Point the normal updater at direct download URLs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          bundle="src-tauri/target/aarch64-apple-darwin/release/bundle"
+          archive="FinanceTracker_${version}_aarch64.app.tar.gz"
+
+          node scripts/updater-manifest.mjs \
+            "$bundle/macos/FinanceTracker.app.tar.gz.sig" \
+            "https://github.com/juliendf/FinanceTrackerApp/releases/download/${GITHUB_REF_NAME}/${archive}" \
+            "$bundle/latest.json" \
+            "FinanceTracker ${version}"
+
+          gh release upload "$GITHUB_REF_NAME" "$bundle/latest.json" --clobber
+
       # The demo is a second bundle with its own identifier and its own updater
       # manifest. tauri-action only knows how to publish one app per release, so
       # the demo is built here and uploaded next to the normal assets.
@@ -137,7 +157,7 @@ jobs:
           cp "$bundle/macos/FinanceTracker Demo.app.tar.gz.sig" "$bundle/$archive.sig"
           cp "$bundle/dmg/FinanceTracker Demo_${version}_aarch64.dmg" "$bundle/$dmg"
 
-          node scripts/demo-manifest.mjs \
+          node scripts/updater-manifest.mjs \
             "$bundle/$archive.sig" \
             "https://github.com/juliendf/FinanceTrackerApp/releases/download/${GITHUB_REF_NAME}/${archive}" \
             "$bundle/latest-demo.json"

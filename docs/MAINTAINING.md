@@ -62,7 +62,11 @@ for agents; this file is the reasoning.
   matching public key is in `tauri.conf.json`. **Losing the private key means no
   installed app can ever update again**: back it up.
 - The updater checks `releases/latest/download/latest.json`. The demo checks
-  `latest-demo.json`, written by `scripts/demo-manifest.mjs`.
+  `latest-demo.json`, written by `scripts/updater-manifest.mjs`. `tauri-action`
+  writes API asset URLs (`api.github.com/.../assets/<id>`), which are limited to
+  60 anonymous requests per hour and make downloads fail with `403`; the release
+  job therefore rewrites `latest.json` with direct
+  `releases/download/<tag>/<file>` URLs before publishing.
 - Updates install from inside the app: check, confirm, download with progress,
   verify, restart. Nothing downloads or restarts unasked.
 
