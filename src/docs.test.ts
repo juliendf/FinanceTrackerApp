@@ -39,9 +39,11 @@ describe("versions", () => {
 describe("documents", () => {
   const required = [
     "README.md",
+    "AGENTS.md",
     "CONTRIBUTING.md",
     "ARCHITECTURE.md",
     "SECURITY.md",
+    "docs/MAINTAINING.md",
     "docs/TROUBLESHOOTING.md",
     "docs/RELEASE.md",
     "docs/CHANGELOG.md",
@@ -65,6 +67,8 @@ describe("links", () => {
 
   function requiredDocs(): string[] {
     return [
+      "AGENTS.md",
+      "docs/MAINTAINING.md",
       "docs/TROUBLESHOOTING.md",
       "docs/RELEASE.md",
       "docs/CHANGELOG.md",

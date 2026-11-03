@@ -142,6 +142,8 @@ shows the error boundary.
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, data model, transactions |
 | [SECURITY.md](SECURITY.md) | Threat model, secrets, open issues |
+| [docs/MAINTAINING.md](docs/MAINTAINING.md) | How releases, versioning and data safety work |
+| [AGENTS.md](AGENTS.md) | Short brief for agents and new maintainers |
 | [docs/RELEASE.md](docs/RELEASE.md) | Signing, notarisation, updater, releases |
 | [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md) | Backup file format |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Layout, conventions, how to add a screen, tool or migration |

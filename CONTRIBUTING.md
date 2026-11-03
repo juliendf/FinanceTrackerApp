@@ -4,6 +4,9 @@ A single-author native macOS app (Tauri 2 + React + TypeScript + SQLite). The
 tests are the contract: when behaviour is ambiguous, read the code and the tests
 that pin it, and record a deliberate departure in `docs/CHANGELOG.md`.
 
+Releases, versioning, signing and the rules that protect user data are in
+[`docs/MAINTAINING.md`](docs/MAINTAINING.md). Read it before tagging anything.
+
 ## Layout
 
 | Path | What lives there |
