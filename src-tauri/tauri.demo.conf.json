@@ -12,7 +12,9 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": []
+      "endpoints": [
+        "https://github.com/juliendf/FinanceTrackerApp/releases/latest/download/latest-demo.json"
+      ]
     }
   }
 }

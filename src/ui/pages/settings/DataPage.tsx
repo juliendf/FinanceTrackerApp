@@ -87,7 +87,7 @@ export function DataPage() {
 
       <BackupExportCard />
 
-      {demoBuild ? null : <UpdateCard />}
+      <UpdateCard />
 
       <div className="card card-finance mb-4">
         <div className="card-body">

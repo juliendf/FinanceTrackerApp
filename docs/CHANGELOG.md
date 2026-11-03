@@ -4,6 +4,12 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.5.2
+
+- Every release now publishes the demo build and its own update feed
+  (`latest-demo.json`), so the demo updates itself from **Check for updates**
+  instead of being rebuilt by hand.
+
 ## 0.5.1
 
 - Toasts are opaque and sit at the bottom right: the theme tints are

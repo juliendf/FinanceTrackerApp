@@ -2,7 +2,7 @@
 
 A native macOS app for tracking assets and their value over time. Single user, offline, data stays on your Mac.
 
-Version 0.5.1 · MIT · macOS 11+ (Apple silicon)
+Version 0.5.2 · MIT · macOS 11+ (Apple silicon)
 
 ![FinanceTracker on first launch: a sidebar with Dashboard, Assets, Snapshots and Résumé, and a welcome screen offering to import a backup or start empty](docs/screenshots/first-run.png)
 
@@ -42,6 +42,10 @@ It installs as **FinanceTracker Demo** beside the normal app and stores its
 database in `~/Library/Application Support/app.financetracker.demo/`.
 Load **Settings → Data & Backups → Sample data** to fill it. The LLM provider
 keys are shared with the normal app on purpose; the financial data is not.
+
+Every release also carries the demo DMG, its signed update archive and its own
+manifest (`latest-demo.json`), so the demo updates itself from **Check for
+updates** like the normal app.
 
 ## Requirements
 

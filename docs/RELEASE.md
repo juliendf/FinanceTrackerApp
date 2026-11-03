@@ -142,6 +142,12 @@ Secrets (`gh secret set <NAME> --repo juliendf/FinanceTrackerApp`):
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | only if the key has one | its password |
 | `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD`, `APPLE_TEAM_ID` | optional | the Developer ID set below |
 
+The same job also builds the demo bundle and uploads it next to the normal
+assets: `FinanceTracker-Demo_<version>_aarch64.dmg`, its `.app.tar.gz` and
+`.sig`, and `latest-demo.json`. The demo config points its updater at
+`latest-demo.json`, since `tauri-action` only writes the manifest for the normal
+app; `scripts/demo-manifest.mjs` writes the second one.
+
 Without the Apple secrets, `tauri.release.conf.json` sets
 `bundle.macOS.signingIdentity: "-"`, so the app is signed ad hoc **during the
 bundle** — no manual repack (the DMG is built from the already-signed app).
