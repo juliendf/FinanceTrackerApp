@@ -3,7 +3,6 @@ import {
   amountError,
   csvField,
   filterSnapshots,
-  pageNumbers,
   generateSnapshotsCsv,
   latestBefore,
   nextSort,
@@ -61,6 +60,21 @@ describe("parseSnapshotFilters", () => {
     expect(snapshotFiltersToParams(filters).toString()).toBe("currency=CHF&sort_by=amount&sort_order=asc&page=3");
     expect(snapshotFiltersToParams({}).toString()).toBe("");
   });
+  it("falls back to the Items Per Page setting when the URL has no per_page", () => {
+    const p = (q: string, perPage?: number) =>
+      parseSnapshotFilters(new URLSearchParams(q), { perPage }).filters;
+    expect(p("", 50).per_page).toBe(50);
+    expect(p("per_page=10", 50).per_page).toBe(10);
+    // Below 1 is unreadable, and so falls back to the setting like a missing one.
+    expect(p("per_page=0", 50).per_page).toBe(50);
+    expect(p("", Number.NaN).per_page).toBe(20);
+    expect(p("", 5000).per_page).toBe(100);
+  });
+  it("does not pin the setting into the URL when serialising", () => {
+    const defaults = { perPage: 50 };
+    expect(snapshotFiltersToParams({ per_page: 50 }, defaults).toString()).toBe("");
+    expect(snapshotFiltersToParams({ per_page: 10 }, defaults).toString()).toBe("per_page=10");
+  });
 });
 
 describe("nextSort", () => {
@@ -112,20 +126,6 @@ describe("sortSnapshots", () => {
   it("by asset puts NULL names last ascending and first descending", () => {
     expect(ids({ sort_by: "asset", sort_order: "asc" })).toEqual([3, 1, 2]);
     expect(ids({ sort_by: "asset", sort_order: "desc" })).toEqual([2, 1, 3]);
-  });
-});
-
-describe("pageNumbers (default iter_pages windows)", () => {
-  const f = pageNumbers;
-  it("small and empty", () => {
-    expect(f(1, 0)).toEqual([]);
-    expect(f(1, 1)).toEqual([1]);
-    expect(f(2, 5)).toEqual([1, 2, 3, 4, 5]);
-  });
-  it("windows with gaps", () => {
-    expect(f(1, 20)).toEqual([1, 2, 3, 4, 5, null, 19, 20]);
-    expect(f(10, 20)).toEqual([1, 2, null, 8, 9, 10, 11, 12, 13, 14, null, 19, 20]);
-    expect(f(20, 20)).toEqual([1, 2, null, 18, 19, 20]);
   });
 });
 

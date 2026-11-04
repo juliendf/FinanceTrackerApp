@@ -115,6 +115,29 @@ describe("URL filters — list_assets request.args", () => {
     const filters = { ...EMPTY_FILTERS, currency: "EUR", tag: "Liquid", page: 4, perPage: 10 };
     expect(parseAssetFilters(assetFiltersToParams(filters))).toEqual(filters);
   });
+
+  it("falls back to the Items Per Page setting when the URL has no per_page", () => {
+    expect(parseAssetFilters(new URLSearchParams(), { perPage: 50 }).perPage).toBe(50);
+  });
+
+  it("lets an explicit per_page win over the setting", () => {
+    expect(parseAssetFilters(new URLSearchParams("per_page=10"), { perPage: 50 }).perPage).toBe(10);
+  });
+
+  it("survives a corrupt setting rather than yielding NaN", () => {
+    // The setting is TEXT coerced with Number(): a bad row gives NaN, which
+    // would otherwise reach paginate and blank the list.
+    expect(parseAssetFilters(new URLSearchParams(), { perPage: Number.NaN }).perPage).toBe(20);
+    expect(parseAssetFilters(new URLSearchParams(), { perPage: 0 }).perPage).toBe(1);
+    expect(parseAssetFilters(new URLSearchParams(), { perPage: 5000 }).perPage).toBe(100);
+  });
+
+  it("does not pin the setting into the URL when serialising", () => {
+    const defaults = { perPage: 50 };
+    // An unchanged view writes nothing, so changing the setting later still applies.
+    expect(assetFiltersToParams({ ...EMPTY_FILTERS, perPage: 50 }, defaults).toString()).toBe("");
+    expect(assetFiltersToParams({ ...EMPTY_FILTERS, perPage: 10 }, defaults).toString()).toBe("per_page=10");
+  });
 });
 
 describe("filterAssets — the list_assets WHERE clause", () => {

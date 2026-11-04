@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  assetPageNumbers,
   nextSortState,
   pageNumbers,
   paginate,
@@ -51,15 +50,36 @@ describe("pageNumbers", () => {
   it("lists every page when there are few", () => {
     expect(pageNumbers(1, 3)).toEqual([1, 2, 3]);
     expect(pageNumbers(2, 3)).toEqual([1, 2, 3]);
+    expect(pageNumbers(1, 0)).toEqual([]);
+    expect(pageNumbers(1, 1)).toEqual([1]);
+    expect(pageNumbers(1, 9)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
+
+  it("keeps the slot count constant once the pages overflow", () => {
+    // The pager is centred, so a varying width slides it sideways on every
+    // click. Every page of a 20-page list must yield the same number of slots.
+    for (let page = 1; page <= 20; page += 1) {
+      expect(pageNumbers(page, 20), `page ${page}`).toHaveLength(9);
+    }
+    for (let page = 1; page <= 10; page += 1) {
+      expect(pageNumbers(page, 10), `page ${page}`).toHaveLength(9);
+    }
   });
 
   it("collapses the gap with nulls", () => {
-    expect(pageNumbers(1, 10)).toEqual([1, 2, 3, null, 10]);
-    expect(pageNumbers(10, 10)).toEqual([1, null, 9, 10]);
+    expect(pageNumbers(1, 10)).toEqual([1, 2, 3, 4, 5, 6, 7, null, 10]);
+    expect(pageNumbers(10, 10)).toEqual([1, null, 4, 5, 6, 7, 8, 9, 10]);
   });
 
   it("keeps a window around the current page", () => {
-    expect(pageNumbers(5, 10)).toEqual([1, null, 4, 5, 6, 7, null, 10]);
+    expect(pageNumbers(5, 10)).toEqual([1, null, 3, 4, 5, 6, 7, null, 10]);
+    expect(pageNumbers(10, 20)).toEqual([1, null, 8, 9, 10, 11, 12, null, 20]);
+    expect(pageNumbers(20, 20)).toEqual([1, null, 14, 15, 16, 17, 18, 19, 20]);
+  });
+
+  it("stays inside the range on a rogue current page", () => {
+    expect(pageNumbers(0, 20)).toEqual(pageNumbers(1, 20));
+    expect(pageNumbers(99, 20)).toEqual(pageNumbers(20, 20));
   });
 });
 
@@ -133,26 +153,5 @@ describe("paginationLabel", () => {
 
   it("says so when there is nothing", () => {
     expect(paginationLabel(paginate([], 1, 20))).toBe("No entries");
-  });
-});
-
-describe("assetPageNumbers", () => {
-  it("shows every page when there are few", () => {
-    expect(assetPageNumbers(1, 5)).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it("keeps two edge pages and a window around the current page", () => {
-    // the predicate: num <= 2, or current-3 < num < current+3, or num > last-2
-    expect(assetPageNumbers(10, 20)).toEqual([1, 2, null, 8, 9, 10, 11, 12, null, 19, 20]);
-  });
-
-  it("marks the gaps the bare pager leaves unmarked", () => {
-    expect(assetPageNumbers(1, 20)).toEqual([1, 2, 3, null, 19, 20]);
-    // window is current-3 < n < current+3, so 17 just misses it
-    expect(assetPageNumbers(20, 20)).toEqual([1, 2, null, 18, 19, 20]);
-  });
-
-  it("is a single page for a single page", () => {
-    expect(assetPageNumbers(1, 1)).toEqual([1]);
   });
 });

@@ -14,11 +14,10 @@ import { deleteSnapshot, deleteSnapshots, listSnapshotRows } from "../../../db/r
 import { todayIso } from "../../../domain/dates";
 import { formatDate, formatMinorAsCurrency, formatSymbolAmount, relativeDate } from "../../../domain/format";
 import { fromMinorUnits } from "../../../domain/money";
-import { paginate } from "../../../domain/pagination";
+import { pageNumbers, paginate } from "../../../domain/pagination";
 import {
   csvFileName,
   filterSnapshots,
-  pageNumbers,
   generateSnapshotsCsv,
   messages,
   nextSort,
@@ -35,6 +34,8 @@ import {
 import { PageHeader } from "../../components/FormCard";
 import { BulkDeleteModal, SnapshotDeleteModal } from "../../components/SnapshotDeleteModal";
 import { StatCard } from "../../components/StatCard";
+import { useSettings } from "../../../lib/useSettings";
+import { useStableListHeight } from "../../../lib/useStableListHeight";
 import { useToast } from "../../layout/Toasts";
 
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -50,8 +51,12 @@ export function SnapshotListPage() {
   const navigate = useNavigate();
   const toast = useToast();
   const queryClient = useQueryClient();
+  const { itemsPerPage } = useSettings();
 
-  const { filters, warnings } = useMemo(() => parseSnapshotFilters(params), [params]);
+  const { filters, warnings } = useMemo(
+    () => parseSnapshotFilters(params, { perPage: itemsPerPage }),
+    [params, itemsPerPage],
+  );
 
   const warned = useRef("");
   useEffect(() => {
@@ -78,6 +83,10 @@ export function SnapshotListPage() {
   const page = useMemo(() => paginate(sorted, filters.page, filters.per_page), [sorted, filters]);
   const summary = useMemo(() => summariseSnapshots(filtered), [filtered]);
 
+  // Keeps the table the height of its tallest page, so paging never moves it.
+  const tableRef = useRef<HTMLDivElement>(null);
+  const listFloor = useStableListHeight(tableRef, `${filtered.length}|${page.perPage}`);
+
   useEffect(() => setSelected(new Set()), [page.page, params]);
 
   const hasFilters = Boolean(
@@ -85,7 +94,12 @@ export function SnapshotListPage() {
   );
 
   const commit = (next: SnapshotFilters, resetPage = true) =>
-    setParams(snapshotFiltersToParams({ ...next, page: resetPage ? 1 : next.page }));
+    setParams(
+      snapshotFiltersToParams(
+        { ...next, page: resetPage ? 1 : next.page },
+        { perPage: itemsPerPage },
+      ),
+    );
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -302,9 +316,18 @@ export function SnapshotListPage() {
         </div>
       ) : null}
 
-      <div className="table-container">
+      <div className="table-container" ref={tableRef} style={listFloor ? { minHeight: listFloor } : undefined}>
         <div className="table-responsive">
-          <table className="table table-hover align-middle mb-0">
+          <table className="table table-hover align-middle mb-0 table-fixed">
+            <colgroup>
+              <col style={{ width: "4%" }} />
+              <col style={{ width: "12%" }} />
+              <col style={{ width: "24%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "14%" }} />
+              <col style={{ width: "16%" }} />
+              <col style={{ width: "14%" }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={{ width: 40 }}>

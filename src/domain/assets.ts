@@ -10,6 +10,7 @@ import Decimal from "decimal.js";
 import { z } from "zod";
 import { convertStrict, NoRateError, type RateTable } from "./currency";
 import { fromMinorUnits, toMinorUnits } from "./money";
+import { clampPerPage, type ListDefaults } from "./pagination";
 
 /** What the list screen needs per asset, tags included. */
 export interface AssetRow {
@@ -90,8 +91,14 @@ function intParam(value: string | null, fallback: number): number {
 }
 
 /** Read the URL query the way `list_assets` reads `request.args`. */
-export function parseAssetFilters(params: URLSearchParams): AssetFilters {
-  const perPage = intParam(params.get("per_page"), DEFAULT_PER_PAGE);
+export function parseAssetFilters(params: URLSearchParams, defaults: ListDefaults = {}): AssetFilters {
+  // No `per_page` in the URL means "whatever the list defaults to": the Items Per
+  // Page setting. An explicit parameter still wins, so a shared link to a 10-row
+  // view keeps showing 10.
+  const perPage = intParam(
+    params.get("per_page"),
+    clampPerPage(defaults.perPage, DEFAULT_PER_PAGE, MAX_PER_PAGE),
+  );
   return {
     search: (params.get("search") ?? "").trim(),
     currency: (params.get("currency") ?? "").trim(),
@@ -105,14 +112,18 @@ export function parseAssetFilters(params: URLSearchParams): AssetFilters {
 }
 
 /** Serialise filters back to a query, leaving defaults out so URLs stay short. */
-export function assetFiltersToParams(filters: Partial<AssetFilters>): URLSearchParams {
+export function assetFiltersToParams(
+  filters: Partial<AssetFilters>,
+  defaults: ListDefaults = {},
+): URLSearchParams {
   const params = new URLSearchParams();
+  const defaultPerPage = clampPerPage(defaults.perPage, DEFAULT_PER_PAGE, MAX_PER_PAGE);
   for (const key of ["search", "currency", "category", "institution", "tag"] as const) {
     const value = filters[key];
     if (value) params.set(key, value);
   }
   if (filters.page && filters.page > 1) params.set("page", String(filters.page));
-  if (filters.perPage && filters.perPage !== DEFAULT_PER_PAGE) {
+  if (filters.perPage && filters.perPage !== defaultPerPage) {
     params.set("per_page", String(filters.perPage));
   }
   return params;

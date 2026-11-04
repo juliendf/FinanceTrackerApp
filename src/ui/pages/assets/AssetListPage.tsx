@@ -6,7 +6,7 @@
  * back-button.
  */
 
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,9 +28,10 @@ import {
 } from "../../../domain/assets";
 import { RateTable } from "../../../domain/currency";
 import { formatDate, formatMinorAsCurrency, relativeDate } from "../../../domain/format";
-import { assetPageNumbers, paginate } from "../../../domain/pagination";
+import { pageNumbers, paginate } from "../../../domain/pagination";
 import { freshness, snapshotDateRange, type FreshnessStatus } from "../../../domain/portfolio";
 import { useSettings } from "../../../lib/useSettings";
+import { useStableListHeight } from "../../../lib/useStableListHeight";
 import { AssetDeleteModal } from "../../components/AssetDeleteModal";
 import { PageHeader } from "../../components/FormCard";
 import { StatCard } from "../../components/StatCard";
@@ -48,7 +49,12 @@ const PAGE_SIZES = [10, 20, 50, 100];
 
 export function AssetListPage() {
   const [params, setParams] = useSearchParams();
-  const filters = useMemo(() => parseAssetFilters(params), [params]);
+  const { baseCurrency, itemsPerPage } = useSettings();
+  // The Items Per Page setting is the fallback; an explicit per_page in the URL
+  // still wins. Both directions take the same defaults so a filter change never
+  // pins the setting's value into the URL.
+  const listDefaults = useMemo(() => ({ perPage: itemsPerPage }), [itemsPerPage]);
+  const filters = useMemo(() => parseAssetFilters(params, listDefaults), [params, listDefaults]);
 
   // The form edits a draft; "Search" commits it to the URL, like the GET form.
   const [draft, setDraft] = useState(filters);
@@ -58,7 +64,6 @@ export function AssetListPage() {
 
   const toast = useToast();
   const queryClient = useQueryClient();
-  const { baseCurrency } = useSettings();
 
   const assetsQuery = useQuery({ queryKey: ["assets"], queryFn: listAssets });
   const institutions = useQuery({ queryKey: ["institutions"], queryFn: listInstitutions });
@@ -70,6 +75,10 @@ export function AssetListPage() {
   const allAssets = useMemo(() => assetsQuery.data ?? [], [assetsQuery.data]);
   const filtered = useMemo(() => filterAssets(allAssets, filters), [allAssets, filters]);
   const page = useMemo(() => paginate(filtered, filters.page, filters.perPage), [filtered, filters]);
+
+  // Keeps the table the height of its tallest page, so paging never moves it.
+  const tableRef = useRef<HTMLDivElement>(null);
+  const listFloor = useStableListHeight(tableRef, `${filtered.length}|${page.perPage}`);
 
   const rateTable = useMemo(() => new RateTable(rates.data ?? []), [rates.data]);
   const summary = useMemo(
@@ -86,12 +95,13 @@ export function AssetListPage() {
   const chips = activeFilterChips(filters);
   const hasFilters = chips.length > 0;
 
-  const go = (next: Partial<typeof filters>) => setParams(assetFiltersToParams({ ...filters, ...next }));
+  const go = (next: Partial<typeof filters>) =>
+    setParams(assetFiltersToParams({ ...filters, ...next }, listDefaults));
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
     // A new search always starts on page 1.
-    setParams(assetFiltersToParams({ ...draft, page: 1 }));
+    setParams(assetFiltersToParams({ ...draft, page: 1 }, listDefaults));
   };
 
   const remove = useMutation({
@@ -284,9 +294,19 @@ export function AssetListPage() {
             <p className="text-muted">Loading…</p>
           ) : page.items.length > 0 ? (
             <>
-              <div className="table-container">
+              <div className="table-container" ref={tableRef} style={listFloor ? { minHeight: listFloor } : undefined}>
                 <div className="table-responsive">
-                  <table className="table table-hover align-middle mb-0">
+                  <table className="table table-hover align-middle mb-0 table-fixed">
+                    <colgroup>
+                      <col style={{ width: "21%" }} />
+                      <col style={{ width: "14%" }} />
+                      <col style={{ width: "16%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "9%" }} />
+                      <col style={{ width: "8%" }} />
+                      <col style={{ width: "6%" }} />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th>Asset</th>
@@ -323,7 +343,7 @@ export function AssetListPage() {
                       )}
                     </li>
 
-                    {assetPageNumbers(page.page, page.pages).map((number, index) =>
+                    {pageNumbers(page.page, page.pages).map((number, index) =>
                       number === null ? (
                         <li className="page-item disabled" key={`gap-${index}`}>
                           <span className="page-link">…</span>
@@ -449,7 +469,7 @@ function AssetTableRow({ asset, onDelete }: { asset: AssetRow; onDelete: (row: A
         ) : null}
       </td>
       <td>{asset.institution_name}</td>
-      <td><span className="chip">{asset.category_name}</span></td>
+      <td><span className="chip" title={asset.category_name}>{asset.category_name}</span></td>
       <td>
         {asset.tags.length > 0 ? (
           asset.tags.map((tag) => <TagBadge key={tag.id} name={tag.name} color={tag.color} />)

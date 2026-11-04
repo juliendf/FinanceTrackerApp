@@ -245,7 +245,12 @@ export function ExportButtons({
 /** `tag_badge` */
 export function TagBadge({ name, color }: { name: string; color?: string | null }) {
   return (
-    <span className="badge" style={{ backgroundColor: color || "#6c757d", color: "#fff" }}>
+    <span
+      className="badge"
+      // Truncated in a fixed-width table cell, so keep the full name reachable.
+      title={name}
+      style={{ backgroundColor: color || "#6c757d", color: "#fff" }}
+    >
       {name}
     </span>
   );

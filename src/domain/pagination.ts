@@ -15,6 +15,28 @@ export interface Page<T> {
   hasNext: boolean;
 }
 
+/**
+ * Per-page fallback for a list screen.
+ *
+ * The URL query is the source of truth for what a view currently shows; this is
+ * what to use when the query says nothing, which is the Items Per Page setting.
+ */
+export interface ListDefaults {
+  perPage?: number;
+}
+
+/**
+ * Clamp a per-page value into the range a list query accepts.
+ *
+ * The fallback comes from a setting, which is stored as TEXT and coerced with
+ * `Number()` on read: a corrupted row yields NaN, and NaN would propagate into
+ * `paginate` and blank the list. Returning the fallback keeps that impossible.
+ */
+export function clampPerPage(value: number | undefined, fallback: number, max: number): number {
+  if (value === undefined || !Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(Math.trunc(value), 1), max);
+}
+
 export function paginate<T>(items: readonly T[], page: number, perPage: number): Page<T> {
   const requested = Math.floor(perPage);
   // A rogue page size (0, negative, NaN) falls back to the default rather than
@@ -37,41 +59,57 @@ export function paginate<T>(items: readonly T[], page: number, perPage: number):
 }
 
 /**
- * Page numbers to render, with `null` marking a gap.
- * An edge of 1 on each side, one page before the current one and two after.
+ * The pager always renders this many slots, so its width never changes.
+ *
+ * A centred pager whose item count varies slides sideways on every click: the
+ * asset list showed 6 slots on page 1 and 10 in the middle, which moved the
+ * whole row by about two buttons. Fixing the count makes the strip still.
  */
-export function pageNumbers(
-  current: number,
-  totalPages: number,
-  options: {
-    leftEdge?: number;
-    rightEdge?: number;
-    leftCurrent?: number;
-    rightCurrent?: number;
-  } = {},
-): Array<number | null> {
-  const {
-    leftEdge = 1,
-    rightEdge = 1,
-    leftCurrent = 1,
-    rightCurrent = 2,
-  } = options;
+export const PAGER_SLOTS = 9;
 
-  const result: Array<number | null> = [];
-  let lastSeen = 0;
-
-  for (let page = 1; page <= totalPages; page += 1) {
-    const nearCurrent =
-      page >= current - leftCurrent && page <= current + rightCurrent;
-    const nearEdge = page <= leftEdge || page > totalPages - rightEdge;
-
-    if (nearCurrent || nearEdge) {
-      if (lastSeen && page - lastSeen > 1) result.push(null);
-      result.push(page);
-      lastSeen = page;
-    }
+/**
+ * Page numbers to render, with `null` marking a gap.
+ *
+ * Returns every page when there are `PAGER_SLOTS` or fewer, and exactly
+ * `PAGER_SLOTS` entries otherwise, whatever the current page. Keeping the count
+ * constant is what stops the pager moving under the cursor.
+ */
+export function pageNumbers(current: number, totalPages: number): Array<number | null> {
+  const total = Math.floor(totalPages);
+  if (!Number.isFinite(total) || total < 1) return [];
+  if (total <= PAGER_SLOTS) {
+    return Array.from({ length: total }, (_, index) => index + 1);
   }
 
+  const page = Math.min(Math.max(Math.floor(current) || 1, 1), total);
+
+  // A gap costs a slot, and a gap only exists when the window does not touch its
+  // edge. Start with the smallest window two gaps leave room for, read off which
+  // edges are open, then widen to fill what is left.
+  let size = PAGER_SLOTS - 4;
+  const clampWindow = (): { start: number; end: number } => {
+    let start = page - Math.floor((size - 1) / 2);
+    let end = start + size - 1;
+    if (start < 2) {
+      start = 2;
+      end = start + size - 1;
+    }
+    if (end > total - 1) {
+      end = total - 1;
+      start = end - size + 1;
+    }
+    return { start, end };
+  };
+
+  let { start, end } = clampWindow();
+  size = PAGER_SLOTS - 2 - (start > 2 ? 1 : 0) - (end < total - 1 ? 1 : 0);
+  ({ start, end } = clampWindow());
+
+  const result: Array<number | null> = [1];
+  if (start > 2) result.push(null);
+  for (let n = start; n <= end; n += 1) result.push(n);
+  if (end < total - 1) result.push(null);
+  result.push(total);
   return result;
 }
 
@@ -124,32 +162,4 @@ export function paginationLabel(page: Page<unknown>): string {
   const last =
     page.page < page.pages ? page.perPage * page.page : page.total;
   return `Showing ${first} to ${last} of ${page.total} entries`;
-}
-
-/**
- * Page numbers for the asset list: edges of 2, a window from `current - 2` to
- * `current + 2`.
- *
- * Only the numbers are produced, never the gaps, so a pager built from this
- * shows "1 2 5 6 7 8 9 20 21" with nothing marking the jumps. This returns
- * `null` for a gap so the UI can print an ellipsis instead.
- */
-export function assetPageNumbers(
-  current: number,
-  totalPages: number,
-  { leftEdge = 2, leftCurrent = 2, rightCurrent = 3, rightEdge = 2 } = {},
-): Array<number | null> {
-  const result: Array<number | null> = [];
-  let last = 0;
-  for (let page = 1; page <= totalPages; page += 1) {
-    const keep =
-      page <= leftEdge ||
-      (current - leftCurrent - 1 < page && page < current + rightCurrent) ||
-      page > totalPages - rightEdge;
-    if (!keep) continue;
-    if (last && page - last > 1) result.push(null);
-    result.push(page);
-    last = page;
-  }
-  return result;
 }

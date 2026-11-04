@@ -12,6 +12,7 @@ import { displayName } from "./assets";
 import { isFutureSnapshotDate, isValidIsoDate } from "./dates";
 import { formatNumber, formatSymbolAmount } from "./format";
 import { fromMinorUnits, toMinorUnits } from "./money";
+import { clampPerPage, type ListDefaults } from "./pagination";
 
 /** A snapshot joined to its asset, institution and category. */
 export interface SnapshotListRow {
@@ -95,7 +96,10 @@ export interface ParsedSnapshotFilters {
 }
 
 /** Read the list filters out of the URL query. */
-export function parseSnapshotFilters(params: URLSearchParams): ParsedSnapshotFilters {
+export function parseSnapshotFilters(
+  params: URLSearchParams,
+  defaults: ListDefaults = {},
+): ParsedSnapshotFilters {
   const warnings: string[] = [];
 
   let start = (params.get("start_date") ?? "").trim();
@@ -114,10 +118,11 @@ export function parseSnapshotFilters(params: URLSearchParams): ParsedSnapshotFil
   // Anything other than 'desc', including a typo, sorts ascending.
   const sort_order: SortOrder = (params.get("sort_order") ?? "desc") === "desc" ? "desc" : "asc";
 
-  // Pagination: per_page capped at 100, below 1 falls back to 20,
-  // a page below 1 becomes 1.
-  const perPageRaw = intOrNull(params.get("per_page")) ?? 20;
-  const per_page = perPageRaw < 1 ? 20 : Math.min(perPageRaw, MAX_PER_PAGE);
+  // Pagination: per_page capped at 100; missing, below 1 or unreadable falls back
+  // to the Items Per Page setting, and a page below 1 becomes 1.
+  const fallbackPerPage = clampPerPage(defaults.perPage, DEFAULT_SNAPSHOT_FILTERS.per_page, MAX_PER_PAGE);
+  const perPageRaw = intOrNull(params.get("per_page")) ?? fallbackPerPage;
+  const per_page = perPageRaw < 1 ? fallbackPerPage : Math.min(perPageRaw, MAX_PER_PAGE);
   const page = Math.max(intOrNull(params.get("page")) ?? 1, 1);
 
   return {
@@ -139,9 +144,13 @@ export function parseSnapshotFilters(params: URLSearchParams): ParsedSnapshotFil
 }
 
 /** Serialise back to a query, omitting defaults. */
-export function snapshotFiltersToParams(filters: Partial<SnapshotFilters>): URLSearchParams {
+export function snapshotFiltersToParams(
+  filters: Partial<SnapshotFilters>,
+  defaults: ListDefaults = {},
+): URLSearchParams {
   const params = new URLSearchParams();
   const d = DEFAULT_SNAPSHOT_FILTERS;
+  const defaultPerPage = clampPerPage(defaults.perPage, d.per_page, MAX_PER_PAGE);
   for (const key of ["start_date", "end_date", "currency", "search", "min_amount", "max_amount"] as const) {
     const value = filters[key];
     if (value) params.set(key, value);
@@ -152,7 +161,7 @@ export function snapshotFiltersToParams(filters: Partial<SnapshotFilters>): URLS
   if (filters.sort_by && filters.sort_by !== d.sort_by) params.set("sort_by", filters.sort_by);
   if (filters.sort_order && filters.sort_order !== d.sort_order) params.set("sort_order", filters.sort_order);
   if (filters.page && filters.page > 1) params.set("page", String(filters.page));
-  if (filters.per_page && filters.per_page !== d.per_page) params.set("per_page", String(filters.per_page));
+  if (filters.per_page && filters.per_page !== defaultPerPage) params.set("per_page", String(filters.per_page));
   return params;
 }
 
@@ -257,40 +266,6 @@ export function summariseSnapshots(rows: readonly Pick<SnapshotListRow, "date">[
 /** Distinct currencies, sorted, as the filter dropdown offers them. */
 export function snapshotCurrencyOptions(rows: readonly Pick<SnapshotListRow, "currency">[]): string[] {
   return [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort();
-}
-
-/**
- * Page numbers for the list pager: a left edge of 2, a window from
- * `current - 2` to `current + 4`, a right edge of 2, with `null` marking a gap.
- * The asset list uses a different helper, `assetPageNumbers`.
- */
-export function pageNumbers(
-  current: number,
-  totalPages: number,
-  { leftEdge = 2, leftCurrent = 2, rightCurrent = 4, rightEdge = 2 } = {},
-): Array<number | null> {
-  const end = totalPages + 1;
-  if (end === 1) return [];
-
-  const result: Array<number | null> = [];
-  const range = (from: number, to: number) => {
-    for (let n = from; n < to; n += 1) result.push(n);
-  };
-
-  const leftEnd = Math.min(1 + leftEdge, end);
-  range(1, leftEnd);
-  if (leftEnd === end) return result;
-
-  const midStart = Math.max(leftEnd, current - leftCurrent);
-  const midEnd = Math.min(current + rightCurrent + 1, end);
-  if (midStart - leftEnd > 0) result.push(null);
-  range(midStart, midEnd);
-  if (midEnd === end) return result;
-
-  const rightStart = Math.max(midEnd, end - rightEdge);
-  if (rightStart - midEnd > 0) result.push(null);
-  range(rightStart, end);
-  return result;
 }
 
 // --- CSV export --------------------------------------------------------------

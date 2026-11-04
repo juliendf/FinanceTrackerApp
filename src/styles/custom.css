@@ -1766,6 +1766,45 @@ select[multiple].form-select option {
     overflow-x: auto;
 }
 
+/* List tables: fixed columns, so changing page never re-distributes the widths.
+   With the default `auto` layout the browser sizes columns from the rows it can
+   see, so a long name on page 2 widened the Asset column and shoved every other
+   column sideways. Content wraps instead of being clipped; below the minimum the
+   container scrolls rather than squeezing the columns. */
+.table-fixed {
+    table-layout: fixed;
+    min-width: 56rem;
+}
+
+/* A fixed column sets the width, but a `nowrap` chip inside a cell does not
+   shrink to fit it — it spills over the next column and the two read as one.
+   Clip the cells, and ellipsise the things that never wrap. The last cell stays
+   unclipped so a row menu can open outside it. */
+.table-fixed > thead > tr > th,
+.table-fixed > tbody > tr > td {
+    overflow: hidden;
+}
+
+.table-fixed > thead > tr > th:last-child,
+.table-fixed > tbody > tr > td:last-child {
+    overflow: visible;
+}
+
+.table-fixed td .chip {
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.table-fixed td .badge {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
 /* Toolbar above a table: count on the left, controls on the right. */
 .table-toolbar {
     display: flex;
@@ -1972,6 +2011,10 @@ select[multiple].form-select option {
     font-size: 0.8125rem;
     font-weight: 500;
     border: 1px solid transparent;
+    /* One and two digit numbers, and the ellipsis, must share a width or the
+       pager breathes in and out as the current page changes. */
+    min-width: 2.125rem;
+    text-align: center;
 }
 
 .page-item.active .page-link { font-weight: 650; }
