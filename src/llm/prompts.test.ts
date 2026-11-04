@@ -101,6 +101,26 @@ describe("prompt sections", () => {
     expect(prompt).toContain("Never substitute a currency symbol");
   });
 
+  it("bounds the assistant to money questions without refusing adjacent ones", () => {
+    const prompt = buildSystemPrompt({
+      today: "2026-10-31",
+      baseCurrency: "CHF",
+      profile,
+      goals: [],
+      memories: [],
+    });
+    // Off-topic questions are declined in one line...
+    expect(prompt).toContain("Stay in scope");
+    expect(prompt).toContain("If a question is unrelated to their finances");
+    // ...but tax, insurance and pensions are explicitly in scope. A guard that
+    // refused those would be a worse bug than the one it fixes, so the boundary
+    // and its exception are asserted together.
+    expect(prompt).toContain("Never refuse a money question");
+    for (const topic of ["tax", "insurance", "property", "pension", "inheritance"]) {
+      expect(prompt).toContain(topic);
+    }
+  });
+
   it("states the planning facts the assistant needs", () => {
     const text = buildProfileContext(
       {

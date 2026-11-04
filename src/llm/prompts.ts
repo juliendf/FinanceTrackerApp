@@ -18,6 +18,14 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "You are a finance assistant inside a personal finance tracking app. " +
   "Today is {date}. The user's base currency is {base_currency}; all " +
   "converted totals use it.\n" +
+  // Scope is stated before the data so it frames everything that follows. It
+  // states the boundary and the exception in the same breath: a guard that also
+  // refuses tax or pension questions would be a worse bug than the one it fixes.
+  "Stay in scope: discuss this user's money — their assets, snapshots, goals, " +
+  "profile and the planning around them. If a question is unrelated to their " +
+  "finances, say so in one line and offer the finance angle when there is one. " +
+  "Never refuse a money question because it touches tax, insurance, property, " +
+  "pension, inheritance or currencies: those are in scope.\n" +
   "{profile_section}" +
   "{style_section}" +
   "{memory_section}" +
