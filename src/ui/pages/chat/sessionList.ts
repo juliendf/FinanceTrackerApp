@@ -72,30 +72,40 @@ export function sessionMeta(updatedAt: string, now: Date = new Date()): SessionM
 }
 
 export interface SessionGroup<T> {
-  /** "This week" or "Earlier". */
+  /** "Pinned", "This week" or "Earlier". */
   title: string;
   items: Array<T & { meta: SessionMeta }>;
 }
 
 /**
- * Split conversations into "This week" and "Earlier", newest first, with the
- * timestamp computed once per row.
+ * Split conversations into "Pinned", "This week" and "Earlier", newest first,
+ * with the timestamp computed once per row.
+ *
+ * A pinned conversation appears in Pinned only, never in its date group as well:
+ * the same row twice in one list reads as a bug, and the pin is the stronger
+ * signal of where the user expects to find it.
  */
 export function groupSessions(
   conversations: readonly Conversation[],
   now: Date = new Date(),
 ): Array<SessionGroup<Conversation>> {
+  const pinned: SessionGroup<Conversation>["items"] = [];
   const week: SessionGroup<Conversation>["items"] = [];
   const earlier: SessionGroup<Conversation>["items"] = [];
 
   for (const conversation of conversations) {
     const item = { ...conversation, meta: sessionMeta(conversation.updated_at, now) };
+    if (conversation.pinned_at) {
+      pinned.push(item);
+      continue;
+    }
     const date = parse(conversation.updated_at);
-    const days = date ? Math.round((startOfDay(now) - startOfDay(date)) / 86_400_000) : 99;
+    const days = date ? Math.round((startOfDay(now) - startOfDay(date)) / DAY) : 99;
     (days < 7 ? week : earlier).push(item);
   }
 
   const groups: Array<SessionGroup<Conversation>> = [];
+  if (pinned.length > 0) groups.push({ title: "Pinned", items: pinned });
   if (week.length > 0) groups.push({ title: "This week", items: week });
   if (earlier.length > 0) groups.push({ title: "Earlier", items: earlier });
   return groups;

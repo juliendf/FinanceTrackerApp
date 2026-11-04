@@ -4,11 +4,12 @@ import { filterSessions, groupSessions, sessionMeta } from "./sessionList";
 
 const now = new Date("2026-11-01T15:00:00");
 
-const conv = (id: number, title: string, updated_at: string): Conversation => ({
+const conv = (id: number, title: string, updated_at: string, pinned_at: string | null = null): Conversation => ({
   id,
   provider_id: null,
   model_override: null,
   title,
+  pinned_at,
   created_at: updated_at,
   updated_at,
 });
@@ -85,6 +86,37 @@ describe("groupSessions", () => {
 
   it("is empty-safe", () => {
     expect(groupSessions([], now)).toEqual([]);
+  });
+
+  it("puts pinned conversations in their own group, once", () => {
+    const groups = groupSessions(
+      [
+        conv(1, "Pinned and old", "2026-10-14T10:00:00", "2026-10-20T09:00:00"),
+        conv(2, "Pinned and recent", "2026-11-01T13:00:00", "2026-11-01T14:00:00"),
+        conv(3, "Recent", "2026-11-01T13:00:00"),
+        conv(4, "Old", "2026-10-16T10:00:00"),
+      ],
+      now,
+    );
+    expect(groups.map((group) => group.title)).toEqual(["Pinned", "This week", "Earlier"]);
+    // Input order is the repository's: pinned_at DESC, then updated_at DESC.
+    expect(groups[0].items.map((item) => item.title)).toEqual(["Pinned and old", "Pinned and recent"]);
+    // A pinned conversation must not also appear under its date.
+    expect(groups[1].items.map((item) => item.title)).toEqual(["Recent"]);
+    expect(groups[2].items.map((item) => item.title)).toEqual(["Old"]);
+  });
+
+  it("omits the Pinned group entirely when nothing is pinned", () => {
+    const groups = groupSessions([conv(1, "Recent", "2026-11-01T13:00:00")], now);
+    expect(groups.map((group) => group.title)).toEqual(["This week"]);
+  });
+
+  it("keeps a pinned conversation first even in the Earlier group's absence", () => {
+    const groups = groupSessions(
+      [conv(1, "Pinned", "2026-10-14T10:00:00", "2026-10-20T09:00:00")],
+      now,
+    );
+    expect(groups.map((group) => group.title)).toEqual(["Pinned"]);
   });
 });
 

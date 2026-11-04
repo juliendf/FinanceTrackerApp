@@ -2677,6 +2677,39 @@ body.chat-page main > .container-fluid {
     color: var(--negative);
 }
 
+/* Pin toggle: same box as the delete control, but its own colour, and it stays
+   visible on a pinned row so the state is readable without hovering. */
+.chat-sidebar-item .btn-pin-conv {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.125rem;
+    height: 1.125rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+    background: transparent;
+    color: inherit;
+    font-size: 0.75rem;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.chat-sidebar-item:hover .btn-pin-conv { opacity: 0.7; }
+
+.chat-sidebar-item .btn-pin-conv:hover,
+.chat-sidebar-item .btn-pin-conv:focus-visible {
+    opacity: 1;
+    background-color: var(--accent-subtle);
+    color: var(--accent);
+}
+
+.chat-sidebar-item .btn-pin-conv.is-pinned {
+    opacity: 1;
+    color: var(--accent);
+}
+
 /* ---- Main pane ---- */
 
 .chat-main {

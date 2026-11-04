@@ -19,6 +19,7 @@ import {
   listMessages,
   renameConversation,
   setConversationModel,
+  setConversationPinned,
   setConversationProvider,
 } from "../../../db/repositories/chat";
 import {
@@ -244,6 +245,12 @@ export function ChatPage() {
     if (!title) return;
     await renameConversation(renaming, title.slice(0, 100));
     refreshList();
+  };
+
+  const togglePin = async (convId: number, pinned: boolean) => {
+    await setConversationPinned(convId, !pinned);
+    // Only the list changed: pinning does not touch messages or the transcript.
+    void queryClient.invalidateQueries({ queryKey: ["conversations"] });
   };
 
   const removeConversation = async (convId: number) => {
@@ -521,6 +528,16 @@ export function ChatPage() {
                       </button>
                     )}
                     <span className="item-meta" title={conv.meta.title}>{conv.meta.label}</span>
+                    <button
+                      type="button"
+                      className={`btn-pin-conv${conv.pinned_at ? " is-pinned" : ""}`}
+                      title={conv.pinned_at ? "Unpin session" : "Pin session"}
+                      aria-label={`${conv.pinned_at ? "Unpin" : "Pin"} ${conv.title}`}
+                      aria-pressed={conv.pinned_at !== null}
+                      onClick={() => void togglePin(conv.id, conv.pinned_at !== null)}
+                    >
+                      <i className={`bi ${conv.pinned_at ? "bi-pin-fill" : "bi-pin-angle"}`} aria-hidden="true" />
+                    </button>
                     <button
                       type="button"
                       className="btn-delete-conv"

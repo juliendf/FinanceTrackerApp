@@ -9,6 +9,8 @@ export interface Conversation {
   provider_id: number | null;
   model_override: string | null;
   title: string;
+  /** Set when the conversation is pinned; NULL otherwise. */
+  pinned_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -40,11 +42,15 @@ export interface PendingAction {
   updated_at: string;
 }
 
-const CONVERSATION_SQL = `SELECT id, provider_id, model_override, title, created_at, updated_at FROM conversations`;
+const CONVERSATION_SQL = `SELECT id, provider_id, model_override, title, pinned_at, created_at, updated_at FROM conversations`;
 
 export async function listConversations(): Promise<Conversation[]> {
   const db = await getDb();
-  return db.select<Conversation[]>(`${CONVERSATION_SQL} ORDER BY updated_at DESC, id DESC`);
+  // Pinned first, then most recent activity. `pinned_at IS NULL` is 0 for a
+  // pinned row and 1 otherwise, so the default ASC sort puts them on top.
+  return db.select<Conversation[]>(
+    `${CONVERSATION_SQL} ORDER BY pinned_at IS NULL, pinned_at DESC, updated_at DESC, id DESC`,
+  );
 }
 
 export async function getConversation(id: number): Promise<Conversation | null> {
@@ -87,6 +93,21 @@ export async function renameConversation(id: number, title: string): Promise<voi
 export async function touchConversation(id: number): Promise<void> {
   await executeWrite(
     `UPDATE conversations SET updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`,
+    [id],
+  );
+}
+
+/**
+ * Pin or unpin a conversation.
+ *
+ * Deliberately leaves `updated_at` alone: pinning is not activity, and bumping
+ * it would move the very conversation the user just arranged.
+ */
+export async function setConversationPinned(id: number, pinned: boolean): Promise<void> {
+  await executeWrite(
+    pinned
+      ? `UPDATE conversations SET pinned_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?`
+      : `UPDATE conversations SET pinned_at = NULL WHERE id = ?`,
     [id],
   );
 }

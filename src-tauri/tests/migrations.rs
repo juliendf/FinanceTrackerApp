@@ -29,6 +29,21 @@ async fn scalar(file: &std::path::Path, sql: &str) -> i64 {
     row.0
 }
 
+/// How many migrations the migrator is expected to have applied.
+///
+/// Counted from the directory rather than hardcoded: the point of these
+/// assertions is "every migration is recorded", not "there are eight files".
+/// A literal here only has to be edited every time a migration is added, which
+/// is exactly when a stale number would go unnoticed.
+fn expected_migrations() -> i64 {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("migrations");
+    std::fs::read_dir(dir)
+        .expect("the migrations directory")
+        .filter_map(Result::ok)
+        .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "sql"))
+        .count() as i64
+}
+
 #[tokio::test]
 async fn creates_the_database_and_its_schema() {
     let dir = temp_dir("fresh");
@@ -55,7 +70,7 @@ async fn creates_the_database_and_its_schema() {
         );
     }
     // Every migration is recorded, so a later release only applies the new ones.
-    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 8);
+    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, expected_migrations());
 }
 
 #[tokio::test]
@@ -77,7 +92,7 @@ async fn running_twice_is_a_no_op() {
     migrate_at(&file).await.expect("a second run must succeed");
 
     assert_eq!(scalar(&file, "SELECT COUNT(*) FROM institutions").await, 1);
-    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, 8);
+    assert_eq!(scalar(&file, "SELECT COUNT(*) FROM _sqlx_migrations").await, expected_migrations());
 }
 
 #[tokio::test]
