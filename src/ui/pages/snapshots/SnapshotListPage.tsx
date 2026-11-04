@@ -4,7 +4,7 @@
  * Filters, sort and page live in the URL query.
  */
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import { invoke } from "@tauri-apps/api/core";
@@ -36,6 +36,7 @@ import { BulkDeleteModal, SnapshotDeleteModal } from "../../components/SnapshotD
 import { StatCard } from "../../components/StatCard";
 import { useSettings } from "../../../lib/useSettings";
 import { useStableListHeight } from "../../../lib/useStableListHeight";
+import { useDebouncedFilter } from "../../../lib/useDebouncedFilter";
 import { useToast } from "../../layout/Toasts";
 
 const PAGE_SIZES = [10, 20, 50, 100];
@@ -67,9 +68,6 @@ export function SnapshotListPage() {
     warned.current = key;
   }, [warnings, toast]);
 
-  const [draft, setDraft] = useState(filters);
-  useEffect(() => setDraft(filters), [filters]);
-
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [pendingDelete, setPendingDelete] = useState<SnapshotListRow | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
@@ -100,11 +98,6 @@ export function SnapshotListPage() {
         { perPage: itemsPerPage },
       ),
     );
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    commit(draft);
-  };
 
   const refresh = () => {
     for (const key of ["snapshot-rows", "snapshots", "snapshot-points", "assets", "asset-row"]) {
@@ -171,11 +164,20 @@ export function SnapshotListPage() {
 
   const sortBy = (column: SortBy) => commit({ ...filters, ...nextSort(filters, column) });
 
-  const auto = (patch: Partial<SnapshotFilters>) => {
-    const next = { ...draft, ...patch };
-    setDraft(next);
-    commit(next);
-  };
+  /** A filter change always starts at page 1; `commit` already does that. */
+  const applyFilters = (patch: Partial<SnapshotFilters>) => commit({ ...filters, ...patch });
+
+  // Text and number boxes wait for a pause; dates, selects and the sort headers
+  // fire as they change because each fires once.
+  const [search, setSearch] = useDebouncedFilter(filters.search, (next) =>
+    commit({ ...filters, search: next }),
+  );
+  const [minAmount, setMinAmount] = useDebouncedFilter(filters.min_amount, (next) =>
+    commit({ ...filters, min_amount: next }),
+  );
+  const [maxAmount, setMaxAmount] = useDebouncedFilter(filters.max_amount, (next) =>
+    commit({ ...filters, max_amount: next }),
+  );
 
   return (
     <>
@@ -221,23 +223,23 @@ export function SnapshotListPage() {
 
       <div className="filter-section">
         <div className="panel-title">Filters</div>
-        <form onSubmit={submit} id="filterForm">
+        <div id="filterForm">
           <div className="row g-3">
             <div className="col-md-3">
               <label htmlFor="start_date" className="form-label">Start Date</label>
-              <input type="date" className="form-control" id="start_date" value={draft.start_date}
-                onChange={(e) => setDraft({ ...draft, start_date: e.target.value })} />
+              <input type="date" className="form-control" id="start_date" value={filters.start_date}
+                onChange={(e) => applyFilters({ start_date: e.target.value })} />
             </div>
             <div className="col-md-3">
               <label htmlFor="end_date" className="form-label">End Date</label>
-              <input type="date" className="form-control" id="end_date" value={draft.end_date}
-                onChange={(e) => setDraft({ ...draft, end_date: e.target.value })} />
+              <input type="date" className="form-control" id="end_date" value={filters.end_date}
+                onChange={(e) => applyFilters({ end_date: e.target.value })} />
             </div>
             <div className="col-md-3">
               <label htmlFor="institution_id" className="form-label">Institution</label>
               <select className="form-select" id="institution_id"
-                value={draft.institution_id === null ? "" : String(draft.institution_id)}
-                onChange={(e) => auto({ institution_id: e.target.value === "" ? null : Number(e.target.value) })}>
+                value={filters.institution_id === null ? "" : String(filters.institution_id)}
+                onChange={(e) => applyFilters({ institution_id: e.target.value === "" ? null : Number(e.target.value) })}>
                 <option value="">All Institutions</option>
                 {(institutions.data ?? []).map((row) => (
                   <option key={row.id} value={row.id}>{row.name}</option>
@@ -246,8 +248,8 @@ export function SnapshotListPage() {
             </div>
             <div className="col-md-3">
               <label htmlFor="currency" className="form-label">Currency</label>
-              <select className="form-select" id="currency" value={draft.currency}
-                onChange={(e) => auto({ currency: e.target.value })}>
+              <select className="form-select" id="currency" value={filters.currency}
+                onChange={(e) => applyFilters({ currency: e.target.value })}>
                 <option value="">All Currencies</option>
                 {snapshotCurrencyOptions(allRows).map((code) => (
                   <option key={code} value={code}>{code}</option>
@@ -257,22 +259,22 @@ export function SnapshotListPage() {
             <div className="col-md-3">
               <label htmlFor="min_amount" className="form-label">Min Amount</label>
               <input type="number" className="form-control" id="min_amount" step="0.01" placeholder="0.00"
-                value={draft.min_amount} onChange={(e) => setDraft({ ...draft, min_amount: e.target.value })} />
+                value={minAmount} onChange={(e) => setMinAmount(e.target.value)} />
             </div>
             <div className="col-md-3">
               <label htmlFor="max_amount" className="form-label">Max Amount</label>
               <input type="number" className="form-control" id="max_amount" step="0.01" placeholder="999999.99"
-                value={draft.max_amount} onChange={(e) => setDraft({ ...draft, max_amount: e.target.value })} />
+                value={maxAmount} onChange={(e) => setMaxAmount(e.target.value)} />
             </div>
             <div className="col-md-4">
               <label htmlFor="search" className="form-label">Search</label>
               <input type="text" className="form-control" id="search" placeholder="Search asset names, institutions..."
-                value={draft.search} onChange={(e) => setDraft({ ...draft, search: e.target.value })} />
+                value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <div className="col-md-2">
               <label htmlFor="per_page" className="form-label">Per Page</label>
-              <select className="form-select" id="per_page" value={draft.per_page}
-                onChange={(e) => auto({ per_page: Number(e.target.value) })}>
+              <select className="form-select" id="per_page" value={filters.per_page}
+                onChange={(e) => applyFilters({ per_page: Number(e.target.value) })}>
                 {PAGE_SIZES.map((size) => (
                   <option key={size} value={size}>{size}</option>
                 ))}
@@ -280,16 +282,12 @@ export function SnapshotListPage() {
             </div>
           </div>
           <div className="d-flex flex-wrap gap-2 mt-3">
-            <button type="submit" className="btn btn-primary btn-sm">
-              <i className="bi bi-funnel" aria-hidden="true" />
-              Apply Filters
-            </button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setParams(new URLSearchParams())}>
               <i className="bi bi-x-lg" aria-hidden="true" />
               Clear All
             </button>
           </div>
-        </form>
+        </div>
       </div>
 
       {selected.size > 0 ? (

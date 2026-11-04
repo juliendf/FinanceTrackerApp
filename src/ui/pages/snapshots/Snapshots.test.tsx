@@ -96,6 +96,46 @@ describe("SnapshotListPage", () => {
     expect(screen.getByTestId("loc").textContent).toBe("/snapshots?currency=CHF");
   });
 
+  it("applies a select as soon as it changes, with no Apply button to press", async () => {
+    const user = userEvent.setup();
+    renderAt("/snapshots", <SnapshotListPage />, "/snapshots");
+    await waitFor(() => expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(3));
+    // Filtering is live, so a submit button would be a second way to do it.
+    expect(screen.queryByRole("button", { name: /apply filters/i })).toBeNull();
+
+    await user.selectOptions(screen.getByLabelText("Currency"), "CHF");
+
+    await waitFor(() => expect(screen.getByTestId("loc").textContent).toContain("currency=CHF"));
+    await waitFor(() => expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(2));
+  });
+
+  it("applies the search and the amount bounds after a pause", async () => {
+    const user = userEvent.setup();
+    renderAt("/snapshots", <SnapshotListPage />, "/snapshots");
+    await waitFor(() => expect(screen.getByLabelText("Search")).toBeTruthy());
+
+    await user.type(screen.getByLabelText("Search"), "P2");
+    await waitFor(() => expect(screen.getByTestId("loc").textContent).toContain("search=P2"));
+
+    await user.type(screen.getByLabelText("Min Amount"), "150");
+    await waitFor(() => expect(screen.getByTestId("loc").textContent).toContain("min_amount=150"));
+  });
+
+  it("drops the page when a filter changes, and keeps the other filters", async () => {
+    const user = userEvent.setup();
+    renderAt("/snapshots?page=2&currency=EUR", <SnapshotListPage />, "/snapshots");
+    await waitFor(() => expect(within(screen.getByRole("table")).getAllByRole("row")).toHaveLength(2));
+    // The institution choices come from their own query, so wait for them.
+    await screen.findByRole("option", { name: "Boursorama" });
+
+    await user.selectOptions(screen.getByLabelText("Institution"), "2");
+
+    await waitFor(() => expect(screen.getByTestId("loc").textContent).toContain("institution_id=2"));
+    const loc = screen.getByTestId("loc").textContent ?? "";
+    expect(loc).toContain("currency=EUR");
+    expect(loc).not.toContain("page=");
+  });
+
   it("sorts by amount ascending on header click", async () => {
     const user = userEvent.setup();
     renderAt("/snapshots", <SnapshotListPage />, "/snapshots");

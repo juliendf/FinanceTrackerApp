@@ -6,7 +6,7 @@
  * back-button.
  */
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,6 +32,7 @@ import { pageNumbers, paginate } from "../../../domain/pagination";
 import { freshness, snapshotDateRange, type FreshnessStatus } from "../../../domain/portfolio";
 import { useSettings } from "../../../lib/useSettings";
 import { useStableListHeight } from "../../../lib/useStableListHeight";
+import { useDebouncedFilter } from "../../../lib/useDebouncedFilter";
 import { AssetDeleteModal } from "../../components/AssetDeleteModal";
 import { PageHeader } from "../../components/FormCard";
 import { StatCard } from "../../components/StatCard";
@@ -47,6 +48,7 @@ const STATUS: Record<FreshnessStatus, { label: string; variant: string }> = {
 
 const PAGE_SIZES = [10, 20, 50, 100];
 
+
 export function AssetListPage() {
   const [params, setParams] = useSearchParams();
   const { baseCurrency, itemsPerPage } = useSettings();
@@ -56,9 +58,14 @@ export function AssetListPage() {
   const listDefaults = useMemo(() => ({ perPage: itemsPerPage }), [itemsPerPage]);
   const filters = useMemo(() => parseAssetFilters(params, listDefaults), [params, listDefaults]);
 
-  // The form edits a draft; "Search" commits it to the URL, like the GET form.
-  const [draft, setDraft] = useState(filters);
-  useEffect(() => setDraft(filters), [filters]);
+  // Filters apply as they change, so they are written straight to the URL. Only
+  // the search box holds local state, because it waits for a pause first.
+  const applyFilters = (patch: Partial<typeof filters>) =>
+    setParams(assetFiltersToParams({ ...filters, ...patch, page: 1 }, listDefaults));
+
+  const [search, setSearch] = useDebouncedFilter(filters.search, (next) =>
+    applyFilters({ search: next }),
+  );
 
   const [pendingDelete, setPendingDelete] = useState<AssetRow | null>(null);
 
@@ -97,12 +104,6 @@ export function AssetListPage() {
 
   const go = (next: Partial<typeof filters>) =>
     setParams(assetFiltersToParams({ ...filters, ...next }, listDefaults));
-
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    // A new search always starts on page 1.
-    setParams(assetFiltersToParams({ ...draft, page: 1 }, listDefaults));
-  };
 
   const remove = useMutation({
     mutationFn: (row: AssetRow) => deleteAsset(row.id),
@@ -182,7 +183,7 @@ export function AssetListPage() {
         <div className="col-12">
           <div className="card">
             <div className="card-body">
-              <form onSubmit={submit} id="filter-form">
+              <div>
                 <div className="row g-3">
                   <div className="col-md-3">
                     <label htmlFor="search" className="form-label">Search</label>
@@ -190,9 +191,9 @@ export function AssetListPage() {
                       type="text"
                       className="form-control"
                       id="search"
-                      value={draft.search}
+                      value={search}
                       placeholder="Search assets, institutions, products..."
-                      onChange={(event) => setDraft({ ...draft, search: event.target.value })}
+                      onChange={(event) => setSearch(event.target.value)}
                     />
                   </div>
 
@@ -200,41 +201,37 @@ export function AssetListPage() {
                     id="currency"
                     label="Currency"
                     all="All Currencies"
-                    value={draft.currency}
+                    value={filters.currency}
                     options={currencyOptions(allAssets)}
-                    onChange={(value) => setDraft({ ...draft, currency: value })}
+                    onChange={(value) => applyFilters({ currency: value })}
                   />
                   <FilterSelect
                     id="category"
                     label="Category"
                     all="All Categories"
-                    value={draft.category}
+                    value={filters.category}
                     options={(categories.data ?? []).map((row) => row.name)}
-                    onChange={(value) => setDraft({ ...draft, category: value })}
+                    onChange={(value) => applyFilters({ category: value })}
                   />
                   <FilterSelect
                     id="institution"
                     label="Institution"
                     all="All Institutions"
-                    value={draft.institution}
+                    value={filters.institution}
                     options={(institutions.data ?? []).map((row) => row.name)}
-                    onChange={(value) => setDraft({ ...draft, institution: value })}
+                    onChange={(value) => applyFilters({ institution: value })}
                   />
                   <FilterSelect
                     id="tag"
                     label="Tag"
                     all="All Tags"
-                    value={draft.tag}
+                    value={filters.tag}
                     options={(tags.data ?? []).map((row) => row.name)}
-                    onChange={(value) => setDraft({ ...draft, tag: value })}
+                    onChange={(value) => applyFilters({ tag: value })}
                   />
                 </div>
 
                 <div className="d-flex flex-wrap gap-2 mt-3">
-                  <button type="submit" className="btn btn-primary btn-sm">
-                    <i className="bi bi-search" aria-hidden="true" />
-                    Search
-                  </button>
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
@@ -244,7 +241,7 @@ export function AssetListPage() {
                     Clear Filters
                   </button>
                 </div>
-              </form>
+              </div>
             </div>
           </div>
         </div>

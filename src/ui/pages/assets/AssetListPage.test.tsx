@@ -140,21 +140,46 @@ describe("AssetListPage", () => {
     expect(screen.getByText("Category: Cash")).toBeTruthy();
   });
 
-  it("commits the form to the URL on Search and goes back to page 1", async () => {
+  it("applies a select as soon as it changes and goes back to page 1", async () => {
     renderList("/assets?page=2&per_page=10");
-    await waitFor(() => expect(screen.getByLabelText("Search")).toBeTruthy());
+    // The currency choices are derived from the assets, so wait for them.
+    await waitFor(() => expect(screen.getByText("UBS - Savings (Cash)")).toBeTruthy());
 
-    await userEvent.type(screen.getByLabelText("Search"), "ubs");
     await userEvent.selectOptions(screen.getByLabelText("Currency"), "CHF");
-    await userEvent.click(screen.getByRole("button", { name: /^search$/i }));
 
-    await waitFor(() => expect(currentSearch()).toContain("search=ubs"));
+    await waitFor(() => expect(currentSearch()).toContain("currency=CHF"));
     const params = new URLSearchParams(currentSearch() ?? "");
-    expect(params.get("currency")).toBe("CHF");
-    expect(params.get("per_page")).toBe("10");
     expect(params.has("page")).toBe(false);
+    expect(params.get("per_page")).toBe("10");
     await waitFor(() => expect(screen.getByText("UBS - Savings (Cash)")).toBeTruthy());
     expect(screen.queryByText("Boursorama - PEA (Investments)")).toBeNull();
+  });
+
+  it("applies the search after a pause, with no Search button to press", async () => {
+    renderList();
+    await waitFor(() => expect(screen.getByLabelText("Search")).toBeTruthy());
+    // Filtering is live, so a submit button would be a second way to do it.
+    expect(screen.queryByRole("button", { name: /^search$/i })).toBeNull();
+
+    await userEvent.type(screen.getByLabelText("Search"), "ubs");
+
+    await waitFor(() => expect(currentSearch()).toContain("search=ubs"));
+    await waitFor(() => expect(screen.getByText("UBS - Savings (Cash)")).toBeTruthy());
+    expect(screen.queryByText("Boursorama - PEA (Investments)")).toBeNull();
+  });
+
+  it("keeps a partly typed search when another filter changes", async () => {
+    renderList();
+    await waitFor(() => expect(screen.getByText("UBS - Savings (Cash)")).toBeTruthy());
+
+    await userEvent.type(screen.getByLabelText("Search"), "bours");
+    // The select commits immediately, before the search debounce fires.
+    await userEvent.selectOptions(screen.getByLabelText("Currency"), "EUR");
+
+    // The box keeps what was typed, and the search still lands.
+    expect((screen.getByLabelText("Search") as HTMLInputElement).value).toBe("bours");
+    await waitFor(() => expect(currentSearch()).toContain("search=bours"));
+    expect(currentSearch()).toContain("currency=EUR");
   });
 
   it("searches institutions, products, categories and code/NIN", async () => {
