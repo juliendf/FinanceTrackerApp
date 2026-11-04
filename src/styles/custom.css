@@ -2215,6 +2215,48 @@ select[multiple].form-select option {
 
 .tag-display { margin: 0 0.25rem 0.25rem 0; }
 
+/* ---- Asset detail ---------------------------------------------------- */
+
+/* Value, when it was recorded, and how much history backs it, in one card.
+   The page used to be three equal-width cards whose contents were wildly
+   different lengths, which left a few hundred pixels of nothing underneath. */
+.asset-summary-main {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.asset-summary-facts {
+    display: flex;
+    gap: 2.25rem;
+    flex-wrap: wrap;
+    text-align: right;
+}
+
+.asset-summary-value {
+    font-size: 1rem;
+    font-weight: 650;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* Label/value pairs: one column when narrow, two once there is room. */
+.asset-facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    gap: 0.625rem 2rem;
+}
+
+.asset-fact {
+    display: grid;
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+}
+
 /* Accent-railed detail cards */
 .asset-detail-card,
 .bulk-edit-card {
