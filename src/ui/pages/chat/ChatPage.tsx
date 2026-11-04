@@ -520,7 +520,7 @@ export function ChatPage() {
                         {conv.title}
                       </button>
                     )}
-                    <span className="item-meta">{conv.meta.label}</span>
+                    <span className="item-meta" title={conv.meta.title}>{conv.meta.label}</span>
                     <button
                       type="button"
                       className="btn-delete-conv"
