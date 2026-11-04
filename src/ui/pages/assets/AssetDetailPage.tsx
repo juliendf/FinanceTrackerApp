@@ -85,6 +85,19 @@ export function AssetDetailPage() {
   const history = buildHistory(snapshotsQuery.data ?? []);
   const latest = history[0] ?? null;
   const oldest = history.length >= 2 ? history[history.length - 1] : null;
+  // Reference fields that are only occasionally useful, on one muted line.
+  const footnote = [
+    asset.code_nin ? `Code/NIN ${asset.code_nin}` : null,
+    asset.cost_charges && Number(asset.cost_charges) !== 0
+      ? `Cost/Charges ${formatPercentValue(asset.cost_charges)}`
+      : null,
+    asset.interest_rate && Number(asset.interest_rate) !== 0
+      ? `Interest ${formatPercentValue(asset.interest_rate)}`
+      : null,
+    `Created ${formatDate(asset.created_at.slice(0, 10))}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
@@ -154,6 +167,62 @@ export function AssetDetailPage() {
                 </div>
               ) : null}
             </div>
+          </div>
+
+          {/* The few facts worth glancing at, inline. Everything else is
+              reference data and lives on the footnote line or in Edit. */}
+          <div className="asset-summary-strip">
+            <span>
+              <span className="asset-info-label">Institution </span>
+              {asset.institution_name}
+            </span>
+            <span>
+              <span className="asset-info-label">Category </span>
+              <span className="badge bg-primary">{asset.category_name}</span>
+            </span>
+            <span>
+              <span className="asset-info-label">Currency </span>
+              {asset.currency} <span className="text-muted">({formattedCurrency(asset.currency)})</span>
+            </span>
+            {asset.product_name !== name ? (
+              <span>
+                <span className="asset-info-label">Product </span>
+                {asset.product_name}
+              </span>
+            ) : null}
+            {asset.tags.length > 0 ? (
+              <span className="d-inline-flex align-items-center gap-1 flex-wrap">
+                <span className="asset-info-label">Tags </span>
+                {asset.tags.map((tag) => (
+                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
+                ))}
+              </span>
+            ) : null}
+          </div>
+
+          {asset.description ? (
+            <p className="asset-summary-note mb-0">{asset.description}</p>
+          ) : null}
+
+          {asset.notes ? (
+            <p className="asset-summary-note mb-0" style={{ whiteSpace: "pre-wrap" }}>
+              {asset.notes}
+            </p>
+          ) : null}
+
+          <div className="asset-summary-footnote">
+            {footnote}
+            {!asset.notes ? (
+              <>
+                {" · "}
+                <Link to={`/assets/${asset.id}/edit`}>Add notes</Link>
+              </>
+            ) : (
+              <>
+                {" · "}
+                <Link to={`/assets/${asset.id}/edit`}>Edit</Link>
+              </>
+            )}
           </div>
 
           {!latest ? (
@@ -270,64 +339,6 @@ export function AssetDetailPage() {
         </div>
       </div>
 
-      <div className="card">
-        <div className="card-header">
-          <h5 className="card-title mb-0">
-            <i className="bi bi-info-circle me-2" aria-hidden="true" />
-            Details
-          </h5>
-        </div>
-        <div className="card-body">
-          {asset.notes ? (
-            <div className="asset-notes mb-4">
-              <div className="asset-info-label mb-1">Notes</div>
-              <p className="mb-1" style={{ whiteSpace: "pre-wrap" }}>{asset.notes}</p>
-              <Link to={`/assets/${asset.id}/edit`} className="small">Edit notes</Link>
-            </div>
-          ) : (
-            <div className="asset-notes mb-4">
-              <div className="asset-info-label mb-1">Notes</div>
-              <span className="text-muted fst-italic">
-                No notes yet. <Link to={`/assets/${asset.id}/edit`}>Add notes</Link>
-              </span>
-            </div>
-          )}
-
-          {asset.description ? (
-            <div className="asset-notes mb-4">
-              <div className="asset-info-label mb-1">Description</div>
-              <p className="mb-0">{asset.description}</p>
-            </div>
-          ) : null}
-
-          <div className="asset-facts">
-            <InfoRow label="Institution">{asset.institution_name}</InfoRow>
-            <InfoRow label="Product">{asset.product_name}</InfoRow>
-            <InfoRow label="Category">
-              <span className="badge bg-primary">{asset.category_name}</span>
-            </InfoRow>
-            <InfoRow label="Currency">
-              {asset.currency} <span className="text-muted">({formattedCurrency(asset.currency)})</span>
-            </InfoRow>
-            {asset.code_nin ? <InfoRow label="Code/NIN">{asset.code_nin}</InfoRow> : null}
-            {asset.cost_charges && Number(asset.cost_charges) !== 0 ? (
-              <InfoRow label="Cost/Charges">{formatPercentValue(asset.cost_charges)}</InfoRow>
-            ) : null}
-            {asset.interest_rate && Number(asset.interest_rate) !== 0 ? (
-              <InfoRow label="Interest Rate">{formatPercentValue(asset.interest_rate)}</InfoRow>
-            ) : null}
-            {asset.tags.length > 0 ? (
-              <InfoRow label="Tags">
-                {asset.tags.map((tag) => (
-                  <TagBadge key={tag.id} name={tag.name} color={tag.color} />
-                ))}
-              </InfoRow>
-            ) : null}
-            <InfoRow label="Created">{formatDate(asset.created_at.slice(0, 10))}</InfoRow>
-          </div>
-        </div>
-      </div>
-
       <SnapshotDeleteModal
         target={
           snapshotToDelete && asset
@@ -359,14 +370,5 @@ export function AssetDetailPage() {
         }}
       />
     </>
-  );
-}
-
-function InfoRow({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="asset-fact">
-      <span className="asset-info-label">{label}</span>
-      <span className="asset-info-value">{children}</span>
-    </div>
   );
 }

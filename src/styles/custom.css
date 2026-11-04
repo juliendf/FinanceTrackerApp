@@ -2242,19 +2242,30 @@ select[multiple].form-select option {
     font-variant-numeric: tabular-nums;
 }
 
-/* Label/value pairs: one column when narrow, two once there is room. */
-.asset-facts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
-    gap: 0.625rem 2rem;
+/* The glanceable facts, on one wrapping line under the value. */
+.asset-summary-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.375rem 1.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color-light);
+    font-size: 0.875rem;
 }
 
-.asset-fact {
-    display: grid;
-    grid-template-columns: 7.5rem minmax(0, 1fr);
-    align-items: baseline;
-    gap: 0.75rem;
-    padding: 0.25rem 0;
+/* Notes and description: user content, so readable but subordinate to the value. */
+.asset-summary-note {
+    margin-top: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+/* Reference data on one muted line, including the way to edit it. */
+.asset-summary-footnote {
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
 }
 
 /* Accent-railed detail cards */
