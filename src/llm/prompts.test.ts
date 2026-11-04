@@ -199,13 +199,37 @@ describe("prompt sections", () => {
     expect(system.content).toContain("## Already known");
   });
 
-  it("ships the five suggested prompts", () => {
+  it("ships the suggested prompts, including the two advisory ones", () => {
     expect(QUICK_PROMPTS.map((p) => p.id)).toEqual([
       "portfolio-review",
       "allocation-risk",
       "performance",
       "priorities",
       "stress-test",
+      "retirement-plan",
+      "succession",
     ]);
+    // Every entry needs the four fields the rail renders, or a button is blank.
+    for (const prompt of QUICK_PROMPTS) {
+      expect(prompt.label.length).toBeGreaterThan(0);
+      expect(prompt.hint.length).toBeGreaterThan(0);
+      expect(prompt.icon.startsWith("bi-")).toBe(true);
+      expect(prompt.prompt.length).toBeGreaterThan(80);
+    }
+  });
+
+  it("asks for succession facts instead of inventing them", () => {
+    const succession = QUICK_PROMPTS.find((p) => p.id === "succession");
+    // The profile has no heirs, marital regime or will, so the prompt has to ask.
+    expect(succession?.prompt).toContain("do not assume them");
+    expect(succession?.prompt).toContain("ask me for whatever you need");
+    // And it stays advisory rather than drafting a will.
+    expect(succession?.prompt).toContain("notary");
+  });
+
+  it("labels the retirement projection as assumptions", () => {
+    const retirement = QUICK_PROMPTS.find((p) => p.id === "retirement-plan");
+    expect(retirement?.prompt).toContain("monthly living expenses");
+    expect(retirement?.prompt).toContain("assumption rather than a fact");
   });
 });

@@ -328,4 +328,33 @@ export const QUICK_PROMPTS = [
       "goals would be at risk or delayed, and what I could do today to " +
       "reduce that exposure.",
   },
+  {
+    id: "retirement-plan",
+    label: "Retirement plan",
+    hint: "Will my capital cover my costs?",
+    icon: "bi-piggy-bank",
+    prompt:
+      "Build my retirement picture from what the app already knows: my " +
+      "age, my monthly living expenses, the value of my portfolio and my " +
+      "goals. Estimate the capital my expenses would need, compare it " +
+      "with what I hold and what I add each year, and show the gap. State " +
+      "every assumption you use — return, inflation, retirement age — and " +
+      "label it as an assumption rather than a fact.",
+  },
+  {
+    // Succession has no data behind it: the profile carries no heirs, marital
+    // regime or will. The prompt therefore has to ask instead of inventing them.
+    id: "succession",
+    label: "Succession",
+    hint: "What should I prepare?",
+    icon: "bi-diagram-3",
+    prompt:
+      "Help me prepare for succession. The app has nowhere to record heirs, " +
+      "my marital regime or a will, so ask me for whatever you need before " +
+      "analysing anything — do not assume them. Then outline what should be " +
+      "organised: which documents matter, what my tax residence implies, how " +
+      "each kind of asset would actually transfer, and what to raise with a " +
+      "notary or a tax adviser. Keep it to what I should prepare, and do not " +
+      "draft legal wording.",
+  },
 ] as const;
