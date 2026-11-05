@@ -61,7 +61,15 @@ vi.mock("../db/repositories/snapshots", () => ({
   updateSnapshot: (...a: unknown[]) => repo.updateSnapshot(...a),
 }));
 
-import { confirmAction, extractMemories, loadPendingActions, rejectAction, sendMessage } from "./service";
+import {
+  confirmAction,
+  extractMemories,
+  loadPendingActions,
+  rejectAction,
+  sendMessage,
+  summariseConversation,
+  SUMMARY_HEADING,
+} from "./service";
 import type { ChatTransport } from "./chatLoop";
 
 const transportWith = (
@@ -448,5 +456,47 @@ describe("extractMemories", () => {
     const transport = vi.fn();
     expect(await extractMemories(5, transport, "x")).toEqual([]);
     expect(transport).not.toHaveBeenCalled();
+  });
+});
+
+describe("summariseConversation", () => {
+  it("stores the summary in the conversation, marked as a summary", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "Should I pay off the mortgage?", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+      { id: 2, conversation_id: 5, role: "assistant", content: "It depends on the rate.", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    const transport: ChatTransport = async () => ({
+      content: "Decided to compare the rate first.",
+      toolCalls: [],
+      cancelled: false,
+    });
+
+    const summary = await summariseConversation(5, transport, "s1");
+
+    expect(summary).toBe("Decided to compare the rate first.");
+    const stored = repo.appendMessage.mock.calls[0][0] as { role: string; content: string };
+    expect(stored.role).toBe("assistant");
+    // The heading is what makes it read as an artefact, not as an answer.
+    expect(stored.content.startsWith(SUMMARY_HEADING)).toBe(true);
+    expect(stored.content).toContain("Decided to compare the rate first.");
+  });
+
+  it("refuses an empty conversation instead of asking the model", async () => {
+    repo.listMessages.mockResolvedValue([]);
+    const transport = vi.fn(async () => ({ content: "x", toolCalls: [], cancelled: false }));
+    await expect(summariseConversation(5, transport as unknown as ChatTransport, "s1")).rejects.toThrow(
+      /nothing to summarise/i,
+    );
+    expect(transport).not.toHaveBeenCalled();
+    expect(repo.appendMessage).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when the model returns an empty answer", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "hello", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    const transport: ChatTransport = async () => ({ content: "   ", toolCalls: [], cancelled: false });
+    await expect(summariseConversation(5, transport, "s1")).rejects.toThrow(/empty summary/i);
+    expect(repo.appendMessage).not.toHaveBeenCalled();
   });
 });

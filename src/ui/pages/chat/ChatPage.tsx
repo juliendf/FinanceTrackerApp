@@ -36,6 +36,7 @@ import {
   loadPendingActions,
   rejectAction,
   sendMessage,
+  summariseConversation,
   type PendingActionView,
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
@@ -451,6 +452,28 @@ export function ChatPage() {
     }
   };
 
+  const [summarising, setSummarising] = useState(false);
+
+  const summarise = async () => {
+    if (id === null || summarising) return;
+    const selected = activeProvider ?? (await getDefaultProvider());
+    if (!selected) {
+      toast.error("Choose a provider first.");
+      return;
+    }
+    setSummarising(true);
+    try {
+      const transport = rustTransport({ provider_id: selected.id }, model || null);
+      await summariseConversation(id, transport, `summary-${Date.now()}`);
+      refreshList();
+      toast.success("Summary added to the conversation.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSummarising(false);
+    }
+  };
+
   const runExtraction = async () => {
     if (id === null) return;
     const selected = activeProvider ?? (await getDefaultProvider());
@@ -672,7 +695,17 @@ export function ChatPage() {
                   <option value="">-- Model ({activeProvider?.model ?? "default"}) --</option>
                   {models.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
-                <button type="button" className="btn btn-secondary btn-sm ms-auto" onClick={() => void runExtraction()} disabled={!canChat || streaming}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm ms-auto"
+                  onClick={() => void summarise()}
+                  disabled={!canChat || streaming || summarising}
+                  title="Summarise this conversation and keep the result in it"
+                >
+                  <i className="bi bi-file-text" aria-hidden="true" />
+                  {summarising ? "Summarising…" : "Summarise"}
+                </button>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void runExtraction()} disabled={!canChat || streaming}>
                   <i className="bi bi-lightbulb" aria-hidden="true" />
                   Extract memories
                 </button>

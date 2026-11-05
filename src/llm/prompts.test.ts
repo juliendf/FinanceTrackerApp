@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { buildExtractionMessages, buildKnownContext, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
+import {
+  buildExtractionMessages,
+  buildKnownContext,
+  buildMemoryContext,
+  buildProfileContext,
+  buildStyleContext,
+  buildSummaryMessages,
+  buildSummaryTranscript,
+  buildSystemPrompt,
+  QUICK_PROMPTS,
+  SUMMARY_PROMPT,
+} from "./prompts";
+import type { Message } from "../db/repositories/chat";
 import { MAX_CUSTOM_INSTRUCTIONS } from "../domain/settings";
 import type { Profile } from "../db/repositories/profile";
 
@@ -267,5 +279,60 @@ describe("prompt sections", () => {
     const retirement = QUICK_PROMPTS.find((p) => p.id === "retirement-plan");
     expect(retirement?.prompt).toContain("monthly living expenses");
     expect(retirement?.prompt).toContain("assumption rather than a fact");
+  });
+});
+
+
+describe("conversation summary", () => {
+  const msg = (id: number, role: Message["role"], content: string, toolCalls: string | null = null): Message => ({
+    id,
+    conversation_id: 5,
+    role,
+    content,
+    tool_calls: toolCalls,
+    tool_call_id: role === "tool" ? "c1" : null,
+    created_at: "",
+    updated_at: "",
+  });
+
+  it("keeps the words and drops the plumbing", () => {
+    const transcript = buildSummaryTranscript([
+      msg(1, "user", "How is my portfolio doing?"),
+      msg(2, "assistant", "Let me look that up.", '[{"id":"c1","function":{"name":"get_portfolio_summary"}}]'),
+      msg(3, "tool", '{"total":"1,000 CHF"}'),
+      msg(4, "assistant", "It is up 4% this year."),
+    ]);
+    expect(transcript).toContain("User: How is my portfolio doing?");
+    expect(transcript).toContain("Assistant: It is up 4% this year.");
+    // A preamble that led to a tool call is not conversation, and the tool
+    // result would make the summary read like a log.
+    expect(transcript).not.toContain("Let me look that up.");
+    expect(transcript).not.toContain("1,000 CHF");
+  });
+
+  it("truncates from the front, so the newest exchange survives", () => {
+    const transcript = buildSummaryTranscript(
+      [msg(1, "user", "oldest ".repeat(200)), msg(2, "user", "newest question")],
+      100,
+    );
+    expect(transcript).toContain("newest question");
+    expect(transcript).not.toContain("oldest");
+    expect(transcript.length).toBeLessThanOrEqual(100);
+  });
+
+  it("is empty when there is nothing but plumbing", () => {
+    expect(buildSummaryTranscript([msg(3, "tool", "{}")])).toBe("");
+  });
+
+  it("sends the instruction and the transcript as two turns", () => {
+    const messages = buildSummaryMessages("User: hello");
+    expect(messages.map((message) => message.role)).toEqual(["system", "user"]);
+    expect(messages[0].content).toBe(SUMMARY_PROMPT);
+    expect(messages[1].content).toBe("User: hello");
+  });
+
+  it("forbids the summariser from adding advice of its own", () => {
+    expect(SUMMARY_PROMPT).toContain("Do not give new advice");
+    expect(SUMMARY_PROMPT).toContain("not add anything that is not in the transcript");
   });
 });

@@ -7,6 +7,7 @@
  */
 
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
+import type { Message } from "../db/repositories/chat";
 import { MAX_CUSTOM_INSTRUCTIONS } from "../domain/settings";
 import { ageFromBirthDate } from "../domain/age";
 import { formatNumber } from "../domain/format";
@@ -376,3 +377,68 @@ export const QUICK_PROMPTS = [
       "draft legal wording.",
   },
 ] as const;
+
+
+// --- Conversation summary ----------------------------------------------------
+
+/**
+ * How much transcript the summariser is given.
+ *
+ * A summary of a very long chat would otherwise cost more than the chat did. The
+ * newest exchanges are kept, because that is what a recap is usually about.
+ */
+export const SUMMARY_MAX_TRANSCRIPT_CHARS = 24_000;
+
+export const SUMMARY_PROMPT =
+  "You summarise a conversation between a user and the finance assistant inside " +
+  "this app. Write at most 250 words, in the user's language. Cover, in this " +
+  "order: the decisions or conclusions reached, the questions left open, and the " +
+  "facts the user stated about themselves or their money. Use short headings and " +
+  "bullet points. Do not give new advice, do not repeat the whole conversation, " +
+  "and do not add anything that is not in the transcript.";
+
+/**
+ * The transcript to summarise: the words exchanged, without the plumbing.
+ *
+ * `role='tool'` rows and assistant rows carrying `tool_calls` are dropped — they
+ * are tool output and preambles, not conversation, and including them makes the
+ * summary read like a log. Oldest first, truncated from the front so the most
+ * recent exchange always survives.
+ */
+export function buildSummaryTranscript(
+  messages: readonly Message[],
+  maxChars: number = SUMMARY_MAX_TRANSCRIPT_CHARS,
+): string {
+  const lines: string[] = [];
+  for (const message of messages) {
+    if (message.role !== "user" && message.role !== "assistant") continue;
+    if (message.role === "assistant" && message.tool_calls) continue;
+    const text = (message.content ?? "").trim();
+    if (!text) continue;
+    lines.push(`${message.role === "user" ? "User" : "Assistant"}: ${text}`);
+  }
+
+  const kept: string[] = [];
+  let total = 0;
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    total += lines[index].length + 1;
+    if (total > maxChars) break;
+    kept.unshift(lines[index]);
+  }
+  return kept.join("\n");
+}
+
+/**
+ * Instruction and transcript as two turns.
+ *
+ * Same reason as the extraction call: a system-only request is not a chat, and
+ * Gemini rejects it with a 500.
+ */
+export function buildSummaryMessages(
+  transcript: string,
+): Array<{ role: "system" | "user"; content: string }> {
+  return [
+    { role: "system", content: SUMMARY_PROMPT },
+    { role: "user", content: transcript },
+  ];
+}

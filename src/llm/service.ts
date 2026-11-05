@@ -27,7 +27,13 @@ import { todayIso } from "../domain/dates";
 import { formatNumber, formatSymbolAmount } from "../domain/format";
 import { buildHistoryMessages } from "./history";
 import { runTurn, type ChatTransport } from "./chatLoop";
-import { buildExtractionMessages, buildKnownContext, buildSystemPrompt } from "./prompts";
+import {
+  buildExtractionMessages,
+  buildKnownContext,
+  buildSummaryMessages,
+  buildSummaryTranscript,
+  buildSystemPrompt,
+} from "./prompts";
 import { executeTool, type ToolResult } from "./tools";
 import { fromMinorUnits } from "../domain/money";
 import Decimal from "decimal.js";
@@ -429,4 +435,47 @@ export async function extractMemories(
   } catch {
     return [];
   }
+}
+
+/**
+ * The heading that marks a stored summary.
+ *
+ * The summary is kept as an ordinary assistant message so it survives a restart
+ * and travels with the conversation; the heading is what makes it read as an
+ * artefact of the chat rather than as an answer the model gave.
+ */
+export const SUMMARY_HEADING = "**Summary of this conversation**";
+
+/**
+ * Summarise a conversation and store the result in it.
+ *
+ * One call, no map-reduce: the transcript is capped instead. A conversation long
+ * enough to overflow the cap is summarised from its most recent exchanges, which
+ * is what a recap is about anyway.
+ */
+export async function summariseConversation(
+  conversationId: number,
+  transport: ChatTransport,
+  requestId: string,
+): Promise<string> {
+  const messages = await listMessages(conversationId);
+  const transcript = buildSummaryTranscript(messages);
+  if (!transcript) throw new Error("There is nothing to summarise yet.");
+
+  const response = await transport({
+    requestId,
+    messages: buildSummaryMessages(transcript),
+    tools: [],
+    onEvent: () => {},
+  });
+
+  const summary = (response.content ?? "").trim();
+  if (!summary) throw new Error("The model returned an empty summary.");
+
+  await appendMessage({
+    conversationId,
+    role: "assistant",
+    content: `${SUMMARY_HEADING}\n\n${summary}`,
+  });
+  return summary;
 }
