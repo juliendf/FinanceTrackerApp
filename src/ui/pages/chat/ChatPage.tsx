@@ -8,6 +8,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { invoke } from "@tauri-apps/api/core";
+import { Dropdown } from "react-bootstrap";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { TranscriptMessage } from "./TranscriptMessage";
 import {
@@ -41,6 +43,8 @@ import {
 } from "../../../llm/service";
 import { rustTransport } from "../../../llm/transport";
 import { toolStatusLabel } from "../../../llm/tools";
+import { conversationFileName, conversationMarkdown, todayStamp } from "../../../export/conversationMarkdown";
+import { useStoredBoolean } from "../../../lib/useStoredBoolean";
 
 /**
  * How often streamed text reaches the screen.
@@ -59,7 +63,6 @@ import {
 } from "./runningTurns";
 import { useRememberedModel } from "../../../llm/modelChoice";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
-import { PageHeader } from "../../components/FormCard";
 import { useToast } from "../../layout/Toasts";
 
 interface PendingBubble {
@@ -308,6 +311,20 @@ export function ChatPage() {
     }
   };
 
+  // Load the models as soon as the provider is known, not when the select is
+  // focused: a focus-triggered fetch starts on the same click that opens the
+  // menu, so the first click always showed an empty list and the second showed
+  // the models.
+  useEffect(() => {
+    if (!activeProvider) {
+      setModels([]);
+      return;
+    }
+    void fetchModels();
+    // `fetchModels` closes over the active provider, so its id is the signal.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeProvider?.id]);
+
   const send = async (text?: string) => {
     const content = (text ?? input).trim();
     if (!content || streaming) return;
@@ -453,6 +470,37 @@ export function ChatPage() {
   };
 
   const [summarising, setSummarising] = useState(false);
+  // Remembered in localStorage: it is how this window is arranged, not a setting
+  // that belongs in a backup.
+  const [showAdvisor, setShowAdvisor] = useStoredBoolean("chat-advisor", true);
+
+  /**
+   * Write the conversation to a Markdown file.
+   *
+   * The transcript is read again rather than taken from the query cache: an
+   * export must be what is stored, not what happens to be on screen.
+   */
+  const exportConversation = async () => {
+    if (id === null) return;
+    const title = conversation.data?.title ?? "Conversation";
+    try {
+      const rows = await listMessages(id);
+      const path = await invoke<string | null>("save_text_file", {
+        defaultName: conversationFileName(title, todayStamp()),
+        filterName: "Markdown",
+        extensions: ["md"],
+        contents: conversationMarkdown({
+          title,
+          createdAt: conversation.data?.created_at ?? null,
+          messages: rows,
+        }),
+      });
+      if (!path) return;
+      toast.success(`Conversation exported to ${path}`);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : String(error));
+    }
+  };
 
   const summarise = async () => {
     if (id === null || summarising) return;
@@ -539,22 +587,11 @@ export function ChatPage() {
   );
 
   const canChat = aiEnabled && providerList.length > 0;
+  /** The rail only exists for a conversation with a provider and AI on. */
+  const advisorAvailable = id !== null && Boolean(activeProvider) && canChat;
 
   return (
     <div className="chat-page">
-      <PageHeader
-        title="Chat"
-        subtitle="AI-powered financial assistant"
-        icon="robot"
-        showDate={false}
-        actions={
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => newChat.mutate()} disabled={!aiEnabled}>
-            <i className="bi bi-plus-lg" aria-hidden="true" />
-            New Chat
-          </button>
-        }
-      />
-
       {!aiEnabled ? (
         <div className="alert alert-warning">
           <strong>AI is off.</strong> Turn it on in <a href="#/settings/llm-providers">Settings → LLM Providers</a>. The assistant
@@ -666,49 +703,80 @@ export function ChatPage() {
             </div>
           ) : (
             <>
+              {/* Two groups, never five equal buttons: where this conversation
+                  goes, then what to do with it. The actions live behind one menu
+                  so the row cannot wrap into a second line of stray controls. */}
               <div className="chat-header">
-                <select
-                  id="providerSelect"
-                  className="form-select form-select-sm"
-                  style={{ width: "auto" }}
-                  value={conversation.data?.provider_id ?? ""}
-                  disabled={!aiEnabled}
-                  onChange={(event) => void changeProvider(event.target.value ? Number(event.target.value) : null)}
-                >
-                  <option value="">-- Provider --</option>
-                  {providerList.map((provider) => (
-                    <option key={provider.id} value={provider.id}>{provider.name}</option>
-                  ))}
-                </select>
-                <select
-                  id="modelSelect"
-                  className="form-select form-select-sm"
-                  style={{ width: "auto", maxWidth: 220 }}
-                  value={model}
-                  disabled={!activeProvider}
-                  onFocus={() => void fetchModels()}
-                  onChange={(event) => {
-                    setModel(event.target.value);
-                    if (id !== null) void setConversationModel(id, event.target.value || null);
-                  }}
-                >
-                  <option value="">-- Model ({activeProvider?.model ?? "default"}) --</option>
-                  {models.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-secondary btn-sm ms-auto"
-                  onClick={() => void summarise()}
-                  disabled={!canChat || streaming || summarising}
-                  title="Summarise this conversation and keep the result in it"
-                >
-                  <i className="bi bi-file-text" aria-hidden="true" />
-                  {summarising ? "Summarising…" : "Summarise"}
-                </button>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => void runExtraction()} disabled={!canChat || streaming}>
-                  <i className="bi bi-lightbulb" aria-hidden="true" />
-                  Extract memories
-                </button>
+                <div className="chat-model-group">
+                  <span className="chat-header-label">Model</span>
+                  <select
+                    id="providerSelect"
+                    className="form-select form-select-sm"
+                    style={{ width: "auto" }}
+                    aria-label="Provider"
+                    value={conversation.data?.provider_id ?? ""}
+                    disabled={!aiEnabled}
+                    onChange={(event) => void changeProvider(event.target.value ? Number(event.target.value) : null)}
+                  >
+                    <option value="">Provider</option>
+                    {providerList.map((provider) => (
+                      <option key={provider.id} value={provider.id}>{provider.name}</option>
+                    ))}
+                  </select>
+                  <select
+                    id="modelSelect"
+                    className="form-select form-select-sm"
+                    style={{ width: "auto", maxWidth: 200 }}
+                    aria-label="Model"
+                    value={model}
+                    disabled={!activeProvider}
+                    onFocus={() => void fetchModels()}
+                    onChange={(event) => {
+                      setModel(event.target.value);
+                      if (id !== null) void setConversationModel(id, event.target.value || null);
+                    }}
+                  >
+                    <option value="">Default</option>
+                    {models.map((name) => <option key={name} value={name}>{name}</option>)}
+                  </select>
+                </div>
+
+                <div className="chat-header-actions">
+                  <Dropdown align="end">
+                    <Dropdown.Toggle
+                      variant="secondary"
+                      size="sm"
+                      id="chat-actions"
+                      aria-label="Conversation actions"
+                      title="Conversation actions"
+                    >
+                      <i className="bi bi-three-dots me-1" aria-hidden="true" />
+                      Actions
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu>
+                      <Dropdown.Item as="button" onClick={() => void exportConversation()}>
+                        <i className="bi bi-download me-2" aria-hidden="true" />
+                        Export as Markdown
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        as="button"
+                        onClick={() => void summarise()}
+                        disabled={!canChat || streaming || summarising}
+                      >
+                        <i className="bi bi-file-text me-2" aria-hidden="true" />
+                        {summarising ? "Summarising…" : "Summarise"}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        as="button"
+                        onClick={() => void runExtraction()}
+                        disabled={!canChat || streaming}
+                      >
+                        <i className="bi bi-lightbulb me-2" aria-hidden="true" />
+                        Extract memories
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
               </div>
 
               <div className="chat-messages" ref={scrollRef}>
@@ -836,9 +904,33 @@ export function ChatPage() {
           )}
         </div>
 
-        {id !== null && activeProvider && canChat ? (
+        {advisorAvailable && !showAdvisor ? (
+          <button
+            type="button"
+            className="chat-prompts-handle"
+            onClick={() => setShowAdvisor(true)}
+            aria-label="Show suggested questions"
+            title="Show suggested questions"
+          >
+            <i className="bi bi-chevron-left" aria-hidden="true" />
+          </button>
+        ) : null}
+
+        {advisorAvailable && showAdvisor ? (
           <aside className="chat-prompts" aria-label="Suggested questions">
-            <div className="chat-prompts-label">Ask your advisor</div>
+            {/* The control lives on the pane it hides, not in the toolbar. */}
+            <div className="chat-prompts-header">
+              <span className="chat-prompts-label">Ask your advisor</span>
+              <button
+                type="button"
+                className="chat-prompts-toggle"
+                onClick={() => setShowAdvisor(false)}
+                aria-label="Hide suggested questions"
+                title="Hide suggested questions"
+              >
+                <i className="bi bi-chevron-right" aria-hidden="true" />
+              </button>
+            </div>
             <div className="chat-prompts-list">
               {QUICK_PROMPTS.map((prompt) => (
                 <button

@@ -2742,10 +2742,50 @@ body.chat-page main > .container-fluid {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    justify-content: space-between;
     gap: 0.5rem;
     padding: 0.625rem 1rem;
     border-bottom: 1px solid var(--border-color);
     background-color: var(--surface-1);
+}
+
+/* Two clusters, not five equal buttons: the pair that decides where the
+   conversation goes, and the one menu that acts on it. */
+.chat-model-group,
+.chat-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+}
+
+/* No `min-width: 0` here: it lets the flex row crush the selects below their
+   content, and a native select paints its text outside its own box — the two
+   then overlap. The group wraps inside itself instead. */
+.chat-model-group {
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+}
+
+.chat-model-group .form-select {
+    flex: 0 0 auto;
+}
+
+.chat-header-actions {
+    flex: 0 0 auto;
+}
+
+.chat-header-label {
+    font-size: 0.75rem;
+    font-weight: 550;
+    color: var(--text-muted);
+    margin-right: 0.125rem;
+}
+
+/* The rail toggle reads as on when the rail is showing. */
+.chat-header-actions .btn.active {
+    background-color: var(--accent-subtle);
+    border-color: var(--accent-border);
+    color: var(--accent);
 }
 
 .chat-messages {
@@ -2781,6 +2821,48 @@ body.chat-page main > .container-fluid {
     min-width: 15rem;
     background-color: var(--surface-2);
     border-left: 1px solid var(--border-color);
+}
+
+/* The collapse control sits on the pane it hides. */
+.chat-prompts-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-right: 0.5rem;
+}
+
+.chat-prompts-toggle {
+    border: 0;
+    background: transparent;
+    color: var(--text-muted);
+    line-height: 1;
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-xs);
+}
+
+.chat-prompts-toggle:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-3);
+}
+
+/* Where the rail was, a handle to bring it back. */
+.chat-prompts-handle {
+    flex: 0 0 auto;
+    width: 1.75rem;
+    border: 0;
+    border-left: 1px solid var(--border-color);
+    background-color: var(--surface-2);
+    color: var(--text-muted);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 0.75rem;
+}
+
+.chat-prompts-handle:hover {
+    color: var(--text-primary);
+    background-color: var(--surface-3);
 }
 
 .chat-prompts-label {

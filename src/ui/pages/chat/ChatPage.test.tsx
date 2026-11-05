@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Chat page: the AI opt-in gate and the confirm/reject cards. */
 
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
@@ -157,6 +157,44 @@ describe("ChatPage", () => {
 
     expect(repo.deleteMessageFrom).not.toHaveBeenCalled();
     expect(screen.getByText("set my account to 1234")).toBeTruthy();
+  });
+
+  it("keeps the conversation actions behind one menu, not a row of buttons", async () => {
+    const user = userEvent.setup();
+    renderChat();
+    // The header is a pair of settings and one menu: no stray action buttons.
+    const toggle = await screen.findByRole("button", { name: "Conversation actions" });
+    expect(screen.queryByRole("button", { name: /^summarise$/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /extract memories/i })).toBeNull();
+
+    await user.click(toggle);
+    expect(await screen.findByRole("button", { name: /export as markdown/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /summarise/i })).toBeTruthy();
+    expect(screen.getByRole("button", { name: /extract memories/i })).toBeTruthy();
+  });
+
+  it("has the models ready before the picker is opened", async () => {
+    renderChat();
+    // The list used to load on focus, so the first click opened an empty menu.
+    await waitFor(() => {
+      const options = within(screen.getByLabelText("Model")).getAllByRole("option");
+      expect(options.map((option) => option.textContent)).toContain("qwen");
+    });
+  });
+
+  it("hides and restores the suggested questions rail", async () => {
+    const user = userEvent.setup();
+    renderChat();
+    const rail = await screen.findByLabelText("Suggested questions");
+    expect(rail).toBeTruthy();
+
+    // The collapse control lives on the rail itself...
+    await user.click(screen.getByRole("button", { name: "Hide suggested questions" }));
+    expect(screen.queryByLabelText("Suggested questions")).toBeNull();
+
+    // ...and leaves a handle where the rail was, so it can come back.
+    await user.click(screen.getByRole("button", { name: "Show suggested questions" }));
+    expect(screen.getByLabelText("Suggested questions")).toBeTruthy();
   });
 
   it("renders the transcript with markdown", async () => {
