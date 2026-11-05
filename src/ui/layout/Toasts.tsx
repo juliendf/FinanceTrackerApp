@@ -79,10 +79,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     (type: ToastType, message: string, options: ToastOptions = {}) => {
       const id = nextId.current++;
       const durationMs = options.durationMs ?? DEFAULT_DURATION_MS;
-      setToasts((current) => [
-        ...current,
-        { id, type, message, title: options.title, action: options.action, durationMs },
-      ]);
+      setToasts((current) => {
+        // The same sentence twice is one message, not two: pressing a button that
+        // changes nothing should not build a wall of identical toasts. Replacing
+        // also restarts the timer, so the feedback stays up while it is repeated.
+        const rest = current.filter((toast) => !(toast.type === type && toast.message === message));
+        return [...rest, { id, type, message, title: options.title, action: options.action, durationMs }];
+      });
       const timer = window.setTimeout(() => dismiss(id), durationMs);
       timers.current.push(timer);
     },
