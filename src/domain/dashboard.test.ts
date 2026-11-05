@@ -193,14 +193,14 @@ describe("resumeMetrics", () => {
     expect(r.timeInMarket).toBe(365);
     expect(r.annualizedPerformance?.toFixed(2)).toBe("71.06");
   });
-  it("splits cash and breaks down by system role in French", () => {
+  it("splits cash and breaks down by system role", () => {
     const r = resumeMetrics(facts, eur(), "ALL", "2026-10-01");
     expect(r.cashValue.toString()).toBe("121");
     expect(r.emergencyFundValue.toString()).toBe("0");
     // Sorted by role key: cash before other.
     expect(r.breakdown.map((b) => [b.label, b.value.toString()])).toEqual([
-      ["Liquidités", "121"],
-      ["Autre", "50"],
+      ["Cash", "121"],
+      ["Other", "50"],
     ]);
   });
   it("has no percentage when nothing was held at the start", () => {

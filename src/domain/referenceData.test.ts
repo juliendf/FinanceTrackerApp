@@ -115,10 +115,10 @@ describe("uniqueErrorFor", () => {
 });
 
 describe("systemRoleLabel", () => {
-  it("maps roles to the French labels used by the Résumé", () => {
-    expect(systemRoleLabel("cash")).toBe("Liquidités");
-    expect(systemRoleLabel("emergency_fund")).toBe("Fonds d'urgence");
-    expect(systemRoleLabel("stocks")).toBe("Actions / ETF");
+  it("maps roles to their labels", () => {
+    expect(systemRoleLabel("cash")).toBe("Cash");
+    expect(systemRoleLabel("emergency_fund")).toBe("Emergency fund");
+    expect(systemRoleLabel("stocks")).toBe("Stocks / ETF");
   });
 
   it("returns an empty string when no role is set", () => {

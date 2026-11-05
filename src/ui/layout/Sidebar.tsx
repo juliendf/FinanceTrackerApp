@@ -44,7 +44,7 @@ const SECTIONS = [
       { to: "/", label: "Dashboard", icon: "bi-speedometer2", end: true },
       { to: "/assets", label: "Assets", icon: "bi-wallet2" },
       { to: "/snapshots", label: "Snapshots", icon: "bi-camera" },
-      { to: "/resume", label: "Résumé", icon: "bi-file-text" },
+      { to: "/resume", label: "Summary", icon: "bi-file-text" },
     ],
   },
   {

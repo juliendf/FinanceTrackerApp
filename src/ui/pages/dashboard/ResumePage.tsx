@@ -1,8 +1,11 @@
 /**
- * Résumé. French UI.
+ * Summary: portfolio performance over a chosen period.
  *
  * The period lives in `?range=`. Amounts use the `currency` filter, so the base
  * currency symbol placement follows `formatCurrency`.
+ *
+ * The route is still `/resume`, from when this screen was in French. The path is
+ * invisible, and changing it would break saved links for no gain.
  */
 
 import { useMemo, useState } from "react";
@@ -15,12 +18,12 @@ import { useDashboardData } from "../../../lib/useDashboardData";
 import { UnconvertedBadge } from "../../components/UnconvertedBadge";
 
 const LABELS: Record<string, string> = {
-  ALL: "Depuis toujours",
+  ALL: "All time",
   YTD: "YTD",
-  "1Y": "1 an",
-  "6M": "6 mois",
-  "3M": "3 mois",
-  "1M": "1 mois",
+  "1Y": "1 year",
+  "6M": "6 months",
+  "3M": "3 months",
+  "1M": "1 month",
 };
 
 function Info({ text }: { text: string }) {
@@ -60,7 +63,7 @@ export function ResumePage() {
     return { metrics: resumeMetrics(data.facts, converter, range, data.today), warnings: [...converter.warnings] };
   }, [data.facts, data.makeConverter, data.today, range]);
 
-  if (data.isLoading) return <p className="text-muted">Chargement…</p>;
+  if (data.isLoading) return <p className="text-muted">Loading…</p>;
 
   const m = view.metrics;
   const money = (value: { toNumber(): number }) => formatCurrency(value.toNumber(), data.baseCurrency);
@@ -69,10 +72,10 @@ export function ResumePage() {
     <div className="container py-4">
       <div className="row justify-content-center">
         <div className="col-lg-8">
-          <h2 className="text-center mb-4">Résumé</h2>
+          <h2 className="text-center mb-4">Summary</h2>
 
           <div className="text-center mb-4">
-            <div className="btn-group" role="group" aria-label="Période">
+            <div className="btn-group" role="group" aria-label="Period">
               {RESUME_RANGES.map((key) => (
                 <Link
                   key={key}
@@ -95,29 +98,29 @@ export function ResumePage() {
 
           <div className="card mb-3">
             <div className="card-body">
-              <Row label="Durée de la période" tip="Nombre de jours entre le début et la fin de la période sélectionnée.">
-                {m.timeInMarket !== null ? `${m.timeInMarket} jours` : "—"}
+              <Row label="Period length" tip="Number of days between the start and the end of the selected period.">
+                {m.timeInMarket !== null ? `${m.timeInMarket} days` : "—"}
               </Row>
-              <Row label="Valeur totale du portefeuille" tip="Valeur du portefeuille à la fin de la période, en devise de base.">
+              <Row label="Total portfolio value" tip="Portfolio value at the end of the period, in the base currency.">
                 {money(m.totalValue)}
               </Row>
-              <Row label="Capital investi" tip="Valeur du portefeuille au début de la période, en devise de base.">
+              <Row label="Invested capital" tip="Portfolio value at the start of the period, in the base currency.">
                 {money(m.investedCapital)}
               </Row>
-              <Row label="Performance absolue" tip="Valeur à la fin de la période moins la valeur au début de la période." className={sign(m.netPerformanceAbs)}>
+              <Row label="Absolute performance" tip="Value at the end of the period minus the value at the start." className={sign(m.netPerformanceAbs)}>
                 {money(m.netPerformanceAbs)}
               </Row>
               <Row
-                label="Performance nette"
-                tip="Performance absolue divisée par le capital investi au début de la période."
+                label="Net performance"
+                tip="Absolute performance divided by the invested capital at the start of the period."
                 className={m.netPerformancePct === null ? "text-muted" : sign(m.netPerformancePct)}
               >
                 {m.netPerformancePct !== null ? `${signed(m.netPerformancePct)} %` : "N/A"}
               </Row>
               <Row
                 last
-                label="Performance annualisée"
-                tip="Taux de croissance annualisé sur la période sélectionnée."
+                label="Annualised performance"
+                tip="Annualised growth rate over the selected period."
                 className={m.annualizedPerformance === null ? "text-muted" : sign(m.annualizedPerformance)}
               >
                 {m.annualizedPerformance !== null ? `${signed(m.annualizedPerformance)} %` : "N/A"}
@@ -127,14 +130,14 @@ export function ResumePage() {
 
           <div className="card mb-3">
             <div className="card-body">
-              <h5 className="card-title">Actifs</h5>
-              <Row label="Actifs totaux" tip="Valeur totale du portefeuille à la fin de la période.">
+              <h5 className="card-title">Assets</h5>
+              <Row label="Total assets" tip="Total portfolio value at the end of the period.">
                 {money(m.totalValue)}
               </Row>
-              <Row label="Cash" tip={'Somme des actifs dont la catégorie a le rôle système "Liquidités".'}>
+              <Row label="Cash" tip={'Assets whose category has the "Cash" system role.'}>
                 {money(m.cashValue)}
               </Row>
-              <Row label="Fonds d'urgence" tip={'Somme des actifs dont la catégorie a le rôle système "Fonds d\'urgence".'}>
+              <Row label="Emergency fund" tip={'Assets whose category has the "Emergency fund" system role.'}>
                 {money(m.emergencyFundValue)}
               </Row>
               <div className="mt-3">
@@ -144,7 +147,7 @@ export function ResumePage() {
                   aria-expanded={open}
                   onClick={() => setOpen(!open)}
                 >
-                  Voir la répartition
+                  Show breakdown
                 </button>
                 {open ? (
                   <div className="mt-2" id="breakdown">
@@ -164,8 +167,8 @@ export function ResumePage() {
             <div className="card-body">
               <Row
                 last
-                label="Fortune / Actifs nets"
-                tip="Valeur totale du portefeuille à la fin de la période. Les dettes ne sont pas encore prises en charge."
+                label="Net worth"
+                tip="Total portfolio value at the end of the period. Debts are not accounted for yet."
               >
                 {money(m.netWorth)}
               </Row>

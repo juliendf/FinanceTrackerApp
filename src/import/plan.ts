@@ -163,7 +163,7 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
 
   if (categoriesMissingRole.length > 0) {
     warnings.push(
-      `${categoriesMissingRole.length} categor${categoriesMissingRole.length === 1 ? "y has" : "ies have"} no system role. The Résumé view needs them, so you will be asked to map them after the import.`,
+      `${categoriesMissingRole.length} categor${categoriesMissingRole.length === 1 ? "y has" : "ies have"} no system role. The Summary view needs them, so you will be asked to map them after the import.`,
     );
   }
 

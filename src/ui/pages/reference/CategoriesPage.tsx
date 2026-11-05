@@ -140,7 +140,7 @@ export function CategoriesPage() {
     },
     {
       key: "system_role",
-      label: "Rôle système",
+      label: "System role",
       render: (row) => systemRoleLabel(row.system_role) || "—",
     },
     {
@@ -165,7 +165,7 @@ export function CategoriesPage() {
     <>
       <PageHeader
         title="Categories"
-        subtitle="Asset categories, their colour and the system role the Résumé uses."
+        subtitle="Asset categories, their colour and the system role the Summary uses."
         icon="tags"
         showDate={false}
         actions={
@@ -279,13 +279,13 @@ export function CategoriesPage() {
                 </div>
                 <SelectField
                   id="category-system-role"
-                  label="Rôle système"
+                  label="System role"
                   value={form.system_role}
                   error={errors.system_role}
-                  help="Optional role used by the Résumé view to compute standardized metrics"
+                  help="Drives the Summary tiles, the allocation breakdown and the assistant's runway figure. A tag is only a label: it changes no calculation."
                   onChange={(event) => setForm({ ...form, system_role: event.target.value })}
                 >
-                  <option value="">(aucun)</option>
+                  <option value="">(none)</option>
                   {SYSTEM_ROLE_CHOICES.map((choice) => (
                     <option key={choice.value} value={choice.value}>
                       {choice.label}

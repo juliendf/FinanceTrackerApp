@@ -101,19 +101,19 @@ describe("DashboardPage", () => {
 });
 
 describe("ResumePage", () => {
-  it("renders in French with the range from the URL", async () => {
+  it("renders the summary with the range from the URL", async () => {
     renderAt("/resume?range=1Y", <ResumePage />, "/resume");
-    expect(await screen.findByText("Valeur totale du portefeuille")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "1 an" }).getAttribute("aria-current")).toBe("true");
-    expect(screen.getByText("Capital investi")).toBeTruthy();
+    expect(await screen.findByText("Total portfolio value")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "1 year" }).getAttribute("aria-current")).toBe("true");
+    expect(screen.getByText("Invested capital")).toBeTruthy();
   });
 
   it("computes performance from the value at the start of the period", async () => {
     renderAt("/resume?range=ALL", <ResumePage />, "/resume");
-    const row = (await screen.findByText("Performance nette")).closest("div") as HTMLElement;
+    const row = (await screen.findByText("Net performance")).closest("div") as HTMLElement;
     // start 2025-10-01: 1000 CHF; end: 1590 -> +59.00 %
     expect(within(row).getByText("+59.00 %")).toBeTruthy();
-    expect(screen.getByText("390 jours")).toBeTruthy();
+    expect(screen.getByText("390 days")).toBeTruthy();
   });
 
   it("shows N/A without a starting value", async () => {
@@ -125,7 +125,7 @@ describe("ResumePage", () => {
   it("reveals the breakdown on demand", async () => {
     const user = userEvent.setup();
     renderAt("/resume", <ResumePage />, "/resume");
-    await user.click(await screen.findByRole("button", { name: "Voir la répartition" }));
-    expect(screen.getByText("Autre")).toBeTruthy();
+    await user.click(await screen.findByRole("button", { name: "Show breakdown" }));
+    expect(screen.getByText("Other")).toBeTruthy();
   });
 });
