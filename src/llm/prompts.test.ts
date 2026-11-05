@@ -149,6 +149,29 @@ describe("prompt sections", () => {
     expect(prompt).not.toContain("x".repeat(MAX_CUSTOM_INSTRUCTIONS + 1));
   });
 
+  it("forbids the model from doing arithmetic itself", () => {
+    const prompt = buildSystemPrompt({
+      today: "2026-11-05",
+      baseCurrency: "CHF",
+      profile,
+      goals: [],
+      memories: [],
+    });
+    // Without this the model called `calculate` for the hard sums and did
+    // 418,446.13 x 80% in prose.
+    expect(prompt).toContain("never work out a percentage");
+    expect(prompt).toContain("Call `calculate`");
+    // Retyping 421,135.48 as 421,135 changed the answer by 0.69.
+    expect(prompt).toContain("do not retype a rounded version");
+    // 1,533 EUR divided by 418,446 CHF is not a share.
+    expect(prompt).toContain("Never divide or add amounts in different currencies");
+    // Runway had three answers because "liquid" was never defined.
+    expect(prompt).toContain("For runway, use the liquid figure");
+    expect(prompt).toContain("cash and emergency fund, not the whole portfolio");
+    // A zero liquid figure has two causes and they mean opposite things.
+    expect(prompt).toContain("never tell the user they have no cash");
+  });
+
   it("bounds the assistant to money questions without refusing adjacent ones", () => {
     const prompt = buildSystemPrompt({
       today: "2026-10-31",

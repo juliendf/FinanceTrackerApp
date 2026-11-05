@@ -19,6 +19,7 @@ import { listTopMemories } from "../db/repositories/profile";
 import { getSnapshotOn, listAllSnapshotPoints } from "../db/repositories/snapshots";
 import { getAllSettings } from "../db/repositories/settings";
 import { displayName } from "../domain/assets";
+import { calculate, CALCULATION_OPS, CalculationError, type CalculationOp } from "../domain/calculations";
 import { CurrencyConverter, RateTable } from "../domain/currency";
 import { latestPerAsset, summarise, type Fact } from "../domain/dashboard";
 import { addDays, isValidIsoDate, todayIso } from "../domain/dates";
@@ -125,6 +126,50 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
     type: "function",
     function: {
+      name: "calculate",
+      description:
+        "Run arithmetic on amounts. Use this instead of computing numbers yourself — never do " +
+        "percentages, projections, runway or goal gaps in your head. Operations: " +
+        "percent_change (from, to), percentage_of (part, whole), compound_growth " +
+        "(principal, monthly_contribution, annual_rate_pct, years), runway (liquid_amount, " +
+        "monthly_expenses), goal_gap (target, current, monthly_saving), apply_rate (amount, " +
+        "rate_pct — negative for a fall, e.g. -20 for a 20% drop). Returns *_display strings; " +
+        "copy them verbatim.",
+      parameters: {
+        type: "object",
+        properties: {
+          op: {
+            type: "string",
+            enum: [...CALCULATION_OPS],
+            description: "Which calculation to run",
+          },
+          currency: {
+            type: "string",
+            description: "Currency for the money results; defaults to the user's base currency",
+          },
+          from: { type: "number", description: "percent_change: the starting amount" },
+          to: { type: "number", description: "percent_change: the ending amount" },
+          part: { type: "number", description: "percentage_of: the part" },
+          whole: { type: "number", description: "percentage_of: the whole" },
+          principal: { type: "number", description: "compound_growth: the starting lump sum" },
+          monthly_contribution: { type: "number", description: "compound_growth: added each month" },
+          annual_rate_pct: { type: "number", description: "compound_growth: annual rate, as a percent" },
+          years: { type: "number", description: "compound_growth: how many years" },
+          liquid_amount: { type: "number", description: "runway: pass liquid_value_base from get_portfolio_summary, not the total" },
+          monthly_expenses: { type: "number", description: "runway: spent each month" },
+          target: { type: "number", description: "goal_gap: the goal amount" },
+          current: { type: "number", description: "goal_gap: what is already set aside" },
+          monthly_saving: { type: "number", description: "goal_gap: added each month" },
+          amount: { type: "number", description: "apply_rate: the amount before the change" },
+          rate_pct: { type: "number", description: "apply_rate: the change, as a percent" },
+        },
+        required: ["op"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "propose_snapshot",
       description:
         "Propose recording a new asset value. This creates a confirmation request — it does NOT save data. The user must confirm via the UI card. Use this instead of directly creating snapshots.",
@@ -181,6 +226,7 @@ const TOOL_STATUS: Record<string, string> = {
   get_asset_history: "Reading the value history…",
   get_allocation: "Breaking down your allocation…",
   propose_snapshot: "Preparing a snapshot for you to confirm…",
+  calculate: "Running the numbers…",
   remember_fact: "Preparing a note to remember…",
 };
 
@@ -253,6 +299,19 @@ async function portfolioSummary(): Promise<unknown> {
   return {
     total_value_base: round2(summary.portfolioValue),
     total_value_display: formatCurrency(summary.portfolioValue, baseCurrency).trim(),
+    // Runway needs this rather than the total: see the arithmetic rule.
+    liquid_value_base: round2(summary.liquidValue),
+    liquid_value_display: formatCurrency(summary.liquidValue, baseCurrency).trim(),
+    liquid_definition: "cash and emergency fund only, not the whole portfolio",
+    // A zero has two causes and they mean opposite things. Say which one it is.
+    ...(summary.liquidClassified || summary.portfolioValue.isZero()
+      ? {}
+      : {
+          liquid_note:
+            "No category is marked as cash or emergency fund, so this zero means " +
+            "nothing is classified, not that there is no cash. Tell the user to set " +
+            "the system role on Manage -> Categories before treating this as a runway.",
+        }),
     base_currency: baseCurrency,
     asset_count: summary.totalAssets,
     last_update_date: latest ?? "N/A",
@@ -513,6 +572,31 @@ export async function executeTool(
           typeof args.date === "string" ? args.date : undefined,
         );
         return { result, summary: "snapshot proposed (awaiting confirmation)" };
+      }
+      case "calculate": {
+        const settings = await getAllSettings();
+        const currency = String(args.currency ?? settings.base_currency ?? "EUR");
+        try {
+          const outcome = calculate(String(args.op ?? "") as CalculationOp, args);
+          const result: Record<string, unknown> = { op: String(args.op), currency };
+          for (const [name, value] of Object.entries(outcome.money)) {
+            result[name] = value.toFixed(2);
+            result[`${name}_display`] = formatCurrency(value, currency).trim();
+          }
+          for (const [name, value] of Object.entries(outcome.percent)) {
+            result[name] = value.toFixed(2);
+            result[`${name}_display`] = `${value.toFixed(2)}%`;
+          }
+          for (const [name, value] of Object.entries(outcome.count)) {
+            result[name] = value.toFixed(2);
+          }
+          return { result, summary: `calculated ${String(args.op)}` };
+        } catch (error) {
+          if (error instanceof CalculationError) {
+            return { result: { op: String(args.op), error: error.message }, summary: "calculation refused" };
+          }
+          throw error;
+        }
       }
       case "remember_fact": {
         const result = await rememberFact(

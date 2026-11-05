@@ -54,7 +54,37 @@ describe("summarise", () => {
   it("is empty-safe", () => {
     const s = summarise([], [], eur(), "2026-01-01");
     expect(s.portfolioValue.toString()).toBe("0");
+    expect(s.liquidValue.toString()).toBe("0");
     expect(s.daysSinceUpdate).toBe(0);
+  });
+
+  it("counts only cash and the emergency fund as liquid", () => {
+    // The runway question had three different answers because "liquid" was never
+    // defined: the whole portfolio, a single account, then something else.
+    const facts = [
+      fact(1, "2026-01-01", 500, { system_role: "cash" }),
+      fact(2, "2026-01-01", 300, { system_role: "emergency_fund" }),
+      fact(3, "2026-01-01", 100000, { system_role: "stocks" }),
+      fact(4, "2026-01-01", 250000, { system_role: "real_estate" }),
+      fact(5, "2026-01-01", 1000, { system_role: null }),
+    ];
+    const s = summarise(facts, ["EUR"], eur(), "2026-01-01");
+    expect(s.portfolioValue.toString()).toBe("351800");
+    // Bonds, shares and property are convertible, not liquid.
+    expect(s.liquidValue.toString()).toBe("800");
+    expect(s.liquidClassified).toBe(true);
+  });
+
+  it("says when nothing is classified, so a zero is not read as no cash", () => {
+    // Every category in a fresh install has an empty system_role, and the
+    // assistant reported the resulting zero as "your liquid assets are 0.00".
+    const facts = [
+      fact(1, "2026-01-01", 500, { system_role: null }),
+      fact(2, "2026-01-01", 250000, { system_role: null }),
+    ];
+    const s = summarise(facts, ["EUR"], eur(), "2026-01-01");
+    expect(s.liquidValue.toString()).toBe("0");
+    expect(s.liquidClassified).toBe(false);
   });
 });
 

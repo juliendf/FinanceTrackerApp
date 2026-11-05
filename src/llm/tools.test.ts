@@ -83,13 +83,14 @@ beforeEach(() => {
 });
 
 describe("tool definitions", () => {
-  it("ships the seven tools from tools.json", () => {
+  it("ships the eight tools the prompt describes", () => {
     expect(TOOL_DEFINITIONS.map((tool) => tool.function.name)).toEqual([
       "get_portfolio_summary",
       "list_assets",
       "get_asset_details",
       "get_asset_history",
       "get_allocation",
+      "calculate",
       "propose_snapshot",
       "remember_fact",
     ]);

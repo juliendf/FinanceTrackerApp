@@ -59,6 +59,22 @@ const convertedSum = (rows: readonly Fact[], converter: CurrencyConverter): Deci
 export interface DashboardSummary {
   totalAssets: number;
   portfolioValue: Decimal;
+  /**
+   * Cash and emergency fund only — what is available now.
+   *
+   * Not "everything convertible": bonds, shares and property can be sold, but
+   * counting them as liquid is how someone concludes they have four years of
+   * runway when they have four months.
+   */
+  liquidValue: Decimal;
+  /**
+   * Whether any asset is classified as cash or emergency fund.
+   *
+   * Without this, a zero liquid value is indistinguishable from "the categories
+   * were never given a system role" — and the assistant reported the second as
+   * if it were the first.
+   */
+  liquidClassified: boolean;
   currencyCount: number;
   currencies: string[];
   /** Whole days since the newest snapshot; 0 when there are none (`days_since or 0`). */
@@ -80,9 +96,14 @@ export function summarise(
   const latest = latestPerAsset(facts);
   const newest = facts.reduce<string | null>((max, f) => (max === null || f.date > max ? f.date : max), null);
   const currencies = [...new Set(assetCurrencies)].sort();
+  const liquid = latest.filter(
+    (row) => row.system_role === SYSTEM_ROLES.CASH || row.system_role === SYSTEM_ROLES.EMERGENCY_FUND,
+  );
   return {
     totalAssets: assetCurrencies.length,
     portfolioValue: round2(convertedSum(latest, converter)),
+    liquidValue: round2(convertedSum(liquid, converter)),
+    liquidClassified: liquid.length > 0,
     currencyCount: currencies.length,
     currencies,
     daysSinceUpdate: newest ? daysBetween(newest, today) : 0,

@@ -53,6 +53,19 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "contribution limits, withholding tax, products that only exist in some " +
   "countries — and say plainly that rules vary and that they should check the " +
   "current local rules for anything that matters. " +
+  // The model used `calculate` for the hard sums and did the easy ones itself,
+  // which is exactly backwards: 418,446.13 x 80% came back as 334,757.00. It also
+  // retyped 421,135.48 as 421,135 and divided euros by francs.
+  "Arithmetic: never work out a percentage, a share, a difference, a projection " +
+  "or a runway yourself, however trivial it looks. Call `calculate` and copy its " +
+  "`*_display` strings. Pass the figures a tool gave you unchanged — do not retype " +
+  "a rounded version. Never divide or add amounts in different currencies: convert " +
+  "to the base currency first. For runway, use the liquid figure " +
+  "`get_portfolio_summary` returns — cash and emergency fund, not the whole " +
+  "portfolio. A liquid figure of zero with `liquid_note` means the categories " +
+  "are unclassified: say that, and never tell the user they have no cash. " +
+  "If `calculate` refuses, relay what it said instead of " +
+  "finding another way to the number. " +
   "Money: every tool result carries a `*_display` string (for example " +
   "`CHF 12,345.00`) and a currency code. Copy those strings verbatim. Never " +
   "substitute a currency symbol of your own, never translate the currency, and " +
