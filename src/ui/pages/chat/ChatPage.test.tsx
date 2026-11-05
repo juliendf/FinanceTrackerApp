@@ -17,6 +17,7 @@ const repo = vi.hoisted(() => ({
   renameConversation: vi.fn(),
   setConversationProvider: vi.fn(),
   setConversationModel: vi.fn(),
+  setConversationPinned: vi.fn(),
   listActiveProviders: vi.fn(),
   getDefaultProvider: vi.fn(),
   getProviderKey: vi.fn(),
@@ -38,6 +39,7 @@ vi.mock("../../../db/repositories/chat", () => ({
   renameConversation: (...a: unknown[]) => repo.renameConversation(...a),
   setConversationProvider: (...a: unknown[]) => repo.setConversationProvider(...a),
   setConversationModel: (...a: unknown[]) => repo.setConversationModel(...a),
+  setConversationPinned: (...a: unknown[]) => repo.setConversationPinned(...a),
   listPendingActions: vi.fn(),
 }));
 vi.mock("../../../db/repositories/llmProviders", () => ({
@@ -55,13 +57,17 @@ vi.mock("../../../llm/service", () => ({
   extractMemories: (...a: unknown[]) => repo.extractMemories(...a),
   providerApiKey: async () => null,
 }));
-vi.mock("../../../llm/transport", () => ({ rustTransport: () => Object.assign(async () => ({ content: "", toolCalls: [], cancelled: false }), { cancel: vi.fn() }) }));
+const transportCancel = vi.hoisted(() => vi.fn());
+vi.mock("../../../llm/transport", () => ({
+  rustTransport: () => Object.assign(async () => ({ content: "", toolCalls: [], cancelled: false }), { cancel: transportCancel }),
+}));
 
 import { ChatPage } from "./ChatPage";
+import { clearRunningTurns } from "./runningTurns";
 import { ToastProvider } from "../../layout/Toasts";
 
 const PROVIDER = { id: 2, name: "Ollama", base_url: "http://localhost:11434/v1", model: "qwen", provider_type: "openai", keychain_ref: null, is_default: 1, is_active: 1, created_at: "", updated_at: "" };
-const CONVERSATION = { id: 5, provider_id: 2, model_override: null, title: "Portfolio question", created_at: "", updated_at: "" };
+const CONVERSATION = { id: 5, provider_id: 2, model_override: null, title: "Portfolio question", pinned_at: null, created_at: "", updated_at: "" };
 
 /** Test-only: lets a test walk to another conversation without a real router. */
 function GoTo({ to }: { to: string }) {
@@ -80,6 +86,7 @@ function renderChat(start = "/chat/5") {
       <ToastProvider>
         <MemoryRouter initialEntries={[start]}>
           <GoTo to="/chat/6" />
+          <GoTo to="/chat/5" />
           <Routes>
             <Route path="/chat/:conversationId" element={<ChatPage />} />
           </Routes>
@@ -92,6 +99,7 @@ function renderChat(start = "/chat/5") {
 afterEach(cleanup);
 beforeEach(() => {
   vi.clearAllMocks();
+  clearRunningTurns();
   repo.getAllSettings.mockResolvedValue({ ai_enabled: true, base_currency: "CHF" });
   repo.listConversations.mockResolvedValue([CONVERSATION]);
   repo.getConversation.mockResolvedValue(CONVERSATION);
@@ -113,6 +121,42 @@ describe("ChatPage", () => {
     renderChat();
     expect(await screen.findByText(/AI is off/)).toBeTruthy();
     expect((screen.getByPlaceholderText("Ask about your finances...") as HTMLTextAreaElement).disabled).toBe(true);
+  });
+
+  it("edits a sent message, rewinds to it and asks again", async () => {
+    const user = userEvent.setup();
+    repo.deleteMessageFrom.mockResolvedValue(undefined);
+    repo.sendMessage.mockResolvedValue({ answer: "New answer", pendingActions: [], cancelled: false, rounds: 1 });
+    renderChat();
+    await waitFor(() => expect(screen.getByText("set my account to 1234")).toBeTruthy());
+
+    await user.click(screen.getByTitle("Edit this message and regenerate the answer"));
+    // The rewind is destructive, so the editor says so before the click.
+    expect(screen.getByText(/cannot be undone/i)).toBeTruthy();
+
+    const box = screen.getByDisplayValue("set my account to 1234");
+    await user.clear(box);
+    await user.type(box, "set my account to 4321");
+    await user.click(screen.getByRole("button", { name: /save & regenerate/i }));
+
+    await waitFor(() => expect(repo.deleteMessageFrom).toHaveBeenCalledWith(1));
+    await waitFor(() => expect(repo.sendMessage).toHaveBeenCalled());
+    // Rewind first, then ask: the new question must not be sent into the old branch.
+    expect(repo.deleteMessageFrom.mock.invocationCallOrder[0])
+      .toBeLessThan(repo.sendMessage.mock.invocationCallOrder[0]);
+    expect(repo.sendMessage.mock.calls[0][0].text).toBe("set my account to 4321");
+  });
+
+  it("cancels an edit without touching the conversation", async () => {
+    const user = userEvent.setup();
+    renderChat();
+    await waitFor(() => expect(screen.getByText("set my account to 1234")).toBeTruthy());
+
+    await user.click(screen.getByTitle("Edit this message and regenerate the answer"));
+    await user.click(screen.getByRole("button", { name: /cancel/i }));
+
+    expect(repo.deleteMessageFrom).not.toHaveBeenCalled();
+    expect(screen.getByText("set my account to 1234")).toBeTruthy();
   });
 
   it("renders the transcript with markdown", async () => {
@@ -331,6 +375,90 @@ describe("ChatPage", () => {
     expect(container.textContent).not.toContain("still arriving");
 
     release();
+  });
+
+  it("keeps generating after the user leaves, and re-attaches on return", async () => {
+    // The bug: leaving the chat cancelled the request, so a slow local model
+    // pinned the user to the screen until the answer arrived.
+    const user = userEvent.setup();
+    let release!: () => void;
+    let emit!: (event: unknown) => void;
+    repo.sendMessage.mockImplementation(async (options: { onEvent: (event: unknown) => void }) => {
+      emit = options.onEvent;
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Saved answer", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    emit({ type: "delta", content: "Partial" });
+    await waitFor(() => expect(screen.getByRole("button", { name: "Stop" })).toBeTruthy());
+
+    // Leaving the conversation no longer cancels the turn.
+    await user.click(screen.getByRole("button", { name: /go to \/chat\/6/ }));
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Stop" })).toBeNull());
+    expect(transportCancel).not.toHaveBeenCalled();
+
+    // Coming back while it still runs re-attaches, so Stop is reachable again.
+    await user.click(screen.getByRole("button", { name: /go to \/chat\/5/ }));
+    expect(await screen.findByRole("button", { name: "Stop" })).toBeTruthy();
+
+    release();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Stop" })).toBeNull());
+  });
+
+  it("announces an answer that lands while the user is elsewhere, with a way back", async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    repo.sendMessage.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Saved answer", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    // Walk away, then let the turn finish.
+    await user.click(screen.getByRole("button", { name: /go to \/chat\/6/ }));
+    release();
+
+    await waitFor(() => expect(screen.getByText("Answer ready")).toBeTruthy());
+    expect(screen.getByText(/"Portfolio question" is ready\./)).toBeTruthy();
+    // A hash route, so the interceptor leaves it alone and it navigates in-app.
+    expect(screen.getByRole("link", { name: "Open chat" }).getAttribute("href")).toBe("#/chat/5");
+  });
+
+  it("stays quiet when the answer lands on the page the user is on", async () => {
+    const user = userEvent.setup();
+    let release!: () => void;
+    repo.sendMessage.mockImplementation(async () => {
+      await new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      return { answer: "Saved answer", pendingActions: [], cancelled: false, rounds: 1 };
+    });
+
+    renderChat();
+    const input = (await screen.findByPlaceholderText("Ask about your finances...")) as HTMLTextAreaElement;
+    await waitFor(() => expect(input.disabled).toBe(false));
+    await user.type(input, "how much?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    release();
+    await waitFor(() => expect(screen.queryByRole("button", { name: "Stop" })).toBeNull());
+    // The answer is on screen; a notification would be noise.
+    expect(screen.queryByText("Answer ready")).toBeNull();
   });
 
   it("says what it is doing while a tool runs", async () => {

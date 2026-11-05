@@ -1648,6 +1648,24 @@ select[multiple].form-select option {
 
 /* Opaque: the theme's alert tints are translucent, so a toast over content was
  * unreadable (the page showed through the text). */
+/* The message is one block, so a long one wraps inside its own column instead of
+   becoming several flex items next to the link and the close button. */
+.alert-container .alert-body {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.alert-container .alert .btn-close {
+    flex-shrink: 0;
+    margin-left: 0.25rem;
+}
+
+/* The action gets its own line: it is a way out of the message, not a word in it. */
+.alert-container .alert-action {
+    display: block;
+    margin-top: 0.25rem;
+}
+
 .alert-container .alert {
     margin-bottom: 0;
     pointer-events: auto;
@@ -2884,8 +2902,65 @@ body.chat-page main > .container-fluid {
     overflow-wrap: anywhere;
 }
 
+/* ---- Editing a sent message ------------------------------------------ */
+
+/* Edit sits next to delete, same circle, same hover reveal. */
+.msg-user .btn-edit-msg {
+    all: unset;
+    position: absolute;
+    top: 2px;
+    right: 1.75rem;
+    width: 1.35rem;
+    height: 1.35rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.15);
+    color: inherit;
+    font-size: 0.7rem;
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.12s ease;
+}
+
+.msg-user:hover .btn-edit-msg,
+.msg-user:focus-within .btn-edit-msg {
+    opacity: 1;
+}
+
+.msg-user .btn-edit-msg:hover {
+    background: rgba(0, 0, 0, 0.30);
+}
+
+.msg-user.msg-editing {
+    display: block;
+    padding: 0.5rem;
+}
+
+.msg-edit-input {
+    font-size: 0.875rem;
+    resize: vertical;
+}
+
+/* The rewind is destructive and cannot be undone, so it says so in place. */
+.msg-edit-hint {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.msg-edit-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
 /* Reserve room so long text never runs under the delete button. */
 .msg-user:has(.btn-delete-msg) { padding-right: 1.9rem; }
+.msg-user:has(.btn-edit-msg) { padding-right: 3.2rem; }
 
 .msg-user .btn-delete-msg {
     all: unset;

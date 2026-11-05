@@ -18,12 +18,36 @@ import {
 
 export type ToastType = "success" | "info" | "warning" | "danger";
 
+/**
+ * A way out of the message: a hash route the user can follow.
+ *
+ * A plain href rather than a callback, because the toast layer sits above the
+ * router and has no navigation to hand out, and because `#/…` is left alone by
+ * the link interceptor — it navigates in-app instead of opening a browser.
+ */
+export interface ToastAction {
+  href: string;
+  label: string;
+}
+
+export interface ToastOptions {
+  /** Replaces the type's default bold prefix. */
+  title?: string;
+  action?: ToastAction;
+  /** How long the message stays; 5 s unless given. */
+  durationMs?: number;
+}
+
 interface Toast {
   id: number;
   type: ToastType;
   message: string;
   title?: string;
+  action?: ToastAction;
+  durationMs: number;
 }
+
+const DEFAULT_DURATION_MS = 5000;
 
 const ALERT_META: Record<ToastType, { icon: string; title: string }> = {
   success: { icon: "bi-check-circle", title: "Success!" },
@@ -33,10 +57,10 @@ const ALERT_META: Record<ToastType, { icon: string; title: string }> = {
 };
 
 interface ToastApi {
-  push: (type: ToastType, message: string, title?: string) => void;
-  success: (message: string) => void;
+  push: (type: ToastType, message: string, options?: ToastOptions) => void;
+  success: (message: string, options?: ToastOptions) => void;
   error: (message: string) => void;
-  info: (message: string) => void;
+  info: (message: string, options?: ToastOptions) => void;
   warning: (message: string) => void;
 }
 
@@ -52,11 +76,14 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const push = useCallback(
-    (type: ToastType, message: string, title?: string) => {
+    (type: ToastType, message: string, options: ToastOptions = {}) => {
       const id = nextId.current++;
-      setToasts((current) => [...current, { id, type, message, title }]);
-      // Alerts auto-close after 5 seconds.
-      const timer = window.setTimeout(() => dismiss(id), 5000);
+      const durationMs = options.durationMs ?? DEFAULT_DURATION_MS;
+      setToasts((current) => [
+        ...current,
+        { id, type, message, title: options.title, action: options.action, durationMs },
+      ]);
+      const timer = window.setTimeout(() => dismiss(id), durationMs);
       timers.current.push(timer);
     },
     [dismiss],
@@ -71,9 +98,9 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const api = useMemo<ToastApi>(
     () => ({
       push,
-      success: (message) => push("success", message),
+      success: (message, options) => push("success", message, options),
       error: (message) => push("danger", message),
-      info: (message) => push("info", message),
+      info: (message, options) => push("info", message, options),
       warning: (message) => push("warning", message),
     }),
     [push],
@@ -85,14 +112,24 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       <div className="alert-container" aria-live="polite">
         {toasts.map((toast) => {
             const meta = ALERT_META[toast.type];
+            // No `alert-dismissible`: it positions the close button absolutely,
+            // which put it on top of the message and its link in a flex row.
+            // Here the close is an ordinary flex item.
             return (
               <div
-                className={`alert alert-${toast.type} alert-dismissible fade show`}
+                className={`alert alert-${toast.type} fade show`}
                 role="alert"
                 key={toast.id}
               >
-                <i className={`bi ${meta.icon} me-2`} aria-hidden="true" />
-                <strong>{toast.title ?? meta.title}</strong> {toast.message}
+                <i className={`bi ${meta.icon}`} aria-hidden="true" />
+                <div className="alert-body">
+                  <strong>{toast.title ?? meta.title}</strong> {toast.message}
+                  {toast.action ? (
+                    <a className="alert-link alert-action" href={toast.action.href}>
+                      {toast.action.label}
+                    </a>
+                  ) : null}
+                </div>
                 <button
                   type="button"
                   className="btn-close"

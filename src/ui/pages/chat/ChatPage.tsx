@@ -49,6 +49,13 @@ import { toolStatusLabel } from "../../../llm/tools";
  */
 const FRAME_MS = 60;
 import { filterSessions, groupSessions } from "./sessionList";
+import {
+  getRunningTurn,
+  getVisibleConversation,
+  registerTurn,
+  setVisibleConversation,
+  unregisterTurn,
+} from "./runningTurns";
 import { useRememberedModel } from "../../../llm/modelChoice";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { PageHeader } from "../../components/FormCard";
@@ -194,6 +201,18 @@ export function ChatPage() {
   const activeIdRef = useRef<number | null>(id);
 
   useEffect(() => {
+    setVisibleConversation(id);
+  }, [id]);
+
+  useEffect(
+    () => () => {
+      // The page is gone: a turn finishing now must not assume it is on screen.
+      setVisibleConversation(null);
+    },
+    [],
+  );
+
+  useEffect(() => {
     activeIdRef.current = id;
     setBubbles([]);
     streamTextRef.current = "";
@@ -201,12 +220,16 @@ export function ChatPage() {
     showActivity(null);
     setStreaming(false);
 
-    const cancel = abortRef.current;
-    abortRef.current = null;
-    // Leaving a conversation stops its request: nothing arrives for a page that
-    // is no longer on screen.
-    if (cancel) void cancel();
-    // `stopFlushing`, `showActivity` and `cancel` are stable identities.
+    // Leaving a conversation no longer stops its request. `sendMessage` was
+    // already saving the answer, so cancelling threw work away; with a slow local
+    // model it also meant the user could not leave the screen until it finished.
+    // Coming back re-attaches to the turn if it is still running, which keeps the
+    // Stop button reachable.
+    const running = id === null ? undefined : getRunningTurn(id);
+    abortRef.current = running?.cancel ?? null;
+    setStreaming(running !== undefined);
+    showActivity(running ? { phase: "writing" } : null);
+    // `stopFlushing` and `showActivity` are stable identities.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
@@ -312,10 +335,12 @@ export function ChatPage() {
     requestIdRef.current = requestId;
     /** The conversation this turn belongs to, for the guards below. */
     const sendingFor = id;
+    let cancelled = false;
 
     try {
       const transport = rustTransport({ provider_id: selected.id }, model || null);
       abortRef.current = transport.cancel;
+      registerTurn(sendingFor, { cancel: transport.cancel });
 
       const result = await sendMessage({
         conversationId: id,
@@ -346,6 +371,7 @@ export function ChatPage() {
         },
       });
 
+      cancelled = result.cancelled;
       if (result.cancelled) toast.info("Stopped.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : String(error));
@@ -360,10 +386,24 @@ export function ChatPage() {
       }
       abortRef.current = null;
     }
+    // Settled either way: finished, cancelled or failed.
+    unregisterTurn(sendingFor);
 
-    // The answer was saved regardless; only the view is conditional.
-    if (activeIdRef.current !== sendingFor) {
+    // The answer was saved regardless; only the view is conditional. The module
+    // signal is used rather than `activeIdRef`, which still holds the last
+    // conversation after the page unmounts and would claim the user is there.
+    if (getVisibleConversation() !== sendingFor) {
       await queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      // A turn that finishes while the user is elsewhere is invisible work: say
+      // it landed, and give them the way back to it.
+      if (!cancelled) {
+        const named = conversation.data?.title ? `"${conversation.data.title}"` : "Your chat";
+        toast.success(`${named} is ready.`, {
+          title: "Answer ready",
+          action: { href: `#/chat/${sendingFor}`, label: "Open chat" },
+          durationMs: 12_000,
+        });
+      }
       return;
     }
 
@@ -438,6 +478,42 @@ export function ChatPage() {
     await deleteMessageFrom(messageId);
     refreshList();
   };
+
+  /**
+   * Rewind to the edited message and ask again.
+   *
+   * `deleteMessageFrom` already removes that message and everything after it,
+   * together with the pending actions they produced — which is exactly the
+   * semantics an edit needs, because a user message is always a safe cut: the
+   * assistant turn and its tool results sit after it and go as a block. Cutting
+   * on a `role='tool'` row would orphan a `tool_call_id`, but nothing here can.
+   */
+  // `send` is rebuilt on every render, so it goes through a ref: passing it in
+  // the callback's dependencies would make `saveEditedMessage` new each time and
+  // defeat the memo on every transcript row.
+  const sendRef = useRef(send);
+  useEffect(() => {
+    sendRef.current = send;
+  });
+
+  const saveEditedMessage = useCallback(
+    (messageId: number, content: string) => {
+      void (async () => {
+        if (id === null) return;
+        try {
+          await deleteMessageFrom(messageId);
+          // Drop the discarded branch before streaming, or it stays on screen
+          // next to the new question until the final refetch.
+          await queryClient.invalidateQueries({ queryKey: ["messages", id] });
+          await queryClient.invalidateQueries({ queryKey: ["pending-actions", id] });
+          await sendRef.current(content);
+        } catch (error) {
+          toast.error(error instanceof Error ? error.message : String(error));
+        }
+      })();
+    },
+    [id, queryClient],
+  );
 
   const canChat = aiEnabled && providerList.length > 0;
 
@@ -608,7 +684,13 @@ export function ChatPage() {
                 ) : null}
 
                 {(messages.data ?? []).map((message) => (
-                  <TranscriptMessage key={message.id} message={message} onRequestDelete={requestDeleteMessage} />
+                  <TranscriptMessage
+                    key={message.id}
+                    message={message}
+                    onRequestDelete={requestDeleteMessage}
+                    onSaveEdit={saveEditedMessage}
+                    canEdit={!streaming}
+                  />
                 ))}
 
                 {bubbles.map((bubble) => (
