@@ -18,12 +18,12 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.test.json --noEmit",
     "app:build": "tauri build --config src-tauri/tauri.local.conf.json",
-    "app:local": "npm run app:build && open \"src-tauri/target/release/bundle/macos/FinanceTracker.app\"",
+    "app:local": "npm run app:build && node scripts/open-built-app.mjs \"FinanceTracker\" \"src-tauri/target/release/bundle/macos/FinanceTracker.app\"",
     "app:install": "npm run app:build && rm -rf /Applications/FinanceTracker.app && ditto \"src-tauri/target/release/bundle/macos/FinanceTracker.app\" /Applications/FinanceTracker.app",
     "release:check": "npm run typecheck && npm test && cargo test --manifest-path src-tauri/Cargo.toml",
     "version:set": "node scripts/set-version.mjs",
     "demo:build": "tauri build --config src-tauri/tauri.demo.conf.json",
-    "demo:local": "npm run demo:build && open \"src-tauri/target/release/bundle/macos/FinanceTracker Demo.app\"",
+    "demo:local": "npm run demo:build && node scripts/open-built-app.mjs \"FinanceTracker Demo\" \"src-tauri/target/release/bundle/macos/FinanceTracker Demo.app\"",
     "demo:install": "npm run demo:build && rm -rf \"/Applications/FinanceTracker Demo.app\" && ditto \"src-tauri/target/release/bundle/macos/FinanceTracker Demo.app\" \"/Applications/FinanceTracker Demo.app\""
   },
   "dependencies": {
