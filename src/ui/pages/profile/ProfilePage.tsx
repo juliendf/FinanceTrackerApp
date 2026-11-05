@@ -20,6 +20,9 @@ import {
   listGoals,
   listMemories,
   saveProfile,
+  HAS_WILL_CHOICES,
+  MARITAL_REGIME_CHOICES,
+  MARITAL_STATUS_CHOICES,
   updateGoal,
   updateMemory,
   type Goal,
@@ -334,6 +337,55 @@ export function ProfilePage() {
                 onChange={(e) => setDraft({ ...draft, dependant_ages: e.target.value || null })}
               />
               <div className="form-text">Optional. Ages change the horizon: school fees now, university in ten years.</div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="marital_status" className="form-label">Marital Status</label>
+              <select
+                id="marital_status"
+                className="form-select"
+                value={draft.marital_status ?? ""}
+                onChange={(e) => setDraft({ ...draft, marital_status: e.target.value || null })}
+              >
+                <option value="">-- Not set --</option>
+                {MARITAL_STATUS_CHOICES.map((choice) => (
+                  <option key={choice.value} value={choice.value}>{choice.label}</option>
+                ))}
+              </select>
+              <div className="form-text">Decides who inherits by default, and how the income is taxed.</div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="marital_regime" className="form-label">Matrimonial Regime</label>
+              <select
+                id="marital_regime"
+                className="form-select"
+                value={draft.marital_regime ?? ""}
+                onChange={(e) => setDraft({ ...draft, marital_regime: e.target.value || null })}
+              >
+                <option value="">-- Not set --</option>
+                {MARITAL_REGIME_CHOICES.map((choice) => (
+                  <option key={choice.value} value={choice.value}>{choice.label}</option>
+                ))}
+              </select>
+              <div className="form-text">
+                How property is shared between spouses. It decides what actually transfers, and it is not always the
+                default. Leave it unset where the concept does not apply.
+              </div>
+            </div>
+            <div className="col-md-4 mb-3">
+              <label htmlFor="has_will" className="form-label">Will</label>
+              <select
+                id="has_will"
+                className="form-select"
+                value={draft.has_will === null || draft.has_will === undefined ? "" : String(draft.has_will)}
+                onChange={(e) =>
+                  setDraft({ ...draft, has_will: e.target.value === "" ? null : Number(e.target.value) })
+                }
+              >
+                {HAS_WILL_CHOICES.map((choice) => (
+                  <option key={choice.value} value={choice.value}>{choice.label}</option>
+                ))}
+              </select>
+              <div className="form-text">"No" is an action item; "not stated" is a question the assistant will ask.</div>
             </div>
             <div className="col-md-4 mb-3">
               <label htmlFor="tax_residence" className="form-label">Country of Tax Residence</label>

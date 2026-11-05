@@ -133,6 +133,10 @@ export const profileSchema = z.object({
   monthly_expenses: z.union([z.number(), z.string()]).nullable().optional(),
   dependants_count: z.union([z.number(), z.string()]).nullable().optional(),
   dependant_ages: z.string().nullable().optional(),
+  /** Absent from every v3 backup, so optional rather than required. */
+  marital_status: z.string().nullable().optional(),
+  marital_regime: z.string().nullable().optional(),
+  has_will: z.union([z.number(), z.string()]).nullable().optional(),
   employment_status: z.string().nullable().optional(),
   username: z.string().nullable().optional(),
   email: z.string().nullable().optional(),

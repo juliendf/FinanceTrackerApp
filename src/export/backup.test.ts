@@ -30,6 +30,7 @@ const rows: ExportRows = {
     birth_date: "1990-03-15", tax_residence: "CH",
     monthly_expenses_minor: 380000, dependants_count: 0, dependant_ages: null,
     employment_status: "employed",
+    marital_status: "married", marital_regime: "participation_aux_acquets", has_will: 1,
     currency: "CHF", timezone: "Europe/Zurich", date_format: "%d.%m.%Y",
     salary_minor: 500000, monthly_savings_target_minor: null, risk_profile: null,
     ai_tone: "encouraging", ai_verbosity: "balanced", ai_expertise: "intermediate",

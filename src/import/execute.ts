@@ -161,7 +161,7 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
   const profile = data.profile ?? {};
   if (Object.keys(profile).length > 0) {
     statements.push(
-      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence, monthly_expenses_minor, dependants_count, dependant_ages, employment_status, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
+      `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence, monthly_expenses_minor, dependants_count, dependant_ages, employment_status, marital_status, marital_regime, has_will, currency, timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise) VALUES (${
         [
           sqlInt(1),
           sqlText(profile.first_name ?? null),
@@ -176,6 +176,9 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
           countOrNull(profile.dependants_count),
           sqlText(profile.dependant_ages ?? null),
           sqlText(profile.employment_status ?? null),
+          sqlText(profile.marital_status ?? null),
+          sqlText(profile.marital_regime ?? null),
+          countOrNull(profile.has_will),
           sqlText(profile.default_currency ?? "EUR"),
           sqlText(profile.timezone ?? "UTC"),
           sqlText(profile.date_format ?? "%Y-%m-%d"),

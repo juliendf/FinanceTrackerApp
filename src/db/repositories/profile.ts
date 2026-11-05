@@ -20,6 +20,12 @@ export interface Profile {
   dependant_ages: string | null;
   /** `employed`, `self_employed`, `retired`, `student`, `between_jobs`, `other`. */
   employment_status: string | null;
+  /** `single`, `married`, `registered_partnership`, `divorced`, `widowed`. */
+  marital_status: string | null;
+  /** `participation_aux_acquets`, `separation_de_biens`, `communaute_de_biens`, `unknown`. */
+  marital_regime: string | null;
+  /** `null` not stated, `0` no, `1` yes — "no will" is an action, "not stated" a question. */
+  has_will: number | null;
   currency: string;
   timezone: string;
   date_format: string;
@@ -42,6 +48,9 @@ export const EMPTY_PROFILE: Profile = {
   dependants_count: null,
   dependant_ages: null,
   employment_status: null,
+  marital_status: null,
+  marital_regime: null,
+  has_will: null,
   currency: "EUR",
   timezone: "UTC",
   date_format: "%Y-%m-%d",
@@ -69,6 +78,7 @@ export async function getProfile(): Promise<Profile> {
   const rows = await db.select<Profile[]>(
     `SELECT first_name, last_name, job_title, financial_goals, birth_date, tax_residence,
             monthly_expenses_minor, dependants_count, dependant_ages, employment_status,
+            marital_status, marital_regime, has_will,
             currency, timezone, date_format, salary_minor,
             monthly_savings_target_minor, risk_profile, ai_tone, ai_verbosity, ai_expertise
        FROM profile WHERE id = 1`,
@@ -80,12 +90,15 @@ export async function saveProfile(input: Profile): Promise<void> {
   await runTransaction([
     `INSERT INTO profile (id, first_name, last_name, job_title, financial_goals, birth_date, tax_residence,
                          monthly_expenses_minor, dependants_count, dependant_ages, employment_status,
+                         marital_status, marital_regime, has_will,
                          currency, timezone, date_format, salary_minor, monthly_savings_target_minor,
                          risk_profile, ai_tone, ai_verbosity, ai_expertise)
      VALUES (1, ${sqlText(input.first_name)}, ${sqlText(input.last_name)}, ${sqlText(input.job_title)},
              ${sqlText(input.financial_goals)}, ${sqlText(input.birth_date)}, ${sqlText(input.tax_residence)},
              ${sqlInt(input.monthly_expenses_minor)}, ${sqlInt(input.dependants_count)},
              ${sqlText(input.dependant_ages)}, ${sqlText(input.employment_status)},
+             ${sqlText(input.marital_status)}, ${sqlText(input.marital_regime)},
+             ${sqlInt(input.has_will)},
              ${sqlText(input.currency)},
              ${sqlText(input.timezone)}, ${sqlText(input.date_format)}, ${sqlInt(input.salary_minor)},
              ${sqlInt(input.monthly_savings_target_minor)}, ${sqlText(input.risk_profile)},
@@ -97,6 +110,8 @@ export async function saveProfile(input: Profile): Promise<void> {
        monthly_expenses_minor = excluded.monthly_expenses_minor,
        dependants_count = excluded.dependants_count, dependant_ages = excluded.dependant_ages,
        employment_status = excluded.employment_status,
+       marital_status = excluded.marital_status, marital_regime = excluded.marital_regime,
+       has_will = excluded.has_will,
        currency = excluded.currency,
        timezone = excluded.timezone, date_format = excluded.date_format, salary_minor = excluded.salary_minor,
        monthly_savings_target_minor = excluded.monthly_savings_target_minor,
@@ -107,6 +122,41 @@ export async function saveProfile(input: Profile): Promise<void> {
 }
 
 // --- memories -----------------------------------------------------------------
+
+/** Marital status: it decides who inherits by default, and how income is taxed. */
+export const MARITAL_STATUS_CHOICES = [
+  { value: "single", label: "Single" },
+  { value: "married", label: "Married" },
+  { value: "registered_partnership", label: "Registered partnership" },
+  { value: "divorced", label: "Divorced" },
+  { value: "widowed", label: "Widowed" },
+] as const;
+
+/**
+ * Matrimonial regime.
+ *
+ * "Married" alone is not an answer: where the concept exists, the regime decides
+ * what actually transfers, and it is not always the default.
+ *
+ * The labels are the neutral English names — gain sharing is *participation aux
+ * acquêts* in France and Switzerland and *Zugewinngemeinschaft* in Germany. A
+ * common-law jurisdiction has no such concept and leaves the field unset. The
+ * stored keys keep their original spelling: renaming them would be a data
+ * migration for a label.
+ */
+export const MARITAL_REGIME_CHOICES = [
+  { value: "participation_aux_acquets", label: "Gain sharing" },
+  { value: "separation_de_biens", label: "Separation of property" },
+  { value: "communaute_de_biens", label: "Community of property" },
+  { value: "unknown", label: "Not sure" },
+] as const;
+
+/** Three states, because "no will" is an action and "not stated" is a question. */
+export const HAS_WILL_CHOICES = [
+  { value: "", label: "Not stated" },
+  { value: "1", label: "Yes" },
+  { value: "0", label: "No" },
+] as const;
 
 export const MEMORY_CATEGORIES = [
   { value: "personal", label: "Personal" },

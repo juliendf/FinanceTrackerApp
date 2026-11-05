@@ -25,6 +25,9 @@ const profile: Profile = {
   monthly_expenses_minor: null,
   dependants_count: null,
   dependant_ages: null,
+  marital_status: null,
+  marital_regime: null,
+  has_will: null,
   employment_status: null,
   currency: "CHF",
   timezone: "Europe/Zurich",
@@ -192,6 +195,33 @@ describe("prompt sections", () => {
     }
   });
 
+  it("states the marital status, the regime and the will only when set", () => {
+    const withFacts = buildProfileContext(
+      { ...profile, marital_status: "married", marital_regime: "separation_de_biens", has_will: 0 },
+      [],
+    );
+    // "Married" alone is not an answer in Switzerland: the regime is the half
+    // that decides what transfers.
+    expect(withFacts).toContain("marital status: married (separation of property)");
+    expect(withFacts).toContain("will: no");
+
+    // The regime reaches the prompt in neutral English too: a model told
+    // "participation aux acquets" reasons about one country's law.
+    const gainSharing = buildProfileContext(
+      { ...profile, marital_status: "married", marital_regime: "participation_aux_acquets", has_will: null },
+      [],
+    );
+    expect(gainSharing).toContain("marital status: married (gain sharing)");
+
+    const without = buildProfileContext(
+      { ...profile, marital_status: null, marital_regime: null, has_will: null },
+      [],
+    );
+    // Unset is a question to ask, not a default to assume.
+    expect(without).not.toContain("marital status");
+    expect(without).not.toContain("will:");
+  });
+
   it("states the planning facts the assistant needs", () => {
     const text = buildProfileContext(
       {
@@ -291,9 +321,12 @@ describe("prompt sections", () => {
 
   it("asks for succession facts instead of inventing them", () => {
     const succession = QUICK_PROMPTS.find((p) => p.id === "succession");
-    // The profile has no heirs, marital regime or will, so the prompt has to ask.
-    expect(succession?.prompt).toContain("do not assume them");
-    expect(succession?.prompt).toContain("ask me for whatever you need");
+    // Status, regime and the will are in the profile now, so the prompt uses them
+    // rather than claiming the app records none of it.
+    expect(succession?.prompt).toContain("are in my profile when I have set them");
+    expect(succession?.prompt).toContain("do not assume anything the profile leaves out");
+    // Heirs still have nowhere to live, so that part is still asked for.
+    expect(succession?.prompt).toContain("nowhere to record my heirs");
     // And it stays advisory rather than drafting a will.
     expect(succession?.prompt).toContain("notary");
   });

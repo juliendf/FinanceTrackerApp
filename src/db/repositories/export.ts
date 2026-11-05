@@ -28,6 +28,7 @@ export interface ExportProfile {
   tax_residence: string | null;
   monthly_expenses_minor: number | null; dependants_count: number | null;
   dependant_ages: string | null; employment_status: string | null;
+  marital_status: string | null; marital_regime: string | null; has_will: number | null;
   currency: string; timezone: string; date_format: string;
   salary_minor: number | null; monthly_savings_target_minor: number | null;
   risk_profile: string | null; ai_tone: string; ai_verbosity: string; ai_expertise: string;
@@ -93,6 +94,7 @@ export async function readExportRows(): Promise<ExportRows> {
         .select<ExportProfile[]>(
           `SELECT first_name, last_name, job_title, financial_goals, birth_date, tax_residence,
                   monthly_expenses_minor, dependants_count, dependant_ages, employment_status,
+                  marital_status, marital_regime, has_will,
                   currency, timezone, date_format, salary_minor, monthly_savings_target_minor,
                   risk_profile, ai_tone, ai_verbosity, ai_expertise
              FROM profile LIMIT 1`,

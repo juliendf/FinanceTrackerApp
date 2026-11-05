@@ -36,6 +36,13 @@ vi.mock("../../../db/repositories/profile", () => ({
   updateGoal: (...a: unknown[]) => repo.updateGoal(...a),
   deleteGoal: (...a: unknown[]) => repo.deleteGoal(...a),
   MEMORY_CATEGORIES: [{ value: "personal", label: "Personal" }],
+  MARITAL_STATUS_CHOICES: [{ value: "married", label: "Married" }],
+  MARITAL_REGIME_CHOICES: [{ value: "separation_de_biens", label: "Separation of property" }],
+  HAS_WILL_CHOICES: [
+    { value: "", label: "Not stated" },
+    { value: "1", label: "Yes" },
+    { value: "0", label: "No" },
+  ],
   GOAL_PRIORITIES: [{ value: "medium", label: "Medium" }],
   GOAL_CATEGORIES: [{ value: "", label: "-- None --" }],
   EMPTY_PROFILE: {},

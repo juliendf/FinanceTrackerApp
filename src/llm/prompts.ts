@@ -95,6 +95,22 @@ const EMPLOYMENT_LABELS: Record<string, string> = {
 
 const employmentLabel = (value: string): string => EMPLOYMENT_LABELS[value] ?? value;
 
+/** `participation_aux_acquets` → `participation aux acquêts`, for the prompt. */
+const MARITAL_REGIME_LABELS: Record<string, string> = {
+  participation_aux_acquets: "gain sharing",
+  separation_de_biens: "separation of property",
+  communaute_de_biens: "community of property",
+  unknown: "not sure",
+};
+
+const MARITAL_STATUS_LABELS: Record<string, string> = {
+  single: "single",
+  married: "married",
+  registered_partnership: "registered partnership",
+  divorced: "divorced",
+  widowed: "widowed",
+};
+
 /** `_build_profile_context`: one paragraph plus a structured goals list. */
 export function buildProfileContext(profile: Profile, goals: readonly Goal[], today = todayIso()): string {
   const parts: string[] = [];
@@ -130,6 +146,18 @@ export function buildProfileContext(profile: Profile, goals: readonly Goal[], to
   }
   if (profile.employment_status) {
     parts.push(`employment: ${employmentLabel(profile.employment_status)}`);
+  }
+  // Succession and tax both hang off these, and neither can be inferred from the
+  // portfolio. Only emitted when set: an absent field is a question to ask, not
+  // a default to assume.
+  if (profile.marital_status) {
+    const regime = profile.marital_regime
+      ? ` (${MARITAL_REGIME_LABELS[profile.marital_regime] ?? profile.marital_regime})`
+      : "";
+    parts.push(`marital status: ${MARITAL_STATUS_LABELS[profile.marital_status] ?? profile.marital_status}${regime}`);
+  }
+  if (profile.has_will != null) {
+    parts.push(`will: ${profile.has_will ? "yes" : "no"}`);
   }
   if (profile.dependants_count != null) {
     const ages = (profile.dependant_ages ?? "").trim();
@@ -381,9 +409,10 @@ export const QUICK_PROMPTS = [
     hint: "What should I prepare?",
     icon: "bi-diagram-3",
     prompt:
-      "Help me prepare for succession. The app has nowhere to record heirs, " +
-      "my marital regime or a will, so ask me for whatever you need before " +
-      "analysing anything — do not assume them. Then outline what should be " +
+      "Help me prepare for succession. My marital status, matrimonial regime and " +
+      "whether I have a will are in my profile when I have set them — use them, " +
+      "and do not assume anything the profile leaves out. There is nowhere to " +
+      "record my heirs, so ask about them before analysing. Then outline what should be " +
       "organised: which documents matter, what my tax residence implies, how " +
       "each kind of asset would actually transfer, and what to raise with a " +
       "notary or a tax adviser. Keep it to what I should prepare, and do not " +
