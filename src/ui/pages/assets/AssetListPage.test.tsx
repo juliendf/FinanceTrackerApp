@@ -16,9 +16,13 @@ vi.mock("../../../db/repositories/assets", () => ({
   listAssets: (...a: unknown[]) => listAssets(...a),
   deleteAsset: (...a: unknown[]) => deleteAsset(...a),
 }));
-vi.mock("../../../db/repositories/categories", () => ({
-  listCategories: async () => [{ id: 1, name: "Cash" }, { id: 2, name: "Investments" }],
-}));
+const categoriesMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<Array<{ id: number; name: string; system_role: string | null }>> => [
+    { id: 1, name: "Cash", system_role: "cash" },
+    { id: 2, name: "Investments", system_role: "stocks" },
+  ]),
+);
+vi.mock("../../../db/repositories/categories", () => ({ listCategories: () => categoriesMock() }));
 vi.mock("../../../db/repositories/institutions", () => ({
   listInstitutions: async () => [{ id: 1, name: "UBS" }, { id: 2, name: "Boursorama" }],
 }));
@@ -207,6 +211,23 @@ describe("AssetListPage", () => {
     renderList();
     const link = await screen.findByRole("link", { name: /record a snapshot for Boursorama - PEA \(Investments\)/i });
     expect(link.getAttribute("href")).toBe("/snapshots/new?asset_id=2");
+  });
+
+  it("points at the missing system role, once, when a category has none", async () => {
+    categoriesMock.mockResolvedValueOnce([
+      { id: 1, name: "Cash", system_role: null },
+      { id: 2, name: "Investments", system_role: "stocks" },
+    ]);
+    renderList();
+    await waitFor(() => expect(screen.getByRole("note")).toBeTruthy());
+    expect(screen.getByRole("note").textContent).toContain("One category in use has no system role");
+    expect(screen.getByRole("link", { name: /set them/i }).getAttribute("href")).toBe("/categories");
+  });
+
+  it("stays quiet when every category in use has a role", async () => {
+    renderList();
+    await waitFor(() => expect(screen.getByText("UBS - Savings (Cash)")).toBeTruthy());
+    expect(screen.queryByRole("note")).toBeNull();
   });
 
   it("shows the first-asset prompt when there are no assets at all", async () => {

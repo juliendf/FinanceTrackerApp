@@ -99,6 +99,22 @@ export function AssetListPage() {
     return snapshotDateRange((points.data ?? []).filter((point) => ids.has(point.asset_id)));
   }, [filtered, points.data]);
 
+  /**
+   * Categories in use that carry no system role.
+   *
+   * Without a role a category is invisible to every number the app computes: the
+   * Summary tiles, the allocation breakdown and the assistant's runway all read
+   * zero. The role lives on the category, which is why nothing on this page used
+   * to hint that it was missing.
+   */
+  const unclassifiedCategories = useMemo(() => {
+    const roles = categories.data;
+    if (!roles) return 0;
+    const roleById = new Map(roles.map((row) => [row.id, row.system_role]));
+    const used = new Set(allAssets.map((asset) => asset.category_id));
+    return [...used].filter((categoryId) => !roleById.get(categoryId)).length;
+  }, [allAssets, categories.data]);
+
   const chips = activeFilterChips(filters);
   const hasFilters = chips.length > 0;
 
@@ -176,6 +192,21 @@ export function AssetListPage() {
               />
             </div>
           ))}
+        </div>
+      ) : null}
+
+      {unclassifiedCategories > 0 ? (
+        <div className="alert alert-info d-flex flex-wrap align-items-center gap-2" role="note">
+          <i className="bi bi-info-circle" aria-hidden="true" />
+          <span>
+            {unclassifiedCategories === 1
+              ? "One category in use has no system role."
+              : `${unclassifiedCategories} categories in use have no system role.`}{" "}
+            The Summary tiles, the allocation breakdown and the assistant&apos;s runway read zero until they do.
+          </span>
+          <Link to="/categories" className="btn btn-sm btn-outline-secondary ms-auto">
+            Set them
+          </Link>
         </div>
       ) : null}
 
