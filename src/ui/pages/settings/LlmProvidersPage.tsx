@@ -17,6 +17,7 @@ import {
 import { getAllSettings, setSettings, setSetting } from "../../../db/repositories/settings";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { useToast } from "../../layout/Toasts";
+import { MAX_CUSTOM_INSTRUCTIONS } from "../../../domain/settings";
 import { SettingsLayout } from "./SettingsLayout";
 
 export function LlmProvidersPage() {
@@ -35,10 +36,12 @@ export function LlmProvidersPage() {
     if (!settings.data || aiDirty) return;
     setAiEnabled(settings.data.ai_enabled === true);
     setStreaming(settings.data.chat_streaming !== false);
+    setInstructions(String(settings.data.custom_instructions ?? ""));
   }, [settings.data, aiDirty]);
   const [testing, setTesting] = useState<number | null>(null);
   const [pendingDelete, setPendingDelete] = useState<{ id: number; name: string } | null>(null);
   const [timeoutValue, setTimeoutValue] = useState<string>("");
+  const [instructions, setInstructions] = useState<string>("");
 
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ["llm-providers"] });
@@ -79,7 +82,12 @@ export function LlmProvidersPage() {
   };
 
   const saveAi = useMutation({
-    mutationFn: () => setSettings({ ai_enabled: aiEnabled, chat_streaming: streaming }),
+    mutationFn: () =>
+      setSettings({
+        ai_enabled: aiEnabled,
+        chat_streaming: streaming,
+        custom_instructions: instructions,
+      }),
     onSuccess: () => {
       setAiDirty(false);
       refresh();
@@ -151,9 +159,31 @@ export function LlmProvidersPage() {
               answer appears at once.
             </div>
           </div>
+          <div className="mt-3">
+            <label htmlFor="custom_instructions" className="form-label">
+              Standing instructions
+            </label>
+            <textarea
+              id="custom_instructions"
+              className="form-control"
+              rows={3}
+              maxLength={MAX_CUSTOM_INSTRUCTIONS}
+              value={instructions}
+              disabled={!aiEnabled}
+              placeholder="e.g. Show three risk categories (conservative, balanced, aggressive) for every investment suggestion."
+              onChange={(event) => {
+                setInstructions(event.target.value);
+                setAiDirty(true);
+              }}
+            />
+            <div className="form-text">
+              Added to every conversation, after your profile and before what the assistant remembers.
+              Empty adds nothing. {MAX_CUSTOM_INSTRUCTIONS - instructions.length} characters left.
+            </div>
+          </div>
           <button
             type="button"
-            className="btn btn-primary"
+            className="btn btn-primary mt-3"
             disabled={saveAi.isPending || !aiDirty}
             onClick={() => saveAi.mutate()}
           >

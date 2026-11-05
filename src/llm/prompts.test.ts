@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { buildExtractionMessages, buildKnownContext, buildMemoryContext, buildProfileContext, buildStyleContext, buildSystemPrompt, QUICK_PROMPTS } from "./prompts";
+import { MAX_CUSTOM_INSTRUCTIONS } from "../domain/settings";
 import type { Profile } from "../db/repositories/profile";
 
 const profile: Profile = {
@@ -99,6 +100,41 @@ describe("prompt sections", () => {
     // Tax residence is context for jurisdiction-dependent answers.
     expect(prompt).toContain("Tax residence");
     expect(prompt).toContain("Never substitute a currency symbol");
+  });
+
+  it("adds the standing instructions between style and memories, and nothing when empty", () => {
+    const base = { today: "2026-11-05", baseCurrency: "CHF", profile, goals: [], memories: [] };
+
+    const withText = buildSystemPrompt({
+      ...base,
+      customInstructions: "Show three risk categories for every suggestion.",
+    });
+    expect(withText).toContain("## Standing instructions");
+    expect(withText).toContain("Show three risk categories for every suggestion.");
+    // Order matters: after the profile and style, before what it remembers.
+    expect(withText.indexOf("## Response style")).toBeLessThan(
+      withText.indexOf("## Standing instructions"),
+    );
+
+    // Unset adds no heading at all, not an empty one.
+    for (const empty of ["", "   ", null, undefined]) {
+      const prompt = buildSystemPrompt({ ...base, customInstructions: empty });
+      expect(prompt).not.toContain("## Standing instructions");
+      expect(prompt).not.toContain("{instructions_section}");
+    }
+  });
+
+  it("caps the standing instructions at the stored maximum", () => {
+    const prompt = buildSystemPrompt({
+      today: "2026-11-05",
+      baseCurrency: "CHF",
+      profile,
+      goals: [],
+      memories: [],
+      customInstructions: "x".repeat(MAX_CUSTOM_INSTRUCTIONS + 500),
+    });
+    expect(prompt).toContain("x".repeat(MAX_CUSTOM_INSTRUCTIONS));
+    expect(prompt).not.toContain("x".repeat(MAX_CUSTOM_INSTRUCTIONS + 1));
   });
 
   it("bounds the assistant to money questions without refusing adjacent ones", () => {

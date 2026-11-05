@@ -7,6 +7,7 @@
  */
 
 import type { Goal, Memory, Profile } from "../db/repositories/profile";
+import { MAX_CUSTOM_INSTRUCTIONS } from "../domain/settings";
 import { ageFromBirthDate } from "../domain/age";
 import { formatNumber } from "../domain/format";
 import { fromMinorUnits } from "../domain/money";
@@ -28,6 +29,7 @@ export const SYSTEM_PROMPT_TEMPLATE =
   "pension, inheritance or currencies: those are in scope.\n" +
   "{profile_section}" +
   "{style_section}" +
+  "{instructions_section}" +
   "{memory_section}" +
   "When the user asks about themselves, their profile, or what you know " +
   "about them, always reference the User financial context, Response style, " +
@@ -164,17 +166,33 @@ export function buildMemoryContext(memories: readonly Memory[]): string {
 }
 
 /** The full prompt for one turn. */
+/**
+ * Standing instructions the user wrote for the assistant.
+ *
+ * Empty returns an empty string, never an empty heading: an unset field has to
+ * add nothing at all to the prompt. The length is capped here as well as in the
+ * form, because a backup or an older build can write the setting directly.
+ */
+export function buildInstructionsContext(instructions: string | null | undefined): string {
+  const text = (instructions ?? "").trim();
+  if (!text) return "";
+  return `## Standing instructions\n${text.slice(0, MAX_CUSTOM_INSTRUCTIONS)}\n`;
+}
+
 export function buildSystemPrompt(input: {
   today: string;
   baseCurrency: string;
   profile: Profile;
   goals: readonly Goal[];
   memories: readonly Memory[];
+  /** The user's standing instructions; absent adds no section. */
+  customInstructions?: string | null;
 }): string {
   return SYSTEM_PROMPT_TEMPLATE.replace("{date}", input.today)
     .replace("{base_currency}", input.baseCurrency)
     .replace("{profile_section}", buildProfileContext(input.profile, input.goals, input.today))
     .replace("{style_section}", buildStyleContext(input.profile))
+    .replace("{instructions_section}", buildInstructionsContext(input.customInstructions))
     .replace("{memory_section}", buildMemoryContext(input.memories));
 }
 

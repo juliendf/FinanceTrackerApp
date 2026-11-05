@@ -143,7 +143,14 @@ export async function sendMessage(options: SendOptions): Promise<SendResult> {
     listTopMemories(MEMORY_LIMIT),
   ]);
   const baseCurrency = String(settings.base_currency ?? "EUR");
-  const systemPrompt = buildSystemPrompt({ today, baseCurrency, profile, goals, memories });
+  const systemPrompt = buildSystemPrompt({
+    today,
+    baseCurrency,
+    profile,
+    goals,
+    memories,
+    customInstructions: String(settings.custom_instructions ?? ""),
+  });
 
   const recent = await listRecentMessages(conversation.id, HISTORY_LIMIT);
   const history = buildHistoryMessages(recent);

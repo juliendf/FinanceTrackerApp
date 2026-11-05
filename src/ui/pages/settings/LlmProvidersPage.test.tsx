@@ -80,14 +80,24 @@ describe("LlmProvidersPage", () => {
     expect(stream.disabled).toBe(true);
   });
 
-  it("saves both switches together", async () => {
+  it("saves both switches and the standing instructions together", async () => {
     const user = userEvent.setup();
     renderPage();
     const enable = (await screen.findByLabelText("Enable AI features")) as HTMLInputElement;
     await user.click(enable);
     expect((screen.getByLabelText("Stream answers as they arrive") as HTMLInputElement).disabled).toBe(false);
+    await user.type(
+      screen.getByLabelText("Standing instructions"),
+      "Show three risk categories.",
+    );
     await user.click(screen.getByRole("button", { name: /save ai settings/i }));
-    await waitFor(() => expect(repo.setSettings).toHaveBeenCalledWith({ ai_enabled: true, chat_streaming: true }));
+    await waitFor(() =>
+      expect(repo.setSettings).toHaveBeenCalledWith({
+        ai_enabled: true,
+        chat_streaming: true,
+        custom_instructions: "Show three risk categories.",
+      }),
+    );
   });
 
   it("keeps Save disabled until something changes", async () => {

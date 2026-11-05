@@ -27,7 +27,21 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   ai_enabled: false,
   /** Stream answers token by token; off shows a spinner then the whole reply. */
   chat_streaming: true,
+  /**
+   * Standing preferences appended to the system prompt. Empty means absent, not
+   * an empty heading: an unset field must add nothing to the prompt.
+   */
+  custom_instructions: "",
 };
+
+/**
+ * How long the standing instructions may be.
+ *
+ * The prompt is shared with the profile and the memories, and a 4B local model
+ * has a small window; instructions are the one part the user controls directly,
+ * so they are the one part that could crowd everything else out.
+ */
+export const MAX_CUSTOM_INSTRUCTIONS = 1000;
 
 /** Coerce one stored TEXT value to its typed form. */
 export function parseSettingValue(raw: string): SettingValue {
@@ -112,6 +126,7 @@ export function validateSetting(key: string, value: SettingValue): boolean {
   if (key === "base_currency") return CURRENCY_CHOICES.some((c) => c.value === text);
   if (key === "items_per_page") return ITEMS_PER_PAGE_CHOICES.some((c) => c.value === text);
   if (key === "theme") return THEME_CHOICES.some((c) => c.value === text);
+  if (key === "custom_instructions") return text.length <= MAX_CUSTOM_INSTRUCTIONS;
   return true;
 }
 

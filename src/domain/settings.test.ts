@@ -16,6 +16,7 @@ import {
   serializeSettingValue,
   settingValue,
   validateSetting,
+  MAX_CUSTOM_INSTRUCTIONS,
 } from "./settings";
 
 describe("DEFAULT_SETTINGS", () => {
@@ -28,9 +29,10 @@ describe("DEFAULT_SETTINGS", () => {
       llm_timeout: "120",
       theme: "light",
       enable_animations: true,
-      // The AI opt-in and the streaming preference.
+      // The AI opt-in, the streaming preference and the standing instructions.
       ai_enabled: false,
       chat_streaming: true,
+      custom_instructions: "",
     });
   });
 });
@@ -129,6 +131,10 @@ describe("settings screen helpers", () => {
     expect(validateSetting("theme", "blue")).toBe(false);
     expect(validateSetting("unknown_key", "x")).toBe(false);
     expect(validateSetting("date_format", "%d.%m.%Y")).toBe(true);
+    // Standing instructions: any text, up to the cap the prompt can absorb.
+    expect(validateSetting("custom_instructions", "")).toBe(true);
+    expect(validateSetting("custom_instructions", "x".repeat(MAX_CUSTOM_INSTRUCTIONS))).toBe(true);
+    expect(validateSetting("custom_instructions", "x".repeat(MAX_CUSTOM_INSTRUCTIONS + 1))).toBe(false);
   });
 
   it("exports indented JSON of the merged settings", () => {
