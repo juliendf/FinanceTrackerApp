@@ -196,3 +196,21 @@ describe("formatPercentValue — a stored percentage, not a fraction", () => {
     expect(formatPercentValue("abc")).toBe("N/A");
   });
 });
+
+describe("formatDate with a timestamp", () => {
+  it("reads a stored timestamp as itself, not as a date plus midnight", () => {
+    // The bug: `${value}T00:00:00Z` turned this into an invalid date, and the
+    // rates history showed "Invalid date" in every row.
+    expect(formatDate("2026-11-05T10:03:36.718Z", "%Y-%m-%d %H:%M")).toBe("2026-11-05 10:03");
+  });
+
+  it("still reads a date-only value the same way", () => {
+    expect(formatDate("2026-11-05")).toBe("2026-11-05");
+    expect(formatDate("2026-11-05", "%Y-%m-%d %H:%M")).toBe("2026-11-05 00:00");
+  });
+
+  it("still refuses junk", () => {
+    expect(formatDate("nonsense")).toBe("Invalid date");
+    expect(formatDate("")).toBe("Invalid date");
+  });
+});

@@ -102,8 +102,18 @@ const MONTH_NAMES = [
 ];
 
 /** Parse an ISO `YYYY-MM-DD` date as UTC midnight. Null when unparseable. */
+/**
+ * Parse a stored date, which comes in two shapes.
+ *
+ * A date (`2026-11-05`) is read as UTC midnight, as it always was. A full
+ * timestamp (`2026-11-05T10:03:36.718Z`) is read as itself — appending
+ * `T00:00:00Z` to one produces `…ZT00:00:00Z`, which is not a date at all.
+ * Callers used to work around this by slicing to ten characters, which silently
+ * dropped the time.
+ */
 function parseIsoDate(value: string): Date | null {
-  const parsed = new Date(`${value}T00:00:00Z`);
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const parsed = new Date(dateOnly ? `${value}T00:00:00Z` : value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
