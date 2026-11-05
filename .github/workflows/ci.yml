@@ -12,9 +12,12 @@ on:
 permissions:
   contents: read
 
+# Keyed by PR number where there is one, so a branch push and its pull request
+# do not share a group. `cancel-in-progress` off: the only run this ever
+# cancelled was itself, queued, before a runner was assigned.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
 
 jobs:
   test:
