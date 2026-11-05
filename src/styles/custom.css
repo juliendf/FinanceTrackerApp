@@ -3502,8 +3502,10 @@ body {
 }
 
 .app-sidebar.collapsed {
-    flex-basis: 64px;
-    width: 64px;
+    /* 72 rather than 64: the icon rail read as cramped, and the footer needs the
+       room even stacked. */
+    flex-basis: 72px;
+    width: 72px;
 }
 
 /* Space for the macOS traffic lights; the strip is a drag region. */
@@ -3582,8 +3584,14 @@ body {
     border-top: 1px solid var(--border-color);
 }
 
+/* Stacked, not centred in a row: the About button and the expand chevron do not
+   fit side by side in the rail, and an overflowing flex row does not wrap — the
+   two controls simply ran into each other and past the border. */
 .app-sidebar.collapsed .app-sidebar-footer {
+    flex-direction: column;
     justify-content: center;
+    gap: 0.375rem;
+    padding: 0.5rem;
 }
 
 .app-main {
