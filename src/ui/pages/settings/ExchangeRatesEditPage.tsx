@@ -60,6 +60,12 @@ export function ExchangeRatesEditPage() {
   return (
     <SettingsLayout title="Edit Exchange Rates" subtitle="Update the conversion rate for each currency pair" actions={null}>
       <form onSubmit={submit} noValidate>
+        <div className="alert alert-info" role="note">
+          <i className="bi bi-info-circle me-2" aria-hidden="true" />
+          A rate you type here wins: fetching from the European Central Bank only fills pairs that have no usable rate,
+          unless you tick <em>replace rates I set myself</em> on the Exchange Rates page. A rate left at 0 counts as
+          unset.
+        </div>
         {errors.length > 0 ? (
           <div className="alert alert-danger" role="alert">
             {errors.length} rate{errors.length === 1 ? "" : "s"} need attention.

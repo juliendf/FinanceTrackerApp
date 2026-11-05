@@ -20,7 +20,9 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 ## Network
 
-- The app makes no network calls except to the LLM provider base URL the user configures (OpenAI-compatible, including local Ollama). All of it goes through Rust (`reqwest`, rustls) with 10 s connect and 300 s total timeouts.
+- The app makes no network calls except to the LLM provider base URL the user configures (OpenAI-compatible, including local Ollama), and — only when the user turns it on — to the European Central Bank's daily reference-rate file. All of it goes through Rust (`reqwest`, rustls).
+- **Exchange rates are opt-in and read-only.** `rates_source_enabled` defaults to false. When on, `fetch_ecb_rates` downloads `https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml` (10 s connect, 30 s total): a public 1.5 kB file of reference rates. Nothing about the user or their data is sent — it is a GET with no parameters, no key and no body. The response is parsed in Rust; the cross rates are computed in `src/domain` with `decimal.js`. Turning it off stops the request.
+- **That endpoint may be called without a click.** With the toggle on, the app fetches once per calendar day when it starts, and records the attempt in `settings.rates_fetched_on` so a failed attempt (offline, endpoint moved) does not retry until the next day. This is the only request the app makes unprompted; updates remain a button, and the LLM is only contacted when a message is sent. With the toggle off — the default — the app contacts nothing at launch.
 - Chat sends conversation content, and any portfolio data the tools return, **to the configured provider**. With a hosted provider that means financial data leaves the machine. Use a local model for fully offline use.
 - **AI is opt-in**: `ai_enabled` defaults to false, and chat, the prompt rail and memory extraction are disabled until you turn it on in Settings.
 - Write tools (record a snapshot, save a memory) never execute from the model's call; they stage a pending action that only the confirm card can resolve.

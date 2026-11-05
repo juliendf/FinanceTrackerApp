@@ -32,6 +32,22 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
    * an empty heading: an unset field must add nothing to the prompt.
    */
   custom_instructions: "",
+  /**
+   * Opt-in: fetch reference rates from the European Central Bank. Off by default
+   * because it is the only outbound request besides the LLM provider.
+   */
+  rates_source_enabled: false,
+  /** Publication date of the last fetched rates, `YYYY-MM-DD`. Empty: never. */
+  rates_as_of: "",
+  /**
+   * Local date of the last fetch attempt, `YYYY-MM-DD`. Keyed on the attempt
+   * rather than the publication date: the ECB publishes around 16:00 CET, so a
+   * morning launch receives the previous day's file and would otherwise fetch
+   * again on every launch until the afternoon.
+   */
+  rates_fetched_on: "",
+  /** The pairs the last ECB fetch produced, as JSON. Empty: never fetched. */
+  rates_last_fetch: "",
 };
 
 /**

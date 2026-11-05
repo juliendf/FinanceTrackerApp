@@ -33,6 +33,10 @@ describe("DEFAULT_SETTINGS", () => {
       ai_enabled: false,
       chat_streaming: true,
       custom_instructions: "",
+      rates_source_enabled: false,
+      rates_as_of: "",
+      rates_fetched_on: "",
+      rates_last_fetch: "",
     });
   });
 });

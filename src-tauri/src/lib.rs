@@ -72,6 +72,7 @@ pub fn run() {
             commands::llm::provider_connection,
             commands::llm::probe_models,
             commands::llm::probe_connection,
+            commands::rates::fetch_ecb_rates,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
