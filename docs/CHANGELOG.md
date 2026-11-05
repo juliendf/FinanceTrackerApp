@@ -4,6 +4,63 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.6.0
+
+The biggest release so far: the assistant gained editing, summaries, exports and
+exact arithmetic, the summary screen now speaks English, and exchange rates can
+come from the European Central Bank.
+
+**Chat**
+- **Edit a sent message** and the answer is regenerated from there. Everything
+  after it is discarded, and the editor says so before you save.
+- **Answers keep arriving when you leave the page.** When one lands while you are
+  elsewhere, a notice appears with a link back to the conversation.
+- **Pin a conversation** to keep it at the top of the session list.
+- **Summarise** a long conversation, and keep the summary in it.
+- **Export** a conversation as Markdown.
+- **Standing instructions** (Settings → LLM Providers): text added to every
+  conversation, after your profile and before what the assistant remembers.
+- Two more suggested questions: **Retirement plan** and **Succession**.
+- The assistant declines questions unrelated to your finances, in one line.
+- **It no longer does arithmetic itself.** Percentages, projections, runway and
+  goal gaps go through a calculator that returns exact figures.
+- Runway uses a defined liquid figure — cash and the emergency fund, not the
+  whole portfolio — and says so when nothing is classified rather than reporting
+  zero.
+- The session list shows elapsed time (`now`, `3h`, `Yesterday`) instead of a
+  clock time that read as a duration.
+
+**Lists and assets**
+- **Items per page** from Settings finally applies to the asset and snapshot lists.
+- **Filters apply as you change them**; the Search button is gone.
+- The **asset page leads with the value, then the trend and the history**; the
+  reference details moved to a footnote.
+- The asset list says when a category in use has no system role, because three
+  figures read zero until it does.
+
+**Exchange rates**
+- **Optional:** keep rates current from the European Central Bank. Off by default;
+  when on, one request a day at startup. `SECURITY.md` lists the endpoint.
+- Rates show the day they were published, and a rate you typed by hand is only
+  replaced when you ask for it.
+
+**Profile**
+- Marital status, matrimonial regime and whether you have a will — what
+  succession advice needs and the portfolio cannot imply.
+
+**Language**
+- The summary screen and the system roles are in English. "Résumé" is now
+  "Summary"; the route is unchanged.
+
+**For existing installs**
+- Two migrations run on first launch (`0009`, `0010`). Both are additive, but a
+  build older than this one will refuse to start against the migrated database.
+- The three profile fields are optional and simply absent from older backups.
+
+**Fixed**
+- A stored timestamp showed as "Invalid date" in the exchange-rate history.
+- Repeating the same message no longer stacks identical toasts.
+
 ## 0.5.4
 
 - **Fixed:** an update could fail with `Download request failed with status: 403

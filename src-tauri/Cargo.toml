@@ -1,6 +1,6 @@
 [package]
 name = "financetrackerapp"
-version = "0.5.4"
+version = "0.6.0"
 description = "A native macOS personal finance tracker: assets, snapshots, dashboards and an AI assistant"
 authors = ["Julien de Freitas"]
 license = "MIT"
