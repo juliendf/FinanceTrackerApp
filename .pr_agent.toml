@@ -8,47 +8,67 @@
 [config]
 # Any LiteLLM model works. Gemini is used because the key already exists; a
 # local model is not an option here, since a GitHub runner cannot reach one.
-model = "gemini/gemini-2.5-flash"
+model = "gemini/gemini-3.8-flash"
 response_language = "en"
 # Output goes into a PR comment, not a file.
 patch_extension = "tsx"
 
 [pr_reviewer]
+# Op-in assessments that earn their keep on a finance app: an overall risk level,
+# concrete failure scenarios, and which files a human should read first.
+require_security_review = true
+require_risk_assessment = true
+require_failure_modes = true
+require_priority_files = true
+
 extra_instructions = """
+Judge this change on two things, in this order: security, then coding standards.
 This is a Tauri 2 + React 19 + TypeScript desktop app with a local SQLite database,
-for one person's personal finances. Read AGENTS.md and SECURITY.md before judging a
-change; several of the rules below are enforced on purpose and are not style choices.
+holding one person's personal finances. Read AGENTS.md and SECURITY.md first; the
+rules there are enforced on purpose and are not style choices.
 
-Treat these as blockers, and say plainly when one is broken:
+## Security — each one is a blocker, say plainly when broken
 
-- **An edit to a file under `src-tauri/migrations/`.** Migrations are append-only:
-  sqlx checksums every applied migration, so editing one breaks every existing
-  install at startup. A new file is fine; a changed one is not.
-- **Money as a float, or arithmetic outside `src/domain/money.ts`.** Amounts are
-  INTEGER minor units, and every calculation goes through `decimal.js`. A number
-  formatted with a hand-rolled symbol or digit grouping is the same bug: the prompt
-  tells the model to copy `*_display` strings precisely so it cannot invent one.
-- **SQL built by concatenation**, or a write that bypasses `src/db/transaction.ts`
-  and `src/db/literals.ts`. Values must be escaped through the literals module.
-- **`window.confirm` or `window.alert`.** They do not work in this app; it has its
-  own modals.
-- **A change to the backup format** (`EXPORT_VERSION` in `src/export/backup.ts`,
-  or anything under `src/import/`) without a version bump and a round-trip test.
-  A user's database is the product.
-- **A new outbound network call that `SECURITY.md` does not list.** The security
-  page claims a specific, closed set of endpoints.
+- **A new outbound network call that SECURITY.md does not list.** The security
+  page claims a specific, closed set of endpoints: the configured LLM provider,
+  and the European Central Bank's reference-rate file when the user opts in.
+- **A secret anywhere but the macOS Keychain**: an API key in SQLite, in a
+  backup file, or written by the webview is a finding on its own.
+- **A path or file access that bypasses src-tauri/src/commands/files.rs.** The
+  webview never supplies a path.
+- **Anything that lets the webview run SQL or reach the database directly.**
+  No SQL, dialog, or fs plugin permission is granted on purpose.
+
+## Coding standards — the rules the app enforces and why
+
+- **Money is INTEGER minor units**, converted only through src/domain/money.ts,
+  and every calculation goes through decimal.js. A float, a hand-rolled currency
+  symbol or digit grouping is a bug: the prompt tells the model to copy `*_display`
+  strings so it cannot invent one.
+- **An edit to a file under src-tauri/migrations/.** Migrations are append-only:
+  sqlx checksums applied migrations, so editing one breaks every existing install
+  at startup. A new migration file is fine; a changed one is not.
+- **SQL built by concatenation**, or a write bypassing src/db/transaction.ts and
+  src/db/literals.ts. Values are escaped through the literals module on purpose.
+- **window.confirm or window.alert.** They do not work in this app; it has its own
+  modals, and a test enforces it.
+- **A backup-format change** (EXPORT_VERSION in src/export/backup.ts, or anything
+  under src/import/) without a version bump and a round-trip test. The user's
+  database is the product.
 - **A prompt change that removes a refusal or a guard**, for example dropping the
   money-formatting rule or the "never do arithmetic yourself" rule.
 
-Do not ask for unit tests for prose, comments, or config. Do not suggest new
-dependencies unless they replace one that is already here.
+The user writes English; do not comment on prose, translations, or config.
 """
 
 [pr_code_suggestions]
+# Security outranks style, and a suggestion that removes a guardrail is not an
+# improvement even when the code it replaces is clumsy.
 extra_instructions = """
-Prefer the smallest change that fixes the problem. When suggesting a rewrite of a
-whole function, say what specifically is wrong with the current one. Do not suggest
-reformatting, renaming for taste, or extracting a helper that would be used once.
+Prefer the smallest change that fixes the problem, and say what is wrong with the
+current code before proposing a rewrite. Security and the coding rules in
+AGENTS.md outrank style. Do not suggest reformatting, renaming for taste, or
+extracting a helper that would be used once.
 """
 
 [pr_description]
