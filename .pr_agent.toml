@@ -1,0 +1,59 @@
+# PR-Agent configuration.
+#
+# The value here is not the model — it is the instruction block. A general code
+# reviewer does not know that this repository's migrations are append-only, or
+# that money must not touch a float. Those rules are in AGENTS.md and SECURITY.md;
+# repeating them where the reviewer will read them is the whole point.
+
+[config]
+# Any LiteLLM model works. Gemini is used because the key already exists; a
+# local model is not an option here, since a GitHub runner cannot reach one.
+model = "gemini/gemini-2.5-flash"
+response_language = "en"
+# Output goes into a PR comment, not a file.
+patch_extension = "tsx"
+
+[pr_reviewer]
+extra_instructions = """
+This is a Tauri 2 + React 19 + TypeScript desktop app with a local SQLite database,
+for one person's personal finances. Read AGENTS.md and SECURITY.md before judging a
+change; several of the rules below are enforced on purpose and are not style choices.
+
+Treat these as blockers, and say plainly when one is broken:
+
+- **An edit to a file under `src-tauri/migrations/`.** Migrations are append-only:
+  sqlx checksums every applied migration, so editing one breaks every existing
+  install at startup. A new file is fine; a changed one is not.
+- **Money as a float, or arithmetic outside `src/domain/money.ts`.** Amounts are
+  INTEGER minor units, and every calculation goes through `decimal.js`. A number
+  formatted with a hand-rolled symbol or digit grouping is the same bug: the prompt
+  tells the model to copy `*_display` strings precisely so it cannot invent one.
+- **SQL built by concatenation**, or a write that bypasses `src/db/transaction.ts`
+  and `src/db/literals.ts`. Values must be escaped through the literals module.
+- **`window.confirm` or `window.alert`.** They do not work in this app; it has its
+  own modals.
+- **A change to the backup format** (`EXPORT_VERSION` in `src/export/backup.ts`,
+  or anything under `src/import/`) without a version bump and a round-trip test.
+  A user's database is the product.
+- **A new outbound network call that `SECURITY.md` does not list.** The security
+  page claims a specific, closed set of endpoints.
+- **A prompt change that removes a refusal or a guard**, for example dropping the
+  money-formatting rule or the "never do arithmetic yourself" rule.
+
+Do not ask for unit tests for prose, comments, or config. Do not suggest new
+dependencies unless they replace one that is already here.
+"""
+
+[pr_code_suggestions]
+extra_instructions = """
+Prefer the smallest change that fixes the problem. When suggesting a rewrite of a
+whole function, say what specifically is wrong with the current one. Do not suggest
+reformatting, renaming for taste, or extracting a helper that would be used once.
+"""
+
+[pr_description]
+extra_instructions = """
+Summarise what changed and why, in the voice of the existing CHANGELOG: short
+sentences, no marketing. If the diff touches a migration, the backup format or the
+network, say so under a "Breaking" heading.
+"""
