@@ -31,11 +31,17 @@ concurrency:
 
 jobs:
   review:
-    # Only a comment on a pull request, by the owner, starting with a command.
+    # The command may appear anywhere in the comment, because a leading space or
+    # a "sure, /review it" sentence are both legitimate ways to type it. Only the
+    # repo owner can trigger a run, so a stray mention costs nothing they did not
+    # ask for.
     if: >
       github.event.issue.pull_request != null &&
       github.event.comment.user.login == github.repository_owner &&
-      startsWith(github.event.comment.body, '/')
+      ( contains(github.event.comment.body, '/review') ||
+        contains(github.event.comment.body, '/improve') ||
+        contains(github.event.comment.body, '/ask') ||
+        contains(github.event.comment.body, '/describe') )
     runs-on: ubuntu-latest
     steps:
       - name: PR Agent
