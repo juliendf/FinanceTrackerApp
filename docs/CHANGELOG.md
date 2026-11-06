@@ -4,6 +4,13 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.6.1
+
+- **Fixed:** a question broad enough to need several tool calls could end with
+  *"I stopped after 5 tool rounds without a final answer"* instead of an answer.
+  When the round cap is reached the assistant now answers from what the tools
+  already returned. Reported with a local model on the portfolio review.
+
 ## 0.6.0
 
 The biggest release so far: the assistant gained editing, summaries, exports and
