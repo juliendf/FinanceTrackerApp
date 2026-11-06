@@ -1,0 +1,47 @@
+# PR-Agent: an LLM review on pull requests.
+#
+# Runs only when asked. Reviewing every push on a public repository spends the
+# API key on CI noise, and a large diff — like the 0.6.0 release — produces a
+# shallower review than a focused one.
+#
+# Trigger it by commenting a command on the pull request:
+#
+#   /review     findings on the diff
+#   /improve    concrete code suggestions
+#   /describe   a title and summary for the PR
+#   /ask <q>    a question about the change
+#
+# Comment triggers are restricted to the repository owner: the repo is public,
+# and an open trigger is an open invitation to spend the key.
+
+name: pr-agent
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: pr-agent-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Only a comment on a pull request, by the owner, starting with a command.
+    if: >
+      github.event.issue.pull_request != null &&
+      github.event.comment.user.login == github.repository_owner &&
+      startsWith(github.event.comment.body, '/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: PR Agent
+        uses: the-pr-agent/pr-agent@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # LiteLLM reads GEMINI_API_KEY for `gemini/...` models. Swap the model
+          # in .pr_agent.toml, not here.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
