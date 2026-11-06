@@ -25,9 +25,19 @@ The build is signed ad hoc and not notarised (no Apple Developer ID yet), so
 macOS blocks the first launch with *"Apple could not verify that FinanceTracker
 is free of malware"*. Open **System Settings → Privacy & Security**, scroll down
 and click **Open Anyway**; on macOS 14 and older, right-clicking the app → **Open**
-does the same thing. macOS remembers the choice afterwards. Updates are signed
-separately and verified with the app's own key — **Check for updates** on the Data
-page.
+does the same thing. macOS remembers the choice afterwards.
+
+The terminal equivalent, if you prefer it, is one line. It does exactly what
+**Open Anyway** does — it is not a different mechanism, and it only makes sense
+for a copy you downloaded from this release page, since it skips the check
+instead of passing it:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/FinanceTracker.app
+```
+
+Updates are signed separately and verified with the app's own key — **Check for
+updates** on the Data page.
 
 ## Demo build
 

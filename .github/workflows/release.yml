@@ -134,7 +134,7 @@ jobs:
 
             Everything stays on your Mac: a local SQLite database, provider API keys in the macOS Keychain, no account and no telemetry. AI is off until you configure a provider.
 
-            Requires macOS 11+ on Apple silicon. The build is signed ad hoc (no Apple Developer ID yet), so macOS blocks the first launch: allow it in System Settings → Privacy & Security → **Open Anyway**. Later updates arrive through **Check for updates** on the Data page.
+            Requires macOS 11+ on Apple silicon. The build is signed ad hoc (no Apple Developer ID yet), so macOS blocks the first launch: allow it in System Settings → Privacy & Security → **Open Anyway**, or right-click the app → **Open** on macOS 14 and older. The terminal equivalent is `xattr -dr com.apple.quarantine /Applications/FinanceTracker.app`, which does the same thing for a copy you trust. Later updates arrive through **Check for updates** on the Data page.
           # Turn on once releases carry user-facing changes worth auto-summarising;
           # the first release describes the app instead of listing 70 commits.
           generateReleaseNotes: false
