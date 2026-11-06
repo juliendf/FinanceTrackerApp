@@ -87,13 +87,57 @@ jobs:
             release may change behaviour without notice. Take a backup from
             Settings → Data & Backup before importing real data.
 
-            A native macOS app for tracking assets and their value over time.
+            ## What's new in 0.6.0
 
-            - **Assets** with institutions, categories and tags
-            - **Snapshots** over time, bulk entry and CSV export
-            - **Dashboards**: portfolio, distribution, evolution, résumé, multi-currency
-            - **Import and export** of FinanceTracker backup files
-            - **Optional AI assistant** that records a snapshot only after you confirm
+            The biggest release so far.
+
+            **Chat**
+            - **Edit a sent message** and the answer is regenerated from there;
+              everything after it is discarded, and the editor says so first
+            - **Answers keep arriving when you leave the page**, with a notice and a
+              link back when they land elsewhere
+            - **Pin a conversation** to keep it at the top of the session list
+            - **Summarise** a long conversation, and keep the summary in it
+            - **Export** a conversation as Markdown
+            - **Standing instructions** added to every conversation (Settings →
+              LLM Providers)
+            - Two more suggested questions: **Retirement plan** and **Succession**
+            - The assistant declines questions unrelated to your finances, in one line
+            - **It no longer does arithmetic itself**: percentages, projections,
+              runway and goal gaps go through a calculator that returns exact figures
+            - Runway uses a defined liquid figure — cash and the emergency fund — and
+              says so when nothing is classified rather than reporting zero
+            - The session list shows elapsed time (`now`, `3h`, `Yesterday`) instead
+              of a clock time that read as a duration
+
+            **Lists and assets**
+            - **Items per page** from Settings finally applies to the asset and
+              snapshot lists
+            - **Filters apply as you change them**; the Search button is gone
+            - The **asset page leads with the value**, then the trend and the
+              history; reference details moved to a footnote
+            - The asset list says when a category in use has no system role
+
+            **Exchange rates**
+            - **Optional:** keep rates current from the European Central Bank. Off by
+              default; when on, one request a day at startup
+            - Rates show the day they were published, and a rate you typed by hand is
+              only replaced when you ask for it
+
+            **Profile**
+            - Marital status, matrimonial regime and whether you have a will
+
+            **Language**
+            - The summary screen and the system roles are in English
+
+            **Before you update**
+            - Two migrations run on first launch. Both are additive, but a build
+              older than this one will refuse to start against the migrated database.
+            - The three profile fields are optional and absent from older backups.
+
+            ## The app
+
+            A native macOS app for tracking assets and their value over time.
 
             Everything stays on your Mac: a local SQLite database, provider API
             keys in the macOS Keychain, no account and no telemetry. AI is off
