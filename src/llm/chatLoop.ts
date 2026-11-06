@@ -136,6 +136,39 @@ export async function runTurn(options: LoopOptions): Promise<LoopResult> {
     rounds += 1;
   }
 
+  // The cap was reached while the model was still asking for data. Rather than
+  // tell the user it gave up, ask once more with the tools removed: whatever the
+  // tools returned is already in `messages`, so the only useful thing left is the
+  // model's best answer from it. A small local model that loops will keep
+  // looping; taking its tools away is what ends the loop.
+  const closing = await options.transport({
+    requestId: `${options.requestId}:final`,
+    messages: [
+      ...messages,
+      {
+        role: "user",
+        content:
+          "Answer now, using only what the tools have already returned. Do not ask for more data, and say plainly if something you need is missing.",
+      },
+    ],
+    tools: [],
+    onEvent: options.onEvent ?? (() => {}),
+  });
+
+  if (!closing.cancelled && closing.content.trim()) {
+    messages.push({ role: "assistant", content: closing.content });
+    return {
+      messages,
+      finalContent: closing.content,
+      rounds,
+      cancelled: false,
+      pendingActions,
+      error: null,
+    };
+  }
+
+  // Only reachable if the closing call failed or returned nothing: the data is
+  // gathered but there is no prose to show for it.
   const capped = `I stopped after ${maxRounds} tool rounds without a final answer. Try narrowing the question.`;
   messages.push({ role: "assistant", content: capped });
   return { messages, finalContent: capped, rounds, cancelled: false, pendingActions, error: null };

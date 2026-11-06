@@ -115,6 +115,35 @@ describe("runTurn", () => {
     expect(result.finalContent).toContain("3 tool rounds");
   });
 
+  it("asks once more without tools when the cap is reached, and answers with what it has", async () => {
+    // A local model that keeps calling tools used to end the turn with
+    // "I stopped after 5 tool rounds". The data was already gathered; the answer
+    // was the only thing missing.
+    const sent: Array<{ tools: unknown; messages: Array<{ role: string; content: string }> }> = [];
+    const transport: ChatTransport = async (options) => {
+      sent.push({ tools: options.tools, messages: options.messages });
+      return sent.length <= 2
+        ? { content: "", toolCalls: [{ id: `c${sent.length}`, name: "list_assets", arguments: "{}" }], cancelled: false }
+        : { content: "Two assets, worth 1,000 CHF.", toolCalls: [], cancelled: false };
+    };
+
+    const result = await runTurn({
+      requestId: "t",
+      messages: [{ role: "user", content: "review everything" }],
+      transport,
+      execute: async () => ok([]),
+      maxRounds: 2,
+    });
+
+    expect(result.rounds).toBe(2);
+    expect(result.finalContent).toBe("Two assets, worth 1,000 CHF.");
+    // The closing call is the one with no tools: that is what ends the loop.
+    const closing = sent[sent.length - 1];
+    expect(closing.tools).toEqual([]);
+    expect(closing.messages[closing.messages.length - 1].role).toBe("user");
+    expect(closing.messages[closing.messages.length - 1].content).toContain("Do not ask for more data");
+  });
+
   it("returns cancelled without an answer when the stream was stopped", async () => {
     const result = await runTurn({
       requestId: "t",
