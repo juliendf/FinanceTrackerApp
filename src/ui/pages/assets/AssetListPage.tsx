@@ -103,7 +103,7 @@ export function AssetListPage() {
    * Categories in use that carry no system role.
    *
    * Without a role a category is invisible to every number the app computes: the
-   * Summary tiles, the allocation breakdown and the assistant's runway all read
+   * Performance tiles, the allocation breakdown and the assistant's runway all read
    * zero. The role lives on the category, which is why nothing on this page used
    * to hint that it was missing.
    */

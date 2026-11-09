@@ -261,7 +261,7 @@ export function ImportWizard({ show, onClose, onImported }: Props) {
           <>
             <p className="text-muted">
               This backup has no category system roles — the v2 export does not carry
-              them. The Summary view needs them, so map what you can. You can skip and
+              them. The Performance view needs them, so map what you can. You can skip and
               reopen this later from Categories.
             </p>
             <div className="table-responsive">

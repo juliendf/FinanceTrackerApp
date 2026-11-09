@@ -72,19 +72,6 @@ describe("DashboardPage", () => {
     expect(document.getElementById("last-update")?.textContent).toBe("25");
   });
 
-  it("switches the evolution range and shows the percent badge", async () => {
-    const user = userEvent.setup();
-    renderAt("/", <DashboardPage />, "/");
-    await waitFor(() => expect(screen.getByTestId("line")).toBeTruthy());
-    // 1Y: cut-off 2025-10-26. The only snapshot in range is 2026-10-01, so the
-    // line opens at the cut-off with the value carried in from 2025-10-01.
-    expect(screen.getByTestId("line").textContent).toBe("2025-10-26,2026-10-01");
-    expect(document.getElementById("evoPercentBadge")?.textContent).toBe("+59.0%");
-    await user.click(screen.getByRole("button", { name: "ALL" }));
-    expect(screen.getByTestId("line").textContent).toBe("2025-10-01,2026-10-01");
-    expect(document.getElementById("evoPercentBadge")?.textContent).toBe("+59.0%");
-  });
-
   it("changes the breakdown group", async () => {
     const user = userEvent.setup();
     renderAt("/", <DashboardPage />, "/");
@@ -110,10 +97,23 @@ describe("ResumePage", () => {
 
   it("computes performance from the value at the start of the period", async () => {
     renderAt("/resume?range=ALL", <ResumePage />, "/resume");
-    const row = (await screen.findByText("Net performance")).closest("div") as HTMLElement;
+    // The figure is a stat tile now, not a row: same assertion, one selector up.
+    const tile = (await screen.findByText("Net performance")).closest(".stat-card") as HTMLElement;
     // start 2025-10-01: 1000 CHF; end: 1590 -> +59.00 %
-    expect(within(row).getByText("+59.00 %")).toBeTruthy();
+    expect(within(tile).getByText("+59.00 %")).toBeTruthy();
     expect(screen.getByText("390 days")).toBeTruthy();
+  });
+
+  it("draws the value line for the selected range", async () => {
+    const user = userEvent.setup();
+    renderAt("/resume?range=1Y", <ResumePage />, "/resume");
+    await waitFor(() => expect(screen.getByTestId("line")).toBeTruthy());
+    // 1Y: cut-off 2025-10-26. The only snapshot in range is 2026-10-01, so the
+    // line opens at the cut-off with the value carried in from 2025-10-01.
+    expect(screen.getByTestId("line").textContent).toBe("2025-10-26,2026-10-01");
+    // The range control lives in the page header and drives the same line.
+    await user.click(screen.getByRole("link", { name: "All time" }));
+    await waitFor(() => expect(screen.getByTestId("line").textContent).toBe("2025-10-01,2026-10-01"));
   });
 
   it("shows N/A without a starting value", async () => {

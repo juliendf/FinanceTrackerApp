@@ -4,7 +4,7 @@ A native macOS app for tracking assets and their value over time. Single user, o
 
 Version 0.6.1 · MIT · macOS 11+ (Apple silicon)
 
-![FinanceTracker on first launch: a sidebar with Dashboard, Assets, Snapshots and Résumé, and a welcome screen offering to import a backup or start empty](docs/screenshots/first-run.png)
+![FinanceTracker on first launch: a sidebar with Dashboard, Assets, Snapshots and Performance, and a welcome screen offering to import a backup or start empty](docs/screenshots/first-run.png)
 
 > **Alpha.** The app is under active development: features move, bugs are
 > expected, and a bad import can leave your data in a state you did not want.

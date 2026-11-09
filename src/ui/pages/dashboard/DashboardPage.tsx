@@ -1,24 +1,17 @@
 /**
- * Home dashboard.
+ * Home dashboard: what the portfolio is worth now.
  *
- * KPI tiles, a breakdown pie with a group selector, and the portfolio evolution
- * line with its range buttons and percent badge.
+ * KPI tiles and a breakdown pie. The value-over-time line lives on the Performance
+ * screen, which owns the period selector — keeping it here meant two controls
+ * for the same series on two screens.
  */
 
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import {
-  distribution,
-  EVOLUTION_RANGES,
-  portfolioEvolution,
-  summarise,
-  type DistributionGroup,
-  type EvolutionRange,
-} from "../../../domain/dashboard";
+import { distribution, summarise, type DistributionGroup } from "../../../domain/dashboard";
 import { formatCurrency } from "../../../domain/format";
 import { useDashboardData } from "../../../lib/useDashboardData";
 import { DistributionPie } from "../../charts/DistributionPie";
-import { EvolutionLineChart } from "../../charts/EvolutionLineChart";
 import { CountUp } from "../../components/CountUp";
 import { PageHeader } from "../../components/FormCard";
 import { UnconvertedBadge } from "../../components/UnconvertedBadge";
@@ -33,21 +26,18 @@ const GROUPS: Array<[DistributionGroup, string]> = [
 export function DashboardPage() {
   const data = useDashboardData();
   const [group, setGroup] = useState<DistributionGroup>("category");
-  const [range, setRange] = useState<EvolutionRange>("1Y");
 
   const view = useMemo(() => {
     const converter = data.makeConverter();
     const summary = summarise(data.facts, data.assetCurrencies, converter, data.today);
     const slices = distribution(data.facts, group, converter);
-    const evolution = portfolioEvolution(data.facts, converter, range, data.today, summary.portfolioValue);
-    return { summary, slices, evolution, warnings: [...converter.warnings] };
-  }, [data.facts, data.assetCurrencies, data.today, data.makeConverter, group, range]);
+    return { summary, slices, warnings: [...converter.warnings] };
+  }, [data.facts, data.assetCurrencies, data.today, data.makeConverter, group]);
 
   if (data.isLoading) return <p className="text-muted">Loading…</p>;
   if (data.error) return <div className="alert alert-danger">Could not load the dashboard: {String(data.error)}</div>;
 
-  const { summary, slices, evolution, warnings } = view;
-  const pct = evolution.percentChange;
+  const { summary, slices, warnings } = view;
 
   return (
     <>
@@ -120,71 +110,28 @@ export function DashboardPage() {
         </div>
       </div>
 
-      <div className="dashboard-charts">
-        <div className="mb-0">
-          <div className="card h-100 card-accent">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-pie-chart me-2" aria-hidden="true" />
-                Portfolio Breakdown
-              </h5>
-              <div className="segmented" role="group" aria-label="Group breakdown by">
-                {GROUPS.map(([key, label]) => (
-                  <button
-                    key={key}
-                    type="button"
-                    className={`btn${group === key ? " active" : ""}`}
-                    aria-pressed={group === key}
-                    onClick={() => setGroup(key)}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="card-body">
-              <DistributionPie slices={slices} currency={group === "currency" ? "native" : data.baseCurrency} />
-            </div>
+      <div className="card card-accent">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h5 className="card-title mb-0">
+            <i className="bi bi-pie-chart me-2" aria-hidden="true" />
+            Portfolio Breakdown
+          </h5>
+          <div className="segmented" role="group" aria-label="Group breakdown by">
+            {GROUPS.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                className={`btn${group === key ? " active" : ""}`}
+                aria-pressed={group === key}
+                onClick={() => setGroup(key)}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-
-        <div>
-          <div className="card h-100 card-accent">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h5 className="card-title mb-0">
-                <i className="bi bi-graph-up me-2" aria-hidden="true" />
-                Portfolio Evolution
-              </h5>
-              <div className="d-flex align-items-center gap-2">
-                {pct !== null ? (
-                  <span className={`badge rounded-pill ${pct.greaterThanOrEqualTo(0) ? "bg-success" : "bg-danger"}`} id="evoPercentBadge">
-                    {pct.greaterThanOrEqualTo(0) ? "+" : ""}
-                    {pct.toFixed(1)}%
-                  </span>
-                ) : null}
-                <div className="btn-group btn-group-sm" role="group" aria-label="Range">
-                  {EVOLUTION_RANGES.map((value) => (
-                    <button
-                      key={value}
-                      type="button"
-                      className={`btn btn-outline-secondary${range === value ? " active" : ""}`}
-                      aria-pressed={range === value}
-                      onClick={() => setRange(value)}
-                    >
-                      {value}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-            <div className="card-body">
-              <EvolutionLineChart
-                points={evolution.points.map((p) => ({ label: p.date, value: p.value.toNumber() }))}
-                currency={data.baseCurrency}
-                seriesLabel="Portfolio value"
-              />
-            </div>
-          </div>
+        <div className="card-body">
+          <DistributionPie slices={slices} currency={group === "currency" ? "native" : data.baseCurrency} />
         </div>
       </div>
     </>

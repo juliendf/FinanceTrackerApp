@@ -7,7 +7,8 @@ interface Props {
   value: ReactNode;
   subtitle?: ReactNode;
   icon?: string;
-  accent?: "success" | "primary";
+  /** Matches the `.stat-card.accent-*` rails in custom.css. */
+  accent?: "success" | "primary" | "danger" | "info" | "warning";
   small?: boolean;
   /** Adds `stat-number-money`, which sizes currency amounts. */
   money?: boolean;

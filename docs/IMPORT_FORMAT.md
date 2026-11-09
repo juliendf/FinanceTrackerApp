@@ -44,7 +44,7 @@ a v2 web export:
 
 - **No `api_key`.** `llm_providers[].api_key` is always `null` and
   `keychain_ref` is not written; keys stay in the Keychain.
-- **`categories[].system_role`** is included, so a round-trip keeps the Résumé
+- **`categories[].system_role`** is included, so a round-trip keeps the Performance
   and the Cash/Emergency tiles working.
 - **`memories` and `goals` arrays** are written (v2 has neither).
 - **`provider_models`** lists the models each provider offers and whether chat
@@ -70,7 +70,7 @@ reproduce every exported table row for row (`tests/roundtrip/compare.py`).
 | `profile.job_title`, `profile.financial_goals` | `profile.job_title`, `profile.financial_goals` | added in migration 5; both feed the assistant's profile section |
 | `profile.birth_date` | `profile.birth_date` | absent from v2; written by this app so age survives a round-trip |
 | `profile.username`, `email` | **dropped** | no account any more; listed in the report |
-| `categories` (no `system_role`) | asks the user to map roles after import | the Résumé view needs them |
+| `categories` (no `system_role`) | asks the user to map roles after import | the Performance view needs them |
 
 Row ids are preserved rather than remapped, because the import only runs on an
 empty database. That keeps `asset_tags` and `snapshots` foreign keys correct

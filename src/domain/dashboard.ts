@@ -282,7 +282,8 @@ export function assetEvolution(
 
 // --- Résumé ---------------------------------------------------------------------------
 
-export const RESUME_RANGES = ["ALL", "YTD", "1Y", "6M", "3M", "1M"] as const;
+// Shortest first, like EVOLUTION_RANGES: the control reads 1M ... ALL.
+export const RESUME_RANGES = ["1M", "3M", "6M", "1Y", "YTD", "ALL"] as const;
 
 /** `_resolve_date_range`. `null` start means "from the first snapshot". */
 export function resumeStart(range: string, today: string): string | null {

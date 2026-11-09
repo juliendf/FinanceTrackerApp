@@ -19,7 +19,6 @@ import { SnapshotFormPage } from "./ui/pages/snapshots/SnapshotFormPage";
 import { SnapshotListPage } from "./ui/pages/snapshots/SnapshotListPage";
 import { AssetsDashboardPage } from "./ui/pages/dashboard/AssetsDashboardPage";
 import { AssetEvolutionPage, DistributionChartPage } from "./ui/pages/dashboard/ChartsPages";
-import { PerformancePage } from "./ui/pages/dashboard/PerformancePage";
 import { ExchangeRatesEditPage } from "./ui/pages/settings/ExchangeRatesEditPage";
 import { ExchangeRatesPage } from "./ui/pages/settings/ExchangeRatesPage";
 import { SettingsExportPage } from "./ui/pages/settings/SettingsExportPage";
@@ -65,22 +64,6 @@ export const router = createHashRouter([
     element: (
       <AppShell>
         <AssetsDashboardPage />
-      </AppShell>
-    ),
-  },
-  {
-    path: "/dashboard/performance",
-    element: (
-      <AppShell>
-        <PerformancePage />
-      </AppShell>
-    ),
-  },
-  {
-    path: "/charts/performance",
-    element: (
-      <AppShell>
-        <PerformancePage />
       </AppShell>
     ),
   },
