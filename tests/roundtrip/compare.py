@@ -7,6 +7,8 @@ Every exported table is compared row by row. Columns the export deliberately
 does not carry are ignored: `llm_providers.keychain_ref` (keys live in the
 Keychain) and, for the tables whose ids are not preserved by the importer
 (`exchange_rates`, `settings`, `user_memories`, `user_goals`), the `id` column.
+`pending_actions` is not exported at all: it is a confirmation still on screen,
+not history.
 """
 import sqlite3
 import sys
@@ -26,12 +28,14 @@ FULL = {
                 "monthly_savings_target_minor", "risk_profile", "ai_tone", "ai_verbosity", "ai_expertise"),
     "exchange_rates": ("from_currency", "to_currency", "rate", "created_at", "updated_at"),
     "settings": ("key", "value", "created_at", "updated_at"),
-    "user_memories": ("category", "key", "content", "source", "importance", "created_at", "updated_at"),
+    "user_memories": ("category", "key", "content", "source", "importance", "conversation_id", "created_at", "updated_at"),
     "user_goals": ("label", "target_amount_minor", "target_date", "priority", "category", "created_at", "updated_at"),
+    "conversations": ("id", "provider_id", "model_override", "title", "pinned_at", "created_at", "updated_at"),
+    "messages": ("id", "conversation_id", "role", "content", "tool_calls", "tool_call_id", "created_at", "updated_at"),
 }
 
 ORDER = ["institutions", "categories", "tags", "assets", "snapshots", "asset_tags", "exchange_rates",
-         "llm_providers", "settings", "profile", "user_memories", "user_goals"]
+         "llm_providers", "settings", "profile", "user_memories", "user_goals", "conversations", "messages"]
 
 
 def dump(path):

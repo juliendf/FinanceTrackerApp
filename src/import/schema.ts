@@ -1,5 +1,5 @@
 /**
- * Backup file format — v2 and v3.
+ * Backup file format — v2, v3 and v4.
  *
  * Envelope: `{ version, exported_at, data }`.
  *
@@ -9,8 +9,9 @@
  * as list entities (`financial_goals` survives only as free text on the
  * profile).
  *
- * v3 is the format this app writes: v2 plus `system_role`, `memories`, `goals`,
- * and API keys omitted. See docs/IMPORT_FORMAT.md.
+ * v3 added `system_role`, `memories` and `goals`, and stopped writing API keys.
+ * v4 adds `conversations` and `messages`. Every v4 key is optional here, so a
+ * v2 or v3 file parses with the same schema. See docs/IMPORT_FORMAT.md.
  */
 
 import { z } from "zod";
@@ -150,6 +151,31 @@ export const memorySchema = z.object({
   content: z.string(),
   source: z.string().optional(),
   importance: z.number().int().optional(),
+  /** v4: the chat that produced the memory. */
+  conversation_id: z.number().int().nullable().optional(),
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
+/** v4: one chat session. `provider_id` is the provider it was bound to. */
+export const conversationSchema = z.object({
+  id: z.number().int(),
+  provider_id: z.number().int().nullable().optional(),
+  model_override: z.string().nullable().optional(),
+  title: z.string(),
+  pinned_at: timestamp,
+  created_at: timestamp,
+  updated_at: timestamp,
+});
+
+/** v4: one turn. `tool_calls` is the JSON array the app stored, as text. */
+export const messageSchema = z.object({
+  id: z.number().int(),
+  conversation_id: z.number().int(),
+  role: z.enum(["system", "user", "assistant", "tool"]),
+  content: z.string().optional().default(""),
+  tool_calls: z.string().nullable().optional(),
+  tool_call_id: z.string().nullable().optional(),
   created_at: timestamp,
   updated_at: timestamp,
 });
@@ -178,6 +204,8 @@ export const backupDataSchema = z.object({
   profile: profileSchema.optional().default({}),
   memories: z.array(memorySchema).optional().default([]),
   goals: z.array(goalSchema).optional().default([]),
+  conversations: z.array(conversationSchema).optional().default([]),
+  messages: z.array(messageSchema).optional().default([]),
 });
 
 export const backupEnvelopeSchema = z.object({
@@ -190,7 +218,7 @@ export type BackupData = z.infer<typeof backupDataSchema>;
 export type BackupEnvelope = z.infer<typeof backupEnvelopeSchema>;
 
 /** Highest version this build understands. */
-export const SUPPORTED_VERSION = 3;
+export const SUPPORTED_VERSION = 4;
 /** Lowest version accepted (v1 predates the envelope shape we rely on). */
 export const MINIMUM_VERSION = 2;
 
@@ -231,7 +259,7 @@ export function parseBackup(raw: string): ParsedBackup {
   }
   if (envelope.version < MINIMUM_VERSION) {
     throw new Error(
-      `This backup is version ${envelope.version}. Re-export it from FinanceTracker: the current export is version 2.`,
+      `This backup is version ${envelope.version}. Re-export it from FinanceTracker: the current export is version ${SUPPORTED_VERSION}.`,
     );
   }
 

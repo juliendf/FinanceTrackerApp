@@ -35,12 +35,22 @@ const rows: ExportRows = {
     salary_minor: 500000, monthly_savings_target_minor: null, risk_profile: null,
     ai_tone: "encouraging", ai_verbosity: "balanced", ai_expertise: "intermediate",
   },
-  memories: [{ id: 1, category: "goal", key: "k", content: "c", source: "manual", importance: 3, created_at: "a", updated_at: "b" }],
+  memories: [{ id: 1, category: "goal", key: "k", content: "c", source: "manual", importance: 3, conversation_id: 7, created_at: "a", updated_at: "b" }],
   goals: [{ id: 1, label: "House", target_amount_minor: 100000000, target_date: null, priority: "high", category: null, created_at: "a", updated_at: "b" }],
+  conversations: [
+    { id: 7, provider_id: 2, model_override: null, title: "Retirement", pinned_at: null, created_at: "a", updated_at: "b" },
+  ],
+  messages: [
+    { id: 70, conversation_id: 7, role: "user", content: "How am I doing?", tool_calls: null, tool_call_id: null, created_at: "a", updated_at: "b" },
+    {
+      id: 71, conversation_id: 7, role: "assistant", content: "Well.", tool_calls: '[{"name":"portfolio_summary"}]',
+      tool_call_id: null, created_at: "a", updated_at: "b",
+    },
+  ],
 };
 
 describe("buildBackup", () => {
-  it("writes version 3 with amounts as numbers", () => {
+  it("writes version 4 with amounts as numbers", () => {
     const envelope = buildBackup(rows, "2026-10-31T10:00:00");
     expect(envelope.version).toBe(EXPORT_VERSION);
     expect((envelope.data.snapshots as Array<{ amount: number }>)[0].amount).toBe(1234.56);
@@ -68,6 +78,19 @@ describe("buildBackup", () => {
       { provider_id: 2, model: "gemini-2.0-flash", enabled: true },
       { provider_id: 2, model: "gemini-2.5-pro", enabled: false },
     ]);
+  });
+
+  it("carries the chat and the memories' conversation links", () => {
+    const data = buildBackup(rows, "x").data;
+    expect((data.conversations as Array<{ title: string }>)[0].title).toBe("Retirement");
+    // `tool_calls` stays the string SQLite holds.
+    expect((data.messages as Array<{ tool_calls: string | null }>)[1].tool_calls).toBe('[{"name":"portfolio_summary"}]');
+    expect((data.memories as Array<{ conversation_id: number }>)[0].conversation_id).toBe(7);
+  });
+
+  it("selects chat as one entity, so messages never travel without their conversation", () => {
+    const data = buildBackup(rows, "x", ["chat"]).data;
+    expect(Object.keys(data).sort()).toEqual(["conversations", "messages"]);
   });
 
   it("leaves out entities that were not selected", () => {

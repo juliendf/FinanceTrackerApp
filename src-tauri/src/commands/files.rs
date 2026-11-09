@@ -18,7 +18,30 @@ pub struct PickedFile {
 
 /// Upper bound on a file read through the dialog. A backup is a few hundred KB;
 /// this stops a mistaken pick of a huge file from being loaded into the webview.
-const MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
+///
+/// It is also the reason an export is checked before it is written: a file
+/// larger than this could never be imported again, so writing one silently
+/// would create a backup that only looks like a backup. The UI reads the limit
+/// through `read_limit_bytes` rather than hard-coding its own copy.
+pub const MAX_READ_BYTES: u64 = 50 * 1024 * 1024;
+
+const MB: f64 = 1_048_576.0;
+
+/// The limit, for the export screen to check against before it writes.
+#[tauri::command]
+pub fn read_limit_bytes() -> u64 {
+    MAX_READ_BYTES
+}
+
+/// What the user sees when a picked file is over the limit. Says the limit, the
+/// size, and the one thing they can do about it.
+fn too_large_message(name: &str, size: u64) -> String {
+    format!(
+        "{name} is {:.1} MB, and this app reads files up to {:.0} MB. For a backup, export it again with fewer things included.",
+        size as f64 / MB,
+        MAX_READ_BYTES as f64 / MB,
+    )
+}
 
 /// Open an http(s) URL in the user's default browser.
 ///
@@ -62,7 +85,11 @@ pub async fn pick_and_read_text_file(
         .map_err(|e| format!("cannot read {}: {e}", path.display()))?
         .len();
     if size > MAX_READ_BYTES {
-        return Err(format!("{} is too large ({size} bytes)", path.display()));
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_else(|| path.display().to_string());
+        return Err(too_large_message(&name, size));
     }
     let contents = std::fs::read_to_string(&path)
         .map_err(|e| format!("cannot read {}: {e}", path.display()))?;
@@ -102,7 +129,22 @@ pub async fn save_text_file(
 
 #[cfg(test)]
 mod tests {
-    use super::open_external;
+    use super::{open_external, read_limit_bytes, too_large_message, MAX_READ_BYTES};
+
+    #[test]
+    fn the_read_limit_is_fifty_megabytes() {
+        assert_eq!(read_limit_bytes(), MAX_READ_BYTES);
+        assert_eq!(MAX_READ_BYTES, 52_428_800);
+    }
+
+    #[test]
+    fn a_file_over_the_limit_is_refused_with_the_numbers() {
+        let message = too_large_message("backup.json", 62 * 1024 * 1024);
+        assert!(message.contains("backup.json"), "{message}");
+        assert!(message.contains("62.0 MB"), "{message}");
+        assert!(message.contains("up to 50 MB"), "{message}");
+        assert!(message.contains("fewer things"), "{message}");
+    }
 
     /// Only the refusal path is tested: a valid URL would launch the browser.
     #[test]

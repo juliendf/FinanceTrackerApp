@@ -15,7 +15,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { buildImportPlan } from "../import/plan";
-import { buildImportStatements } from "../import/execute";
+import { buildImportProviders, buildImportStatements } from "../import/execute";
 import { parseBackup } from "../import/schema";
 import { backupJson, buildBackup } from "./backup";
 import type { ExportRows } from "../db/repositories/export";
@@ -55,18 +55,27 @@ describe("backup round-trip on the real database", () => {
       profile: q<ExportRows["profile"]>(`SELECT first_name, last_name, job_title, financial_goals, birth_date, tax_residence, currency,
                          timezone, date_format, salary_minor, monthly_savings_target_minor, risk_profile,
                          ai_tone, ai_verbosity, ai_expertise FROM profile LIMIT 1`)[0] ?? null,
-      memories: q(`SELECT id, category, key, content, source, importance, created_at, updated_at FROM user_memories ORDER BY id`),
+      memories: q(`SELECT id, category, key, content, source, importance, conversation_id, created_at, updated_at FROM user_memories ORDER BY id`),
       goals: q(`SELECT id, label, target_amount_minor, target_date, priority, category, created_at, updated_at FROM user_goals ORDER BY id`),
+      conversations: q(`SELECT id, provider_id, model_override, title, pinned_at, created_at, updated_at FROM conversations ORDER BY id`),
+      messages: q(`SELECT id, conversation_id, role, content, tool_calls, tool_call_id, created_at, updated_at FROM messages ORDER BY conversation_id, id`),
     };
 
     const envelope = buildBackup(rows, new Date().toISOString());
+    // eslint-disable-next-line no-console
+    console.log(
+      `backup is ${backupJson(envelope).length} bytes pretty-printed, ${JSON.stringify(envelope).length} compact`,
+    );
     const parsed = parseBackup(backupJson(envelope));
     const plan = buildImportPlan(parsed);
     expect(plan.errors).toEqual([]);
 
-    // No key was exported, so nothing goes to the Keychain.
+    // No key was exported, so nothing goes to the Keychain. The providers travel
+    // with the statements: a restored conversation points at one, and Rust
+    // restores them before it runs the rows.
     const statements = buildImportStatements(parsed);
-    writeFileSync(out as string, JSON.stringify(statements), "utf8");
+    const providers = buildImportProviders(parsed);
+    writeFileSync(out as string, JSON.stringify({ statements, providers }), "utf8");
     // eslint-disable-next-line no-console
     console.log(`wrote ${statements.length} statements to ${out}`);
     expect(statements.length).toBeGreaterThan(0);

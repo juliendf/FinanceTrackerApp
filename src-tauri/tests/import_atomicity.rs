@@ -136,6 +136,33 @@ async fn a_good_import_replaces_everything_in_one_go() {
     assert_eq!(scalar(&url, "SELECT is_default FROM llm_providers WHERE id = 5").await, 1);
 }
 
+/// A restored conversation points at a provider, and `replace_providers` empties
+/// that table as it writes. Providers must therefore land *before* the rows: with
+/// the old order the insert failed on the foreign key (fresh database) or the
+/// conversation lost its provider to `ON DELETE SET NULL` (existing one).
+#[tokio::test]
+async fn a_conversation_keeps_its_provider() {
+    let (_file, url) = fresh("chat").await;
+
+    let mut connection = connect(&url).await;
+    let mut transaction = connection.begin().await.unwrap();
+    let rows = vec![
+        "INSERT INTO conversations (id, provider_id, title) VALUES (5, 7, 'Retirement')".to_string(),
+        "INSERT INTO messages (id, conversation_id, role, content) VALUES (50, 5, 'user', 'How am I doing?')".to_string(),
+    ];
+    import_into(&mut transaction, &request(rows, vec![provider(7, "Gemini")]))
+        .await
+        .expect("a conversation may point at a provider from the same file");
+    transaction.commit().await.unwrap();
+
+    assert_eq!(scalar(&url, "SELECT provider_id FROM conversations WHERE id = 5").await, 7);
+    assert_eq!(scalar(&url, "SELECT COUNT(*) FROM messages").await, 1);
+    assert_eq!(
+        text(&url, "SELECT title FROM conversations WHERE id = 5").await.as_deref(),
+        Some("Retirement")
+    );
+}
+
 #[tokio::test]
 async fn a_failing_row_changes_nothing() {
     let (_file, url) = fresh("bad-row").await;

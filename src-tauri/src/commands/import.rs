@@ -5,8 +5,10 @@
 //! half-replaced, and a failing provider restore in particular left the user with
 //! their data imported and every provider and key gone.
 //!
-//! Here it is one transaction on one connection: the tables are emptied, the rows
-//! are inserted, the providers are replaced, and only then is anything committed.
+//! Here it is one transaction on one connection: the tables are emptied, the
+//! providers are restored, the rows are inserted, and only then is anything
+//! committed. The providers come first because a conversation references the
+//! provider it was bound to, and `replace_providers` deletes the old rows.
 //! The Keychain writes happen *before* the commit, so a Keychain refusal cancels
 //! the import (the transaction is dropped and rolls back) rather than leaving rows
 //! that point at keys which were never written. If the commit itself fails, the
@@ -66,6 +68,11 @@ pub async fn import_into(
             .map_err(|e| format!("cannot clear {table}: {e}"))?;
     }
 
+    // Before the rows, not after: a restored conversation points at a provider,
+    // and `replace_providers` empties the provider table as it writes. The old
+    // providers are already unreachable from the wiped conversations.
+    let keys = replace_providers(transaction, &request.providers).await?;
+
     let total = request.statements.len();
     for (index, statement) in request.statements.iter().enumerate() {
         // The same first filter the generic write path applies; the provider rows
@@ -77,7 +84,7 @@ pub async fn import_into(
         }
     }
 
-    replace_providers(transaction, &request.providers).await
+    Ok(keys)
 }
 
 /// The origin to confirm before an import, if the file's default provider is one

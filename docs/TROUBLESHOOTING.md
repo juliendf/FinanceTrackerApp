@@ -159,7 +159,7 @@ macOS Keychain under service `app.financetracker`, account
 
 **I want a copy before experimenting**
 
-Settings → Data & Backup → **Export backup** (JSON v3, no API keys). The app also
+Settings → Data & Backup → **Export backup** (JSON v4, no API keys). The app also
 writes nothing else outside its database.
 
 **I want to start over**

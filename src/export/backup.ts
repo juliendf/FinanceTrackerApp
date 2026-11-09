@@ -1,22 +1,29 @@
 /**
- * Write a backup in the app's own envelope, at version 3.
+ * Write a backup in the app's own envelope, at version 4.
  *
  * Field names and shapes follow the v2 format exactly, so this app's own
  * importer can read what it writes: amounts as JSON numbers, rates as decimal
  * strings, denormalised labels kept for readability, ids preserved.
  *
- * Two deliberate choices:
+ * Three deliberate choices:
  *   * **No API keys.** Keys live in the Keychain and are never exported; a
  *     plaintext `api_key` in an imported file is moved there and dropped.
  *   * **`system_role` on categories.** v2 has no roles, which is why importing a
  *     v2 backup asks the user to map them; this export carries them so a
- *     round-trip keeps the Résumé working.
+ *     round-trip keeps the Performance screen working.
+ *   * **Chat history.** Conversations and messages are the reasoning behind the
+ *     numbers, and the messages are what produced the memories. One checkbox
+ *     covers both: messages without their conversations cannot be imported.
+ *
+ * `pending_actions` is deliberately absent: it is UI state for a confirmation
+ * that is still on screen, and a restored one would offer to apply an action
+ * from another database. See docs/IMPORT_FORMAT.md.
  */
 
 import type { ExportRows } from "../db/repositories/export";
 import { fromMinorUnits } from "../domain/money";
 
-export const EXPORT_VERSION = 3;
+export const EXPORT_VERSION = 4;
 
 export const ENTITY_LABELS: Record<string, string> = {
   institutions: "Institutions",
@@ -30,6 +37,8 @@ export const ENTITY_LABELS: Record<string, string> = {
   profile: "User Profile",
   memories: "Memories",
   goals: "Goals",
+  /** Conversations and messages together: one key, because they are one thing. */
+  chat: "Chat History",
 };
 
 /** Groups that can be left out of an export; the UI offers them as checkboxes. */
@@ -45,6 +54,7 @@ export const SELECTABLE_ENTITIES = [
   "profile",
   "memories",
   "goals",
+  "chat",
 ] as const;
 
 const major = (minor: number | null): number | null =>
@@ -147,6 +157,12 @@ export function buildBackup(
   }
   if (wanted.has("goals")) {
     data.goals = rows.goals.map((row) => ({ ...row, target_amount: major(row.target_amount_minor) }));
+  }
+  if (wanted.has("chat")) {
+    data.conversations = rows.conversations.map((row) => ({ ...row }));
+    // `tool_calls` stays the JSON string SQLite holds: re-encoding it here would
+    // turn a malformed value into an export failure for no gain.
+    data.messages = rows.messages.map((row) => ({ ...row }));
   }
 
   return { version: EXPORT_VERSION, exported_at: exportedAt, data };

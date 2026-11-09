@@ -145,6 +145,22 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
     );
   }
 
+  // Chat comes after the providers: `import_all` restores them before these
+  // statements run, and `conversations.provider_id` references them.
+  for (const row of data.conversations) {
+    statements.push(
+      `INSERT INTO conversations (id, provider_id, model_override, title, pinned_at, created_at, updated_at) VALUES (${[
+        sqlInt(row.id),
+        sqlInt(row.provider_id ?? null),
+        sqlText(row.model_override ?? null),
+        sqlText(row.title),
+        sqlText(row.pinned_at ?? null),
+        sqlText(row.created_at ?? null),
+        sqlText(row.updated_at ?? null),
+      ].join(", ")})`,
+    );
+  }
+
 
 
   for (const row of data.settings) {
@@ -198,14 +214,22 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
     );
   }
 
+  // A memory keeps its conversation only when that conversation is in the file;
+  // the plan warns about the ones that are not, rather than failing the import.
+  const conversationIds = new Set(data.conversations.map((row) => row.id));
   for (const row of data.memories) {
+    const conversationId =
+      row.conversation_id !== null && row.conversation_id !== undefined && conversationIds.has(row.conversation_id)
+        ? sqlInt(row.conversation_id)
+        : "NULL";
     statements.push(
-      `INSERT INTO user_memories (category, key, content, source, importance, created_at, updated_at) VALUES (${[
+      `INSERT INTO user_memories (category, key, content, source, importance, conversation_id, created_at, updated_at) VALUES (${[
         sqlText(row.category),
         sqlText(row.key),
         sqlText(row.content),
         sqlText(row.source ?? "manual"),
         sqlInt(row.importance ?? 3),
+        conversationId,
         sqlText(row.created_at ?? null),
         sqlText(row.updated_at ?? null),
       ].join(", ")})`,
@@ -228,7 +252,48 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
     );
   }
 
+  for (const row of data.messages) {
+    statements.push(
+      `INSERT INTO messages (id, conversation_id, role, content, tool_calls, tool_call_id, created_at, updated_at) VALUES (${[
+        sqlInt(row.id),
+        sqlInt(row.conversation_id),
+        sqlText(row.role),
+        sqlText(row.content ?? ""),
+        sqlText(row.tool_calls ?? null),
+        sqlText(row.tool_call_id ?? null),
+        sqlText(row.created_at ?? null),
+        sqlText(row.updated_at ?? null),
+      ].join(", ")})`,
+    );
+  }
+
   return statements;
+}
+
+/**
+ * The provider rows `import_all` restores before it runs the statements.
+ *
+ * Exported so the round-trip test can hand the same payload to Rust: the
+ * statements alone cannot be applied to a fresh database, because a restored
+ * conversation references a provider the statements do not insert.
+ */
+export function buildImportProviders(backup: ParsedBackup) {
+  return backup.data.llm_providers.map((row) => ({
+    id: row.id,
+    name: row.name,
+    base_url: row.base_url.replace(/\/+$/, ""),
+    model: row.model,
+    provider_type: row.provider_type ?? "openai",
+    // The schema allows a boolean or 0/1; Rust accepts either, but send booleans.
+    is_default: Boolean(row.is_default),
+    is_active: row.is_active === undefined ? true : Boolean(row.is_active),
+    created_at: row.created_at ?? null,
+    updated_at: row.updated_at ?? null,
+    api_key: row.api_key ?? null,
+    models: backup.data.provider_models
+      .filter((model) => model.provider_id === row.id)
+      .map((model) => ({ model: model.model, enabled: model.enabled === undefined ? true : Boolean(model.enabled) })),
+  }));
 }
 
 /**
@@ -247,25 +312,7 @@ export async function executeImport(backup: ParsedBackup): Promise<ImportResult>
   const statements = buildImportStatements(backup);
 
   const keysToKeychain = await invoke<number>("import_all", {
-    request: {
-      statements,
-      providers: backup.data.llm_providers.map((row) => ({
-        id: row.id,
-        name: row.name,
-        base_url: row.base_url.replace(/\/+$/, ""),
-        model: row.model,
-        provider_type: row.provider_type ?? "openai",
-        // The schema allows a boolean or 0/1; Rust accepts either, but send booleans.
-        is_default: Boolean(row.is_default),
-        is_active: row.is_active === undefined ? true : Boolean(row.is_active),
-        created_at: row.created_at ?? null,
-        updated_at: row.updated_at ?? null,
-        api_key: row.api_key ?? null,
-        models: backup.data.provider_models
-          .filter((model) => model.provider_id === row.id)
-          .map((model) => ({ model: model.model, enabled: model.enabled === undefined ? true : Boolean(model.enabled) })),
-      })),
-    },
+    request: { statements, providers: buildImportProviders(backup) },
   });
 
   return {

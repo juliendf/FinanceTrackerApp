@@ -324,6 +324,13 @@ export function ImportWizard({ show, onClose, onImported }: Props) {
               </li>
               <li>{result.counts.settings} settings</li>
               <li>{result.counts.profile} profile</li>
+              <li>{result.counts.memories} memories</li>
+              <li>{result.counts.goals} goals</li>
+              <li>
+                {result.counts.conversations} conversation
+                {result.counts.conversations === 1 ? "" : "s"} ({result.counts.messages} message
+                {result.counts.messages === 1 ? "" : "s"})
+              </li>
             </ul>
           </>
         ) : null}

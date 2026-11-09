@@ -1,7 +1,7 @@
 /**
  * Settings > Data.
  *
- * Import (including this app's own v3 backups), export at v3, and the
+ * Import (including this app's own v4 backups), export at v4, and the
  * typed-confirmation reset. Settings JSON export/import lives under /settings.
  */
 
@@ -95,7 +95,7 @@ export function DataPage() {
           <p className="text-muted">
             Replace the local database with the contents of a JSON backup. The import
             runs in a single transaction: either everything lands or nothing does.
-            Backups written by this app (version 3) are read the same way.
+            Backups written by this app (version 4) are read the same way.
           </p>
           <button type="button" className="btn btn-primary" onClick={() => setWizardOpen(true)}>
             Import a backup

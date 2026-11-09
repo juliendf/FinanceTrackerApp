@@ -16,7 +16,7 @@ vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...
 
 import { buildImportPlan } from "./plan";
 import { parseBackup } from "./schema";
-import { buildImportStatements, executeImport } from "./execute";
+import { buildImportProviders, buildImportStatements, executeImport } from "./execute";
 import { amountMinor, decimalText, rateText, sqlBool, sqlInt, sqlText } from "./sql";
 
 const FIXTURE = "tests/fixtures/backup-v2-small.json";
@@ -93,6 +93,8 @@ describe("buildImportPlan", () => {
       memories: 0,
       goals: 0,
       profile: 1,
+      conversations: 0,
+      messages: 0,
     });
   });
 
@@ -118,6 +120,7 @@ describe("buildImportPlan", () => {
     expect(lost).toMatch(/memories/);
     expect(lost).toMatch(/goals/);
     expect(lost).toMatch(/username and email/);
+    expect(lost).toMatch(/chat history/);
     expect(lost).not.toMatch(/job title/);
     expect(lost).not.toMatch(/financial goals/);
   });
@@ -195,6 +198,75 @@ describe("buildImportPlan", () => {
       id: 900,
       value: "10000.505",
     });
+  });
+});
+
+describe("chat history (v4)", () => {
+  const chatFile = (overrides: Record<string, unknown> = {}) =>
+    JSON.stringify({
+      version: 4,
+      exported_at: "2026-03-01T00:00:00",
+      data: {
+        llm_providers: [{ id: 2, name: "Gemini", base_url: "https://example.test/v1", model: "m" }],
+        conversations: [{ id: 5, provider_id: 2, title: "Retirement", pinned_at: "2026-02-01T00:00:00" }],
+        messages: [
+          { id: 50, conversation_id: 5, role: "user", content: "How am I doing?" },
+          { id: 51, conversation_id: 5, role: "assistant", content: "", tool_calls: '[{"name":"portfolio_summary"}]' },
+        ],
+        memories: [{ category: "goal", key: "k", content: "Saving for a house", conversation_id: 5 }],
+        ...overrides,
+      },
+    });
+
+  it("parses, counts and plans a v4 file", () => {
+    const backup = parseBackup(chatFile());
+    expect(backup.version).toBe(4);
+    const plan = buildImportPlan(backup);
+    expect(plan.errors).toEqual([]);
+    expect(plan.counts.conversations).toBe(1);
+    expect(plan.counts.messages).toBe(2);
+    expect(plan.notImported.join(" ")).not.toMatch(/chat history/);
+  });
+
+  it("blocks a message whose conversation is not in the file", () => {
+    const broken = JSON.parse(chatFile());
+    broken.data.messages[0].conversation_id = 99;
+    expect(buildImportPlan(parseBackup(JSON.stringify(broken))).errors.join(" ")).toMatch(
+      /conversation 99/,
+    );
+  });
+
+  it("blocks a conversation bound to a provider that was left out", () => {
+    const broken = JSON.parse(chatFile({ llm_providers: [] }));
+    expect(buildImportPlan(parseBackup(JSON.stringify(broken))).errors.join(" ")).toMatch(
+      /provider 2/,
+    );
+  });
+
+  it("keeps a memory's conversation only when the chat is here, and says so", () => {
+    const withoutChat = JSON.parse(chatFile({ conversations: [], messages: [] }));
+    const plan = buildImportPlan(parseBackup(JSON.stringify(withoutChat)));
+    expect(plan.errors).toEqual([]);
+    expect(plan.warnings.join(" ")).toMatch(/written in a chat/);
+    const memory = buildImportStatements(parseBackup(JSON.stringify(withoutChat))).find((statement) =>
+      statement.includes("INSERT INTO user_memories"),
+    );
+    expect(memory).toContain("NULL");
+  });
+
+  it("writes conversations before messages and keeps tool_calls verbatim", () => {
+    const statements = buildImportStatements(parseBackup(chatFile()));
+    const conversation = statements.findIndex((statement) => statement.includes("INSERT INTO conversations"));
+    const message = statements.findIndex((statement) => statement.includes("INSERT INTO messages"));
+    const memory = statements.findIndex((statement) => statement.includes("INSERT INTO user_memories"));
+    expect(conversation).toBeGreaterThan(-1);
+    expect(conversation).toBeLessThan(memory);
+    expect(memory).toBeLessThan(message);
+    expect(statements[conversation]).toContain("(5, 2, NULL, 'Retirement', '2026-02-01T00:00:00'");
+    // The JSON array is stored as text, unchanged: only single quotes are escaped.
+    expect(statements[message + 1]).toContain(`'[{"name":"portfolio_summary"}]'`);
+    // The memory keeps its conversation id, which is why conversations come first.
+    expect(statements[memory]).toContain(", 5, ");
   });
 });
 
@@ -326,7 +398,8 @@ describe("real backup (opt-in)", () => {
     const sqlOut = process.env.IMPORT_SQL_OUT;
     if (sqlOut) {
       const statements = buildImportStatements(backup);
-      writeFileSync(sqlOut, JSON.stringify(statements, null, 0), "utf8");
+      const providers = buildImportProviders(backup);
+      writeFileSync(sqlOut, JSON.stringify({ statements, providers }, null, 0), "utf8");
       // eslint-disable-next-line no-console
       console.log(`wrote ${statements.length} statements to ${sqlOut}`);
     }

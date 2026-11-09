@@ -59,6 +59,7 @@ pub fn run() {
             commands::db::db_select,
             commands::db::database_path,
             commands::files::pick_and_read_text_file,
+            commands::files::read_limit_bytes,
             commands::files::save_text_file,
             commands::files::open_external,
             commands::providers::provider_save,

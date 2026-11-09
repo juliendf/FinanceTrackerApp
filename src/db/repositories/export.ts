@@ -33,7 +33,15 @@ export interface ExportProfile {
   salary_minor: number | null; monthly_savings_target_minor: number | null;
   risk_profile: string | null; ai_tone: string; ai_verbosity: string; ai_expertise: string;
 }
-export interface ExportMemory { id: number; category: string; key: string; content: string; source: string; importance: number; created_at: string; updated_at: string }
+export interface ExportConversation {
+  id: number; provider_id: number | null; model_override: string | null; title: string;
+  pinned_at: string | null; created_at: string; updated_at: string;
+}
+export interface ExportMessage {
+  id: number; conversation_id: number; role: string; content: string;
+  tool_calls: string | null; tool_call_id: string | null; created_at: string; updated_at: string;
+}
+export interface ExportMemory { id: number; category: string; key: string; content: string; source: string; importance: number; conversation_id: number | null; created_at: string; updated_at: string }
 export interface ExportGoal { id: number; label: string; target_amount_minor: number | null; target_date: string | null; priority: string; category: string | null; created_at: string; updated_at: string }
 
 export interface ExportRows {
@@ -49,11 +57,13 @@ export interface ExportRows {
   profile: ExportProfile | null;
   memories: ExportMemory[];
   goals: ExportGoal[];
+  conversations: ExportConversation[];
+  messages: ExportMessage[];
 }
 
 export async function readExportRows(): Promise<ExportRows> {
   const db = await getDb();
-  const [institutions, categories, tags, assets, tagLinks, snapshots, exchange_rates, llm_providers, provider_models, settings, profile, memories, goals] =
+  const [institutions, categories, tags, assets, tagLinks, snapshots, exchange_rates, llm_providers, provider_models, settings, profile, memories, goals, conversations, messages] =
     await Promise.all([
       db.select<ExportInstitution[]>(`SELECT id, name, description, created_at, updated_at FROM institutions ORDER BY id`),
       db.select<ExportCategory[]>(`SELECT id, name, description, color, system_role, created_at, updated_at FROM categories ORDER BY id`),
@@ -101,10 +111,20 @@ export async function readExportRows(): Promise<ExportRows> {
         )
         .then((rows) => rows[0] ?? null),
       db.select<ExportMemory[]>(
-        `SELECT id, category, key, content, source, importance, created_at, updated_at FROM user_memories ORDER BY id`,
+        `SELECT id, category, key, content, source, importance, conversation_id, created_at, updated_at
+           FROM user_memories ORDER BY id`,
       ),
       db.select<ExportGoal[]>(
         `SELECT id, label, target_amount_minor, target_date, priority, category, created_at, updated_at FROM user_goals ORDER BY id`,
+      ),
+      // Chat: the reasoning behind the numbers, and the memories it produced.
+      db.select<ExportConversation[]>(
+        `SELECT id, provider_id, model_override, title, pinned_at, created_at, updated_at
+           FROM conversations ORDER BY id`,
+      ),
+      db.select<ExportMessage[]>(
+        `SELECT id, conversation_id, role, content, tool_calls, tool_call_id, created_at, updated_at
+           FROM messages ORDER BY conversation_id, id`,
       ),
     ]);
 
@@ -124,5 +144,7 @@ export async function readExportRows(): Promise<ExportRows> {
     profile,
     memories,
     goals,
+    conversations,
+    messages,
   };
 }

@@ -22,6 +22,8 @@ export interface ImportCounts {
   memories: number;
   goals: number;
   profile: number;
+  conversations: number;
+  messages: number;
 }
 
 export interface RoundingIssue {
@@ -86,6 +88,24 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
     if (!isSupportedCurrency(asset.currency)) {
       errors.push(
         `Asset ${asset.id} has currency "${asset.currency}". Only EUR, USD and CHF are supported.`,
+      );
+    }
+  }
+
+  const providerIds = new Set(data.llm_providers.map((row) => row.id));
+  for (const conversation of data.conversations) {
+    if (conversation.provider_id !== null && conversation.provider_id !== undefined && !providerIds.has(conversation.provider_id)) {
+      errors.push(
+        `Conversation ${conversation.id} ("${conversation.title}") points at LLM provider ${conversation.provider_id}, which is not in the file.`,
+      );
+    }
+  }
+
+  const conversationIds = new Set(data.conversations.map((row) => row.id));
+  for (const message of data.messages) {
+    if (!conversationIds.has(message.conversation_id)) {
+      errors.push(
+        `Message ${message.id} belongs to conversation ${message.conversation_id}, which is not in the file.`,
       );
     }
   }
@@ -163,7 +183,7 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
 
   if (categoriesMissingRole.length > 0) {
     warnings.push(
-      `${categoriesMissingRole.length} categor${categoriesMissingRole.length === 1 ? "y has" : "ies have"} no system role. The Summary view needs them, so you will be asked to map them after the import.`,
+      `${categoriesMissingRole.length} categor${categoriesMissingRole.length === 1 ? "y has" : "ies have"} no system role. The Performance view needs them, so you will be asked to map them after the import.`,
     );
   }
 
@@ -177,9 +197,25 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
     );
   }
 
+  // A memory keeps the chat that produced it, but only when that chat is here.
+  // Importing it without the conversation would break the foreign key, so the
+  // link is dropped and said out loud rather than silently.
+  const orphanMemories = data.memories.filter(
+    (row) =>
+      row.conversation_id !== null &&
+      row.conversation_id !== undefined &&
+      !conversationIds.has(row.conversation_id),
+  );
+  if (orphanMemories.length > 0) {
+    warnings.push(
+      `${orphanMemories.length} memor${orphanMemories.length === 1 ? "y was" : "ies were"} written in a chat that is not in this backup; the link to the conversation will be dropped.`,
+    );
+  }
+
   const notImported: string[] = [];
   if (data.memories.length === 0) notImported.push("memories (not present in a v2 backup)");
   if (data.goals.length === 0) notImported.push("goals (not present in a v2 backup)");
+  if (backup.version < 4) notImported.push("chat history (not present before version 4)");
   if (data.profile?.username || data.profile?.email) {
     notImported.push("account username and email (there is no account any more)");
   }
@@ -204,6 +240,8 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
       memories: data.memories.length,
       goals: data.goals.length,
       profile: data.profile && Object.keys(data.profile).length > 0 ? 1 : 0,
+      conversations: data.conversations.length,
+      messages: data.messages.length,
     },
     errors,
     warnings,
