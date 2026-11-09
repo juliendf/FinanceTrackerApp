@@ -1812,6 +1812,28 @@ select[multiple].form-select option {
     overflow: visible;
 }
 
+/* The row's actions are the one thing that must never scroll out of reach: the
+   table is wider than the window at the minimum size, so the last column is
+   pinned to the right edge. It needs its own background — content slides under
+   it, and a transparent cell would show the numbers through the buttons. */
+.table-fixed > thead > tr > th:last-child,
+.table-fixed > tbody > tr > td:last-child {
+    position: sticky;
+    right: 0;
+    z-index: 1;
+    background-color: var(--surface-1);
+    box-shadow: inset 1px 0 0 var(--border-color);
+}
+
+.table-fixed > thead > tr > th:last-child {
+    background-color: var(--surface-2);
+    z-index: 2;
+}
+
+.table-fixed > tbody > tr:hover > td:last-child {
+    background-color: var(--surface-hover);
+}
+
 .table-fixed td .chip {
     display: inline-block;
     max-width: 100%;

@@ -333,7 +333,10 @@ export function AssetListPage() {
                       <col style={{ width: "13%" }} />
                       <col style={{ width: "9%" }} />
                       <col style={{ width: "8%" }} />
-                      <col style={{ width: "6%" }} />
+                      {/* Four icon buttons need their width in rem, not a
+                          percentage: 6% of the minimum table was 54px, so they
+                          spilled over the Status column. */}
+                      <col style={{ width: "8.5rem" }} />
                     </colgroup>
                     <thead>
                       <tr>
