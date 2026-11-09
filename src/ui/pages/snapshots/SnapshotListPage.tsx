@@ -348,7 +348,7 @@ export function SnapshotListPage() {
                 <th>Institution</th>
                 <th>Category</th>
                 <th className="sort-header num" onClick={() => sortBy("amount")}>Amount {sortIndicator("amount")}</th>
-                <th className="text-end">Actions</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -412,7 +412,6 @@ export function SnapshotListPage() {
                       <td><span className="chip">{row.category_name}</span></td>
                       <td className="num">
                         {formatMinorAsCurrency(row.amount_minor, row.currency)}
-                        <span className="currency-code ms-1">{row.currency}</span>
                       </td>
                       <td>
                         <div className="row-actions d-none d-md-inline-flex">

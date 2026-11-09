@@ -326,10 +326,10 @@ export function AssetListPage() {
                 <div className="table-responsive">
                   <table className="table table-hover align-middle mb-0 table-fixed">
                     <colgroup>
-                      <col style={{ width: "21%" }} />
+                      <col style={{ width: "22%" }} />
                       <col style={{ width: "14%" }} />
                       <col style={{ width: "16%" }} />
-                      <col style={{ width: "13%" }} />
+                      <col style={{ width: "12%" }} />
                       <col style={{ width: "13%" }} />
                       <col style={{ width: "9%" }} />
                       <col style={{ width: "8%" }} />
@@ -347,7 +347,7 @@ export function AssetListPage() {
                         <th className="num">Latest Value</th>
                         <th>Updated</th>
                         <th>Status</th>
-                        <th className="text-end">Actions</th>
+                        <th className="text-center">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -511,8 +511,9 @@ function AssetTableRow({ asset, onDelete }: { asset: AssetRow; onDelete: (row: A
       <td className="num">
         {asset.latest_amount_minor !== null ? (
           <>
+            {/* The formatter already ends with the code for currencies without a
+                symbol ("31,585.00 CHF"), so a second badge only repeated it. */}
             {formatMinorAsCurrency(asset.latest_amount_minor, asset.currency)}
-            <span className="currency-code ms-1">{asset.currency}</span>
           </>
         ) : (
           <span className="text-muted">—</span>
