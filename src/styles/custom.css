@@ -1653,6 +1653,10 @@ select[multiple].form-select option {
 .alert-container .alert-body {
     flex: 1 1 auto;
     min-width: 0;
+    /* A file path is one unbreakable word; without this it runs out of the
+       toast instead of wrapping. `anywhere` also keeps the last segment
+       readable rather than shrinking the box. */
+    overflow-wrap: anywhere;
 }
 
 .alert-container .alert .btn-close {
