@@ -37,6 +37,9 @@ const rows: ExportRows = {
   },
   memories: [{ id: 1, category: "goal", key: "k", content: "c", source: "manual", importance: 3, conversation_id: 7, created_at: "a", updated_at: "b" }],
   goals: [{ id: 1, label: "House", target_amount_minor: 100000000, target_date: null, priority: "high", category: null, created_at: "a", updated_at: "b" }],
+  asset_holdings: [
+    { asset_id: 1, isin: "FR0000120073", label: "World", quantity: "12.5", price: "45.2" },
+  ],
   conversations: [
     { id: 7, provider_id: 2, model_override: null, title: "Retirement", pinned_at: null, created_at: "a", updated_at: "b" },
   ],
@@ -78,6 +81,12 @@ describe("buildBackup", () => {
       { provider_id: 2, model: "gemini-2.0-flash", enabled: true },
       { provider_id: 2, model: "gemini-2.5-pro", enabled: false },
     ]);
+  });
+
+  it("carries the holdings with the assets, and leaves them out with them", () => {
+    const data = buildBackup(rows, "x").data;
+    expect(data.asset_holdings).toEqual([{ asset_id: 1, isin: "FR0000120073", label: "World", quantity: "12.5", price: "45.2" }]);
+    expect(buildBackup(rows, "x", ["snapshots"]).data.asset_holdings).toBeUndefined();
   });
 
   it("carries the chat and the memories' conversation links", () => {

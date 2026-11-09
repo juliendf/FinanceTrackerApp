@@ -24,6 +24,7 @@ export interface ImportCounts {
   profile: number;
   conversations: number;
   messages: number;
+  holdings: number;
 }
 
 export interface RoundingIssue {
@@ -108,6 +109,20 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
         `Message ${message.id} belongs to conversation ${message.conversation_id}, which is not in the file.`,
       );
     }
+  }
+
+  const holdingKeys = new Set<string>();
+  for (const holding of data.asset_holdings) {
+    if (!assetIds.has(holding.asset_id)) {
+      errors.push(
+        `Holding ${holding.isin} points at asset ${holding.asset_id}, which is not in the file.`,
+      );
+    }
+    const key = `${holding.asset_id}@${holding.isin}`;
+    if (holdingKeys.has(key)) {
+      errors.push(`Asset ${holding.asset_id} lists ${holding.isin} twice.`);
+    }
+    holdingKeys.add(key);
   }
 
   const snapshotKeys = new Set<string>();
@@ -242,6 +257,7 @@ export function buildImportPlan(backup: ParsedBackup): ImportPlan {
       profile: data.profile && Object.keys(data.profile).length > 0 ? 1 : 0,
       conversations: data.conversations.length,
       messages: data.messages.length,
+      holdings: data.asset_holdings.length,
     },
     errors,
     warnings,

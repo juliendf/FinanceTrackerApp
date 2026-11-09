@@ -15,6 +15,7 @@ export interface ExportSnapshot {
   id: number; asset_id: number; date: string; amount_minor: number; created_at: string; updated_at: string;
   asset_institution: string | null; asset_product: string | null; asset_category: string | null; asset_currency: string | null;
 }
+export interface ExportHolding { asset_id: number; isin: string; label: string | null; quantity: string; price: string | null }
 export interface ExportRate { id: number; from_currency: string; to_currency: string; rate: string; created_at: string; updated_at: string }
 export interface ExportProvider {
   id: number; name: string; base_url: string; model: string; provider_type: string;
@@ -59,11 +60,12 @@ export interface ExportRows {
   goals: ExportGoal[];
   conversations: ExportConversation[];
   messages: ExportMessage[];
+  asset_holdings: ExportHolding[];
 }
 
 export async function readExportRows(): Promise<ExportRows> {
   const db = await getDb();
-  const [institutions, categories, tags, assets, tagLinks, snapshots, exchange_rates, llm_providers, provider_models, settings, profile, memories, goals, conversations, messages] =
+  const [institutions, categories, tags, assets, tagLinks, holdings, snapshots, exchange_rates, llm_providers, provider_models, settings, profile, memories, goals, conversations, messages] =
     await Promise.all([
       db.select<ExportInstitution[]>(`SELECT id, name, description, created_at, updated_at FROM institutions ORDER BY id`),
       db.select<ExportCategory[]>(`SELECT id, name, description, color, system_role, created_at, updated_at FROM categories ORDER BY id`),
@@ -80,6 +82,9 @@ export async function readExportRows(): Promise<ExportRows> {
       ),
       db.select<{ asset_id: number; name: string }[]>(
         `SELECT at.asset_id, t.name FROM asset_tags at JOIN tags t ON t.id = at.tag_id ORDER BY at.asset_id, t.name`,
+      ),
+      db.select<ExportHolding[]>(
+        `SELECT asset_id, isin, label, quantity, price FROM asset_holdings ORDER BY asset_id, isin`,
       ),
       db.select<ExportSnapshot[]>(
         `SELECT s.id, s.asset_id, s.date, s.amount_minor, s.created_at, s.updated_at,
@@ -146,5 +151,6 @@ export async function readExportRows(): Promise<ExportRows> {
     goals,
     conversations,
     messages,
+    asset_holdings: holdings,
   };
 }

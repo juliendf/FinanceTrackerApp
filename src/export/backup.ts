@@ -87,6 +87,11 @@ export function buildBackup(
   if (wanted.has("assets")) {
     data.assets = rows.assets.map((row) => ({ ...row }));
   }
+  if (wanted.has("assets")) {
+    // Composition travels with the asset, like its tags: there is no asset
+    // without them, and a holding has no meaning on its own.
+    data.asset_holdings = rows.asset_holdings.map((row) => ({ ...row }));
+  }
   if (wanted.has("snapshots")) {
     data.snapshots = rows.snapshots.map((row) => ({
       id: row.id,

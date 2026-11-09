@@ -13,6 +13,7 @@ import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { deleteAsset, getAssetRow } from "../../../db/repositories/assets";
+import { listHoldingsForAsset } from "../../../db/repositories/holdings";
 import { deleteSnapshot, listSnapshotsForAsset } from "../../../db/repositories/snapshots";
 import { buildHistory, displayName, formattedCurrency } from "../../../domain/assets";
 import {
@@ -23,6 +24,13 @@ import {
   relativeDate,
 } from "../../../domain/format";
 import { formatSymbolAmount } from "../../../domain/format";
+import { formatCurrency } from "../../../domain/format";
+import {
+  compositionGap,
+  holdingShare,
+  holdingValue,
+  holdingsTotal,
+} from "../../../domain/holdings";
 import { fromMinorUnits } from "../../../domain/money";
 import { messages } from "../../../domain/snapshots";
 import { SnapshotDeleteModal } from "../../components/SnapshotDeleteModal";
@@ -43,6 +51,25 @@ export function AssetDetailPage() {
 
   const assetQuery = useQuery({ queryKey: ["asset-row", id], queryFn: () => getAssetRow(id) });
   const snapshotsQuery = useQuery({ queryKey: ["snapshots", id], queryFn: () => listSnapshotsForAsset(id) });
+  const holdingsQuery = useQuery({ queryKey: ["asset-holdings", id], queryFn: () => listHoldingsForAsset(id) });
+
+  // Composition: quantity × recorded price, compared with the latest snapshot.
+  const holdingInputs = (holdingsQuery.data ?? []).map((row) => ({
+    isin: row.isin,
+    label: row.label ?? "",
+    quantity: row.quantity,
+    price: row.price ?? "",
+  }));
+  const holdingsValue = holdingsTotal(holdingInputs);
+  const anyPriced = holdingInputs.some((row) => row.price.trim() !== "");
+  const showName = holdingInputs.some((row) => row.label !== "");
+  const latestSnapshot = (() => {
+    const points = snapshotsQuery.data ?? [];
+    if (points.length === 0) return null;
+    const latest = [...points].sort((a, b) => b.date.localeCompare(a.date))[0];
+    return fromMinorUnits(latest.amount_minor);
+  })();
+  const compositionDiff = compositionGap(holdingInputs, latestSnapshot);
 
   const remove = useMutation({
     mutationFn: () => deleteAsset(id),
@@ -233,6 +260,95 @@ export function AssetDetailPage() {
           ) : null}
         </div>
       </div>
+
+      {/* Composition: quantity × recorded price, compared with the snapshot.
+          The snapshot remains the valuation; this says what the asset is made
+          of, and flags a gap rather than hiding it. */}
+      {(holdingsQuery.data?.length ?? 0) > 0 ? (
+        <div className="card mb-4">
+          <div className="card-header d-flex justify-content-between align-items-center">
+            <h5 className="card-title mb-0">
+              <i className="bi bi-pie-chart me-2" aria-hidden="true" />
+              Holdings
+            </h5>
+            <span className="text-muted small">
+              {holdingsQuery.data?.length} instrument{holdingsQuery.data?.length === 1 ? "" : "s"}
+              {holdingsValue
+                ? ` · ${formatCurrency(holdingsValue.total.toNumber(), asset.currency)}`
+                : ""}
+            </span>
+          </div>
+          <div className="card-body p-0">
+            <table className="table align-middle mb-0">
+              <thead>
+                <tr>
+                  {/* The name column exists only when at least one row has one:
+                      a table of dashes is noise. */}
+                  {showName ? <th scope="col">Name</th> : null}
+                  <th scope="col">ISIN</th>
+                  <th scope="col" className="text-end">Quantity</th>
+                  {anyPriced ? <th scope="col" className="text-end">Price</th> : null}
+                  {anyPriced ? <th scope="col" className="text-end">Value</th> : null}
+                  {anyPriced ? <th scope="col" className="text-end">Share</th> : null}
+                </tr>
+              </thead>
+              <tbody>
+                {holdingInputs.map((row, index) => {
+                  const value = holdingValue(row);
+                  const share = holdingShare(row, holdingsValue);
+                  return (
+                    <tr key={(holdingsQuery.data ?? [])[index]?.id ?? index}>
+                      {showName ? (
+                        <td>{row.label || <span className="text-muted">—</span>}</td>
+                      ) : null}
+                      <td className="money">{row.isin}</td>
+                      <td className="text-end money">{row.quantity}</td>
+                      {anyPriced ? (
+                        <td className="text-end money">
+                          {row.price || <span className="text-muted">—</span>}
+                        </td>
+                      ) : null}
+                      {anyPriced ? (
+                        <td className="text-end money">
+                          {value ? formatCurrency(value.toNumber(), asset.currency) : <span className="text-muted">—</span>}
+                        </td>
+                      ) : null}
+                      {anyPriced ? (
+                        <td className="text-end money">
+                          {share ? formatPercentage(share, 0) : <span className="text-muted">—</span>}
+                        </td>
+                      ) : null}
+                    </tr>
+                  );
+                })}
+              </tbody>
+              {holdingsValue ? (
+                <tfoot>
+                  <tr>
+                    <td colSpan={(showName ? 1 : 0) + (anyPriced ? 3 : 1)} className="text-end fw-semibold">
+                      {holdingsValue.allPriced ? "Total" : "Total (priced lines)"}
+                    </td>
+                    <td className="text-end money fw-semibold">
+                      {formatCurrency(holdingsValue.total.toNumber(), asset.currency)}
+                    </td>
+                    {anyPriced ? <td /> : null}
+                  </tr>
+                </tfoot>
+              ) : null}
+            </table>
+
+            {compositionDiff && compositionDiff.greaterThan(0.01) ? (
+              <div className="px-3 py-2 text-warning small border-top">
+                <i className="bi bi-exclamation-triangle me-2" aria-hidden="true" />
+                These lines add up to {formatCurrency(holdingsValue!.total.toNumber(), asset.currency)};
+                the latest snapshot says{" "}
+                {latestSnapshot ? formatCurrency(latestSnapshot.toNumber(), asset.currency) : "—"}. A price or
+                the snapshot is out of date.
+              </div>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       {history.length > 0 ? (
         <div className="card mb-4">

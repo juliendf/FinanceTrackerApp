@@ -26,7 +26,10 @@ vi.mock("../../../db/repositories/institutions", () => ({
   institutionNameExists: async () => false,
 }));
 vi.mock("../../../db/repositories/categories", () => ({
-  listCategories: async () => [{ id: 1, name: "Cash" }, { id: 2, name: "Investments" }],
+  listCategories: async () => [
+    { id: 1, name: "Cash", system_role: "cash" },
+    { id: 2, name: "Investments", system_role: "stocks" },
+  ],
   createCategory: async () => 9,
   categoryNameExists: async () => false,
 }));
@@ -35,6 +38,9 @@ vi.mock("../../../db/repositories/tags", () => ({
   listTagIdsForAsset: async () => [2],
   createTag: async () => 9,
   tagNameExists: async () => false,
+}));
+vi.mock("../../../db/repositories/holdings", () => ({
+  listHoldingsForAsset: async () => [],
 }));
 vi.mock("../../../db/repositories/snapshots", () => ({
   listSnapshotsForAsset: async () => [
@@ -72,6 +78,56 @@ async function fillMinimum() {
   await userEvent.selectOptions(screen.getByLabelText(/^category/i), "2");
   await userEvent.type(screen.getByLabelText(/product name/i), "ETF World");
 }
+
+describe("AssetFormPage — holdings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    createAsset.mockResolvedValue(42);
+  });
+
+  it("offers holdings only for a category whose role is stocks or bonds", async () => {
+    renderAt("/assets/new");
+    await screen.findByRole("option", { name: "UBS" });
+
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "1");
+    expect(screen.queryByText("Holdings")).toBeNull();
+
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "2");
+    expect(await screen.findByText("Holdings")).toBeTruthy();
+  });
+
+  it("validates an ISIN before writing anything", async () => {
+    renderAt("/assets/new");
+    await fillMinimum();
+    // Untick the first snapshot: it is required while ticked, and it is not
+    // what this test is about.
+    await userEvent.click(screen.getByLabelText(/create initial snapshot/i));
+    await userEvent.click(screen.getByRole("button", { name: /add a holding/i }));
+    await userEvent.type(screen.getByLabelText("ISIN, line 1"), "FR0000120074");
+    await userEvent.type(screen.getByLabelText("Quantity, line 1"), "1");
+    await userEvent.click(screen.getByRole("button", { name: /create asset/i }));
+
+    expect(await screen.findByText(/check digit/)).toBeTruthy();
+    expect(createAsset).not.toHaveBeenCalled();
+  });
+
+  it("writes the normalised rows with the asset", async () => {
+    renderAt("/assets/new");
+    await fillMinimum();
+    await userEvent.click(screen.getByLabelText(/create initial snapshot/i));
+    await userEvent.click(screen.getByRole("button", { name: /add a holding/i }));
+    await userEvent.type(screen.getByLabelText("Name, line 1"), "  iShares World  ");
+    await userEvent.type(screen.getByLabelText("ISIN, line 1"), "fr 0000 1200 73");
+    await userEvent.type(screen.getByLabelText("Quantity, line 1"), "12,50");
+    await userEvent.type(screen.getByLabelText("Price, line 1"), "45.20");
+    await userEvent.click(screen.getByRole("button", { name: /create asset/i }));
+
+    await waitFor(() => expect(createAsset).toHaveBeenCalledTimes(1));
+    expect((createAsset.mock.calls[0][0] as { holdings: unknown }).holdings).toEqual([
+      { isin: "FR0000120073", label: "iShares World", quantity: "12.5", price: "45.2" },
+    ]);
+  });
+});
 
 describe("AssetFormPage — create", () => {
   beforeEach(() => {

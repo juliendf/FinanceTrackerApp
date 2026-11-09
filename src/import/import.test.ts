@@ -95,6 +95,7 @@ describe("buildImportPlan", () => {
       profile: 1,
       conversations: 0,
       messages: 0,
+      holdings: 0,
     });
   });
 
@@ -252,6 +253,27 @@ describe("chat history (v4)", () => {
       statement.includes("INSERT INTO user_memories"),
     );
     expect(memory).toContain("NULL");
+  });
+
+  it("writes holdings with their asset and refuses a duplicate ISIN", () => {
+    const file = JSON.parse(chatFile({
+      assets: [{ id: 1, institution_id: 1, category_id: 1, currency: "CHF", product_name: "PEA" }],
+      institutions: [{ id: 1, name: "UBS" }],
+      categories: [{ id: 1, name: "Stocks", system_role: "stocks" }],
+      asset_holdings: [{ asset_id: 1, isin: "FR0000120073", label: "World", quantity: 12.5, price: 45.2 }],
+    }));
+    const plan = buildImportPlan(parseBackup(JSON.stringify(file)));
+    expect(plan.errors).toEqual([]);
+    expect(plan.counts.holdings).toBe(1);
+    const statements = buildImportStatements(parseBackup(JSON.stringify(file)));
+    expect(statements.find((statement) => statement.includes("INSERT INTO asset_holdings"))).toBe(
+      "INSERT INTO asset_holdings (asset_id, isin, label, quantity, price) VALUES (1, 'FR0000120073', 'World', '12.5', '45.2')",
+    );
+
+    file.data.asset_holdings.push({ asset_id: 1, isin: "FR0000120073", quantity: 1 });
+    expect(buildImportPlan(parseBackup(JSON.stringify(file))).errors.join(" ")).toMatch(
+      /lists FR0000120073 twice/,
+    );
   });
 
   it("writes conversations before messages and keeps tool_calls verbatim", () => {

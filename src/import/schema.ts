@@ -65,6 +65,17 @@ export const assetSchema = z.object({
   updated_at: timestamp,
 });
 
+/** v4: what an asset is made of. Composition only — no price, no value. */
+export const holdingSchema = z.object({
+  asset_id: z.number().int(),
+  isin: z.string(),
+  /** Optional instrument name; v4 files written before it existed omit it. */
+  label: z.string().nullable().optional(),
+  quantity: z.union([z.number(), z.string()]),
+  /** Last known price per unit, in the asset's currency. */
+  price: z.union([z.number(), z.string()]).nullable().optional(),
+});
+
 export const snapshotSchema = z.object({
   id: z.number().int(),
   asset_id: z.number().int(),
@@ -204,6 +215,7 @@ export const backupDataSchema = z.object({
   profile: profileSchema.optional().default({}),
   memories: z.array(memorySchema).optional().default([]),
   goals: z.array(goalSchema).optional().default([]),
+  asset_holdings: z.array(holdingSchema).optional().default([]),
   conversations: z.array(conversationSchema).optional().default([]),
   messages: z.array(messageSchema).optional().default([]),
 });

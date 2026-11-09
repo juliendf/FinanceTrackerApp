@@ -24,6 +24,7 @@ const repo = vi.hoisted(() => ({
   getAllSettings: vi.fn(),
   listTopMemories: vi.fn(),
   createMemory: vi.fn(),
+  listAllHoldings: vi.fn(),
 }));
 
 vi.mock("../db/repositories/assets", () => ({ listAssets: () => repo.listAssets() }));
@@ -47,6 +48,7 @@ vi.mock("../db/repositories/dashboard", () => ({
 vi.mock("../db/repositories/exchangeRates", () => ({ listExchangeRates: () => repo.listExchangeRates() }));
 vi.mock("../db/repositories/settings", () => ({ getAllSettings: () => repo.getAllSettings() }));
 vi.mock("../db/repositories/profile", () => ({ listTopMemories: () => repo.listTopMemories() }));
+vi.mock("../db/repositories/holdings", () => ({ listAllHoldings: () => repo.listAllHoldings() }));
 
 import { executeTool, TOOL_DEFINITIONS } from "./tools";
 
@@ -80,6 +82,7 @@ beforeEach(() => {
   repo.snapshotExists.mockResolvedValue(false);
   repo.getSnapshotOn.mockResolvedValue(null);
   repo.createPendingAction.mockResolvedValue(11);
+  repo.listAllHoldings.mockResolvedValue([]);
 });
 
 describe("tool definitions", () => {
@@ -159,6 +162,38 @@ describe("read tools", () => {
     expect((byInstitution.result as unknown[]).length).toBe(1);
     const byTag = await executeTool("list_assets", { tag_name: "liqu" }, ctx);
     expect((byTag.result as unknown[]).length).toBe(1);
+  });
+
+  it("details carry the holdings when there are any", async () => {
+    repo.listAllHoldings.mockResolvedValue([
+      { id: 1, asset_id: 1, isin: "FR0000120073", label: null, quantity: "12.5", price: null },
+    ]);
+    const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    expect((result as { holdings: unknown }).holdings).toEqual([
+      { isin: "FR0000120073", quantity: "12.5" },
+    ]);
+  });
+
+  it("values the composition when every line has a price", async () => {
+    repo.listAllHoldings.mockResolvedValue([
+      { id: 1, asset_id: 1, isin: "FR0000120073", label: "World", quantity: "10", price: "20" },
+      { id: 2, asset_id: 1, isin: "IE00B4L5Y983", label: null, quantity: "5", price: "40" },
+    ]);
+    const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    const details = result as { holdings: Array<Record<string, unknown>>; holdings_value: number };
+    expect(details.holdings_value).toBe(400);
+    expect(details.holdings[0]).toMatchObject({ isin: "FR0000120073", name: "World", price: 20, value: 200, share_pct: 50 });
+    expect(details.holdings[1]).toMatchObject({ isin: "IE00B4L5Y983", value: 200, share_pct: 50 });
+  });
+
+  it("reports no total when a line has no price", async () => {
+    repo.listAllHoldings.mockResolvedValue([
+      { id: 1, asset_id: 1, isin: "FR0000120073", label: null, quantity: "10", price: "20" },
+      { id: 2, asset_id: 1, isin: "IE00B4L5Y983", label: null, quantity: "5", price: null },
+    ]);
+    const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
+    const details = result as { holdings_value?: number };
+    expect(details.holdings_value).toBeUndefined();
   });
 
   it("details include the 30/90-day change", async () => {

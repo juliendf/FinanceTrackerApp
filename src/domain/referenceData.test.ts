@@ -44,7 +44,7 @@ describe("institutionSchema", () => {
 });
 
 describe("categorySchema", () => {
-  const base = { name: "Savings", description: "", color: "#007bff", system_role: "" };
+  const base = { name: "Savings", description: "", color: "#007bff", system_role: "cash" };
 
   it("accepts a valid category", () => {
     expect(categorySchema.safeParse(base).success).toBe(true);
@@ -61,6 +61,12 @@ describe("categorySchema", () => {
     expect(HEX_6.test("007bff")).toBe(false);
     expect(categorySchema.safeParse({ ...base, color: "#fff" }).success).toBe(false);
     expect(categorySchema.safeParse({ ...base, color: "" }).success).toBe(true);
+  });
+
+  it("requires a system role", () => {
+    expect(categorySchema.safeParse({ ...base, system_role: "" }).success).toBe(false);
+    const result = categorySchema.safeParse({ ...base, system_role: "" });
+    expect(result.success ? "" : result.error.issues[0].message).toBe("Choose a system role");
   });
 
   it("accepts the system roles from constants.py and nothing else", () => {

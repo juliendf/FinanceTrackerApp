@@ -27,7 +27,7 @@ const JUST_INSERTED = "(SELECT seq FROM sqlite_sequence WHERE name = 'assets')";
 const base: AssetWriteInput = {
   institution_id: 1, category_id: 2, currency: "CHF", product_name: "  O'Brien Fund ",
   name: null, description: "", notes: "line1\nline2", code_nin: null,
-  cost_charges: "0.85", interest_rate: null, tag_ids: [3, 3, 4],
+  cost_charges: "0.85", interest_rate: null, tag_ids: [3, 3, 4], holdings: [],
 };
 
 /** The statements of the last batch, whichever helper it went through. */
@@ -56,6 +56,28 @@ describe("asset writes", () => {
     expect(statements[statements.length - 1]).toContain(`VALUES (${JUST_INSERTED}, '2026-01-01', 250050)`);
     expect(statements).toHaveLength(4);
     expect(id).toBe(7);
+  });
+
+  it("writes the holdings with the asset, in the same batch", async () => {
+    await createAsset({
+      ...base,
+      holdings: [
+        { isin: "FR0000120073", label: "World", quantity: "12.5", price: "45.2" },
+        { isin: "IE00B4L5Y983", label: null, quantity: "3", price: null },
+      ],
+    });
+    const statements = sent();
+    expect(statements.filter((s) => s.startsWith("INSERT INTO asset_holdings"))).toEqual([
+      `INSERT INTO asset_holdings (asset_id, isin, label, quantity, price)\n       VALUES (${JUST_INSERTED}, 'FR0000120073', 'World', '12.5', '45.2')`,
+      `INSERT INTO asset_holdings (asset_id, isin, label, quantity, price)\n       VALUES (${JUST_INSERTED}, 'IE00B4L5Y983', NULL, '3', NULL)`,
+    ]);
+  });
+
+  it("replaces the holdings on update rather than appending", async () => {
+    await updateAsset(5, { ...base, holdings: [{ isin: "FR0000120073", label: null, quantity: "1", price: null }] });
+    const statements = sent();
+    expect(statements).toContain("DELETE FROM asset_holdings WHERE asset_id = 5");
+    expect(statements[statements.length - 1]).toContain("'FR0000120073', NULL, '1', NULL");
   });
 
   it("is a single transaction call, so nothing needs a compensating delete", async () => {
@@ -104,6 +126,7 @@ describe("asset writes", () => {
     expect(statements.slice(2)).toEqual([
       "INSERT INTO asset_tags (asset_id, tag_id) VALUES (5, 1)",
       "INSERT INTO asset_tags (asset_id, tag_id) VALUES (5, 2)",
+      "DELETE FROM asset_holdings WHERE asset_id = 5",
     ]);
   });
 
@@ -111,6 +134,7 @@ describe("asset writes", () => {
     await deleteAsset(5);
     expect(sent()).toEqual([
       "DELETE FROM asset_tags WHERE asset_id = 5",
+      "DELETE FROM asset_holdings WHERE asset_id = 5",
       "DELETE FROM snapshots WHERE asset_id = 5",
       "DELETE FROM assets WHERE id = 5",
     ]);

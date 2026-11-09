@@ -20,6 +20,7 @@ FULL = {
     "assets": ("id", "institution_id", "category_id", "currency", "product_name", "name", "description",
                "notes", "code_nin", "cost_charges", "interest_rate", "created_at", "updated_at"),
     "snapshots": ("id", "asset_id", "date", "amount_minor", "created_at", "updated_at"),
+    "asset_holdings": ("asset_id", "isin", "label", "quantity", "price"),
     "llm_providers": ("id", "name", "base_url", "model", "provider_type", "is_default", "is_active",
                       "created_at", "updated_at"),
     "provider_models": ("provider_id", "model", "enabled"),
@@ -34,7 +35,7 @@ FULL = {
     "messages": ("id", "conversation_id", "role", "content", "tool_calls", "tool_call_id", "created_at", "updated_at"),
 }
 
-ORDER = ["institutions", "categories", "tags", "assets", "snapshots", "asset_tags", "exchange_rates",
+ORDER = ["institutions", "categories", "tags", "assets", "snapshots", "asset_tags", "asset_holdings", "exchange_rates",
          "llm_providers", "settings", "profile", "user_memories", "user_goals", "conversations", "messages"]
 
 

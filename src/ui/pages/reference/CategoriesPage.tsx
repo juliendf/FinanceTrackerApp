@@ -183,6 +183,24 @@ export function CategoriesPage() {
         }
       />
 
+      {/* Existing categories from before the role was required, and categories
+          imported from a v2 or v3 backup, still have none. They are listed here
+          until someone sets them. */}
+      {(query.data ?? []).some((row) => !row.system_role) ? (
+        <div className="alert alert-warning d-flex align-items-start gap-2" role="alert">
+          <i className="bi bi-exclamation-triangle mt-1" aria-hidden="true" />
+          <div>
+            <strong>
+              {(query.data ?? []).filter((row) => !row.system_role).length} categor
+              {(query.data ?? []).filter((row) => !row.system_role).length === 1 ? "y has" : "ies have"} no
+              system role.
+            </strong>{" "}
+            The Performance tiles, the allocation breakdown and holdings need one. Open each and choose a
+            role.
+          </div>
+        </div>
+      ) : null}
+
       <div className="card card-finance">
         <div className="card-body p-0">
           {query.isLoading ? (
@@ -282,10 +300,10 @@ export function CategoriesPage() {
                   label="System role"
                   value={form.system_role}
                   error={errors.system_role}
-                  help="Drives the Summary tiles, the allocation breakdown and the assistant's runway figure. A tag is only a label: it changes no calculation."
+                  help="Required. Drives the Performance tiles, the allocation breakdown, the assistant's runway figure, and whether this category's assets can list holdings (stocks and bonds only)."
                   onChange={(event) => setForm({ ...form, system_role: event.target.value })}
                 >
-                  <option value="">(none)</option>
+                  <option value="">Choose a role…</option>
                   {SYSTEM_ROLE_CHOICES.map((choice) => (
                     <option key={choice.value} value={choice.value}>
                       {choice.label}

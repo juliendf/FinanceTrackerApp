@@ -52,6 +52,11 @@ a v2 web export:
 - **`conversations` and `messages`** carry the chat, under one export checkbox
   ("Chat History"). `memories[].conversation_id` links a memory to the chat that
   produced it.
+- **`asset_holdings`** carries what an asset is made of, under the same checkbox
+  as `assets`: `{asset_id, isin, label, quantity, price}`. `label` is the optional
+  instrument name ("iShares MSCI World"); `price` is the last known price per
+  unit, in the asset's currency. The snapshot remains the only valuation: the
+  price exists so the composition can be read as a share of the asset.
 - Amounts are JSON numbers in major units, rates are decimal strings.
 
 Verified round-trip on the real backup: every exported table row is reproduced
@@ -74,6 +79,7 @@ in a fresh database, row for row (`tests/roundtrip/compare.py`).
 | `profile.birth_date` | `profile.birth_date` | absent from v2; written by this app so age survives a round-trip |
 | `profile.username`, `email` | **dropped** | no account any more; listed in the report |
 | `categories` (no `system_role`) | asks the user to map roles after import | the Performance view needs them |
+| `asset_holdings` | same table | `quantity` is a decimal string; ISIN and quantity are validated before the write |
 | `conversations`, `messages` | same tables | ids preserved; providers are restored first so `provider_id` holds |
 | `memories[].conversation_id` | same column | kept when the chat is in the file, NULL plus a warning otherwise |
 | `pending_actions` | **not exported** | a confirmation still on screen, not history |
@@ -84,9 +90,9 @@ without an id map.
 
 ## What version 4 adds
 
-Chat history. Before v4 a restore silently discarded every conversation and
-every message — the reasoning behind the numbers, and the input that produced the
-memories.
+Chat history, and what a portfolio is made of. Before v4 a restore silently
+discarded every conversation and every message — the reasoning behind the
+numbers, and the input that produced the memories.
 
 ```jsonc
 {
@@ -113,6 +119,10 @@ memories.
     ],
     "memories": [
       { "key": "house_downpayment", "conversation_id": 7, "...": "..." }
+    ],
+    "asset_holdings": [
+      { "asset_id": 12, "isin": "FR0000120073", "label": "iShares MSCI World",
+        "quantity": "12.5", "price": "45.20" }
     ]
   }
 }
@@ -130,6 +140,8 @@ Three consequences the importer handles:
 - **A memory whose chat is missing is kept**, with `conversation_id` set to NULL
   and a warning in the report. The fact is still worth keeping; only the
   provenance is lost.
+- **A holding needs its asset**, and an ISIN appears once per asset: a duplicate
+  is a mistake, not a position split across two accounts.
 
 **`pending_actions` is not exported, deliberately.** It holds a confirmation that
 is still on screen — "create this snapshot?" — not history. Restoring one would

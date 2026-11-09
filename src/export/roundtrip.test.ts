@@ -47,6 +47,7 @@ describe("backup round-trip on the real database", () => {
             `SELECT t.name FROM asset_tags at JOIN tags t ON t.id = at.tag_id WHERE at.asset_id = ${Number(asset.id)} ORDER BY t.name`,
           ).map((row) => row.name),
         })),
+      asset_holdings: q(`SELECT asset_id, isin, label, quantity, price FROM asset_holdings ORDER BY asset_id, isin`),
       snapshots: q(`SELECT id, asset_id, date, amount_minor, created_at, updated_at FROM snapshots ORDER BY id`),
       exchange_rates: q(`SELECT id, from_currency, to_currency, rate, created_at, updated_at FROM exchange_rates ORDER BY id`),
       llm_providers: q(`SELECT id, name, base_url, model, provider_type, keychain_ref, is_default, is_active, created_at, updated_at FROM llm_providers ORDER BY id`),

@@ -51,7 +51,13 @@ export const categorySchema = z.object({
     .refine((value) => value === "" || HEX_6.test(value), {
       message: "Color must be a valid hex code (e.g., #FF0000)",
     }),
-  system_role: z.union([z.enum(SYSTEM_ROLE_VALUES), z.literal("")]),
+  /**
+   * Required, not optional: the Performance tiles, the allocation breakdown and
+   * the assistant's liquid figure all read it, and holdings are offered only for
+   * `stocks` and `bonds`. An empty role meant every one of those had a silent
+   * fallback; there is none now.
+   */
+  system_role: z.enum(SYSTEM_ROLE_VALUES, { message: "Choose a system role" }),
 });
 
 export const tagSchema = z.object({

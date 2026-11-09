@@ -108,6 +108,18 @@ export function buildImportStatements(backup: ParsedBackup): string[] {
     );
   }
 
+  for (const row of data.asset_holdings) {
+    statements.push(
+      `INSERT INTO asset_holdings (asset_id, isin, label, quantity, price) VALUES (${[
+        sqlInt(row.asset_id),
+        sqlText(row.isin),
+        sqlText(row.label ?? null),
+        sqlText(String(row.quantity)),
+        row.price === null || row.price === undefined ? "NULL" : sqlText(String(row.price)),
+      ].join(", ")})`,
+    );
+  }
+
   // Tags are referenced by name in the export; map them back to ids.
   const tagIdByName = new Map(data.tags.map((tag) => [tag.name, tag.id]));
   for (const asset of data.assets) {

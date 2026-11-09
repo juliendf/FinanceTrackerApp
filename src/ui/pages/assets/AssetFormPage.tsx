@@ -9,7 +9,7 @@
  * so an asset, its tags and its first snapshot land together or not at all.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { Modal } from "react-bootstrap";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,6 +23,7 @@ import {
   type AssetWriteInput,
 } from "../../../db/repositories/assets";
 import { listCategories } from "../../../db/repositories/categories";
+import { listHoldingsForAsset, type HoldingRow } from "../../../db/repositories/holdings";
 import { listInstitutions } from "../../../db/repositories/institutions";
 import { listSnapshotsForAsset } from "../../../db/repositories/snapshots";
 import { listTagIdsForAsset, listTags } from "../../../db/repositories/tags";
@@ -34,7 +35,17 @@ import {
   type AssetCreateValues,
 } from "../../../domain/assets";
 import { todayIso } from "../../../domain/dates";
-import { formatDate, formatMinorAsCurrency, relativeDate } from "../../../domain/format";
+import {
+  categoryHasHoldings,
+  cleanHoldings,
+  compositionGap,
+  holdingValue,
+  holdingsTotal,
+  validateHoldings,
+  type HoldingInput,
+} from "../../../domain/holdings";
+import { formatCurrency, formatDate, formatMinorAsCurrency, relativeDate } from "../../../domain/format";
+import { fromMinorUnits } from "../../../domain/money";
 import { AssetDeleteModal } from "../../components/AssetDeleteModal";
 import { PageHeader } from "../../components/FormCard";
 import {
@@ -62,9 +73,16 @@ export function AssetFormPage() {
     queryFn: () => listTagIdsForAsset(editingId as number),
     enabled: editingId !== null,
   });
+  const holdingsQuery = useQuery({
+    queryKey: ["asset-holdings", editingId],
+    queryFn: () => listHoldingsForAsset(editingId as number),
+    enabled: editingId !== null,
+  });
 
   if (editingId !== null) {
-    if (assetQuery.isLoading || tagIdsQuery.isLoading) return <p className="text-muted">Loading…</p>;
+    if (assetQuery.isLoading || tagIdsQuery.isLoading || holdingsQuery.isLoading) {
+      return <p className="text-muted">Loading…</p>;
+    }
     if (!assetQuery.data) {
       return (
         <div className="alert alert-warning">
@@ -76,7 +94,11 @@ export function AssetFormPage() {
     return (
       <AssetForm
         key={editingId}
-        editing={{ asset: assetQuery.data, tagIds: tagIdsQuery.data ?? [] }}
+        editing={{
+          asset: assetQuery.data,
+          tagIds: tagIdsQuery.data ?? [],
+          holdings: holdingsQuery.data ?? [],
+        }}
       />
     );
   }
@@ -87,6 +109,7 @@ export function AssetFormPage() {
 interface EditingState {
   asset: NonNullable<Awaited<ReturnType<typeof getAsset>>>;
   tagIds: number[];
+  holdings: HoldingRow[];
 }
 
 function AssetForm({ editing }: { editing?: EditingState }) {
@@ -110,6 +133,18 @@ function AssetForm({ editing }: { editing?: EditingState }) {
   const [quickAdd, setQuickAdd] = useState<"institution" | "category" | "tag" | null>(null);
   const [currencyConfirm, setCurrencyConfirm] = useState<AssetCreateValues | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [holdings, setHoldings] = useState<HoldingInput[]>(
+    () =>
+      editing?.holdings.map((row) => ({
+        isin: row.isin,
+        label: row.label ?? "",
+        quantity: row.quantity,
+        price: row.price ?? "",
+      })) ?? [],
+  );
+  const [holdingErrors, setHoldingErrors] = useState<
+    Record<number, { isin?: string; label?: string; quantity?: string; price?: string }>
+  >({});
 
   const defaults = useMemo<AssetCreateValues>(
     () => ({
@@ -144,6 +179,27 @@ function AssetForm({ editing }: { editing?: EditingState }) {
 
   const selectedTags = watch("tags");
   const createSnapshot = watch("create_initial_snapshot");
+  const selectedCategoryId = watch("category_id");
+
+  // The section exists only for categories whose role says "made of
+  // instruments". Every category has a role now, so there is no fallback.
+  const selectedRole = categories.data?.find((row) => String(row.id) === selectedCategoryId)?.system_role ?? null;
+  const showHoldings = categoryHasHoldings(selectedRole);
+
+  // Switching to a category that cannot hold instruments drops the rows, and
+  // says so: silently losing them on save would be the worse outcome.
+  useEffect(() => {
+    if (!showHoldings) {
+      setHoldings((current) => {
+        if (current.length === 0) return current;
+        toast.warning("Holdings cleared: this category's role does not hold instruments.");
+        return [];
+      });
+      setHoldingErrors({});
+    }
+    // `toast` is stable; the trigger is the role, not the rows.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showHoldings]);
 
   const refreshReference = (key: "institutions" | "categories" | "tags") =>
     queryClient.invalidateQueries({ queryKey: [key] });
@@ -160,6 +216,7 @@ function AssetForm({ editing }: { editing?: EditingState }) {
     cost_charges: normaliseDecimal(values.cost_charges),
     interest_rate: normaliseDecimal(values.interest_rate),
     tag_ids: values.tags.map(Number),
+    holdings: showHoldings ? cleanHoldings(holdings) : [],
   });
 
   const labelFor = (values: AssetCreateValues): string =>
@@ -210,6 +267,15 @@ function AssetForm({ editing }: { editing?: EditingState }) {
   };
 
   const onSubmit = handleSubmit(async (values) => {
+    // Holdings are outside the form schema (they are a list, not a field), so
+    // they are validated here, before anything is written.
+    const problems = showHoldings ? validateHoldings(holdings) : {};
+    setHoldingErrors(problems);
+    if (Object.keys(problems).length > 0) {
+      toast.error("Check the holdings: an ISIN or a quantity is not valid.");
+      return;
+    }
+
     // Changing the currency does not convert existing snapshots: ask first.
     if (isEdit && values.currency !== editing.asset.currency) {
       setCurrencyConfirm(values);
@@ -217,6 +283,38 @@ function AssetForm({ editing }: { editing?: EditingState }) {
     }
     await save(values);
   });
+
+  const holdingsCurrency = watch("currency");
+  const holdingsTotalValue = holdingsTotal(holdings);
+  const latestSnapshotValue = useMemo(() => {
+    const points = snapshots.data ?? [];
+    if (points.length === 0) return null;
+    const latest = [...points].sort((a, b) => b.date.localeCompare(a.date))[0];
+    return fromMinorUnits(latest.amount_minor);
+  }, [snapshots.data]);
+  const gap = compositionGap(holdings, latestSnapshotValue);
+
+  const addHolding = () => {
+    setHoldings((current) => [...current, { isin: "", label: "", quantity: "", price: "" }]);
+  };
+
+  const removeHolding = (index: number) => {
+    setHoldings((current) => current.filter((_, position) => position !== index));
+    setHoldingErrors({});
+  };
+
+  const changeHolding = (index: number, field: keyof HoldingInput, value: string) => {
+    setHoldings((current) =>
+      current.map((row, position) => (position === index ? { ...row, [field]: value } : row)),
+    );
+    // The message belongs to what was typed before the fix, not after it.
+    setHoldingErrors((current) => {
+      if (!current[index]) return current;
+      const next = { ...current };
+      delete next[index];
+      return next;
+    });
+  };
 
   const toggleTag = (id: string) =>
     setValue(
@@ -392,6 +490,149 @@ function AssetForm({ editing }: { editing?: EditingState }) {
                 <div className="field-help">Free-form notes and details about this asset</div>
               </div>
             </div>
+
+            {showHoldings ? (
+              <div className="form-section">
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h5 className="mb-0">
+                    <i className="bi bi-pie-chart me-2" aria-hidden="true" />
+                    Holdings
+                  </h5>
+                  <button type="button" className="btn btn-outline-secondary btn-sm" onClick={addHolding}>
+                    <i className="bi bi-plus-lg me-1" aria-hidden="true" />
+                    Add a holding
+                  </button>
+                </div>
+
+                {holdings.length === 0 ? (
+                  <p className="text-muted mb-0">
+                    No holdings recorded. List what this asset is made of: one ISIN and a quantity per
+                    line. The snapshot stays the value — holdings describe the composition.
+                  </p>
+                ) : (
+                  <table className="table align-middle mb-0">
+                    <thead>
+                      <tr>
+                        <th scope="col" style={{ width: "26%" }}>Name</th>
+                        <th scope="col" style={{ width: "24%" }}>ISIN</th>
+                        <th scope="col" style={{ width: "12%" }}>Quantity</th>
+                        <th scope="col" style={{ width: "14%" }}>Price</th>
+                        <th scope="col" className="text-end" style={{ width: "16%" }}>Value</th>
+                        <th scope="col" className="text-end">
+                          <span className="visually-hidden">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {holdings.map((row, index) => (
+                        <tr key={index}>
+                          <td>
+                            <input
+                              className={`form-control${holdingErrors[index]?.label ? " is-invalid" : ""}`}
+                              value={row.label}
+                              aria-label={`Name, line ${index + 1}`}
+                              placeholder="iShares MSCI World"
+                              autoComplete="off"
+                              onChange={(event) => changeHolding(index, "label", event.target.value)}
+                            />
+                            {holdingErrors[index]?.label ? (
+                              <div className="invalid-feedback d-block">{holdingErrors[index].label}</div>
+                            ) : null}
+                          </td>
+                          <td>
+                            <input
+                              className={`form-control${holdingErrors[index]?.isin ? " is-invalid" : ""}`}
+                              value={row.isin}
+                              aria-label={`ISIN, line ${index + 1}`}
+                              placeholder="FR0000120073"
+                              autoCapitalize="characters"
+                              autoComplete="off"
+                              spellCheck={false}
+                              onChange={(event) => changeHolding(index, "isin", event.target.value)}
+                            />
+                            {holdingErrors[index]?.isin ? (
+                              <div className="invalid-feedback d-block">{holdingErrors[index].isin}</div>
+                            ) : null}
+                          </td>
+                          <td>
+                            <input
+                              className={`form-control${holdingErrors[index]?.quantity ? " is-invalid" : ""}`}
+                              value={row.quantity}
+                              aria-label={`Quantity, line ${index + 1}`}
+                              placeholder="12.5"
+                              inputMode="decimal"
+                              autoComplete="off"
+                              onChange={(event) => changeHolding(index, "quantity", event.target.value)}
+                            />
+                            {holdingErrors[index]?.quantity ? (
+                              <div className="invalid-feedback d-block">{holdingErrors[index].quantity}</div>
+                            ) : null}
+                          </td>
+                          <td>
+                            <input
+                              className={`form-control${holdingErrors[index]?.price ? " is-invalid" : ""}`}
+                              value={row.price}
+                              aria-label={`Price, line ${index + 1}`}
+                              placeholder="45.20"
+                              inputMode="decimal"
+                              autoComplete="off"
+                              onChange={(event) => changeHolding(index, "price", event.target.value)}
+                            />
+                            {holdingErrors[index]?.price ? (
+                              <div className="invalid-feedback d-block">{holdingErrors[index].price}</div>
+                            ) : null}
+                          </td>
+                          <td className="text-end money">
+                            {holdingValue(row)?.toFixed(2) ?? <span className="text-muted">—</span>}
+                          </td>
+                          <td className="text-end">
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger btn-sm"
+                              aria-label={`Remove line ${index + 1}`}
+                              onClick={() => removeHolding(index)}
+                            >
+                              <i className="bi bi-x-lg" aria-hidden="true" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan={4} className="text-end fw-semibold">
+                          Total
+                        </td>
+                        <td className="text-end money fw-semibold">
+                          {holdingsTotalValue
+                            ? formatCurrency(holdingsTotalValue.total.toNumber(), holdingsCurrency)
+                            : "—"}
+                        </td>
+                        <td />
+                      </tr>
+                    </tfoot>
+                  </table>
+                )}
+
+                {holdingsTotalValue && !holdingsTotalValue.allPriced ? (
+                  <div className="field-help mt-2">
+                    {holdingsTotalValue.rows - holdingsTotalValue.priced} line
+                    {holdingsTotalValue.rows - holdingsTotalValue.priced === 1 ? " has" : "s have"} no
+                    price, so the total covers the rest.
+                  </div>
+                ) : null}
+
+                {gap && gap.greaterThan(0.01) ? (
+                  <div className="field-help mt-1 text-warning">
+                    The lines add up to {formatCurrency(holdingsTotalValue!.total.toNumber(), holdingsCurrency)},
+                    and the latest snapshot says{" "}
+                    {latestSnapshotValue ? formatCurrency(latestSnapshotValue.toNumber(), holdingsCurrency) : "—"}.
+                    Update the prices or the snapshot, or leave it if fees or cash explain the
+                    difference.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="form-section">
               <h5><i className="bi bi-gear me-2" aria-hidden="true" />Technical Details</h5>

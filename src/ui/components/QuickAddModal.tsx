@@ -10,6 +10,7 @@ import { Modal } from "react-bootstrap";
 import { createInstitution, institutionNameExists } from "../../db/repositories/institutions";
 import { createCategory, categoryNameExists } from "../../db/repositories/categories";
 import { QUICK_ADD_CATEGORY_COLOR } from "../../domain/referenceData";
+import { SYSTEM_ROLE_CHOICES, SYSTEM_ROLES } from "../../domain/systemCategory";
 import { createTag, tagNameExists } from "../../db/repositories/tags";
 import { useToast } from "../layout/Toasts";
 
@@ -108,12 +109,17 @@ export function QuickAddCategoryModal({
   onCreated,
 }: BaseProps & { onCreated: (created: { id: number; name: string }) => void }) {
   const [name, setName] = useState("");
+  // Required, like the full form: every asset's category needs a role. `other`
+  // is the honest default for a name typed in a hurry, and it can be changed
+  // later in Categories.
+  const [role, setRole] = useState<string>(SYSTEM_ROLES.OTHER);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
 
   const close = () => {
     setName("");
+    setRole(SYSTEM_ROLES.OTHER);
     setError(null);
     onClose();
   };
@@ -132,7 +138,7 @@ export function QuickAddCategoryModal({
         return;
       }
       // Categories are created with the default colour.
-      const id = await createCategory(trimmed, QUICK_ADD_CATEGORY_COLOR);
+      const id = await createCategory(trimmed, QUICK_ADD_CATEGORY_COLOR, role);
       onCreated({ id, name: trimmed });
       toast.success(`Category "${trimmed}" created.`);
       close();
@@ -170,6 +176,26 @@ export function QuickAddCategoryModal({
               onChange={(event) => setName(event.target.value)}
             />
             {error ? <div className="invalid-feedback">{error}</div> : null}
+          </div>
+          <div>
+            <label htmlFor="quickCategoryRole" className="form-label">
+              System role
+            </label>
+            <select
+              id="quickCategoryRole"
+              className="form-select"
+              value={role}
+              onChange={(event) => setRole(event.target.value)}
+            >
+              {SYSTEM_ROLE_CHOICES.map((choice) => (
+                <option key={choice.value} value={choice.value}>
+                  {choice.label}
+                </option>
+              ))}
+            </select>
+            <div className="form-text">
+              Stocks or bonds are the only roles whose assets can list holdings.
+            </div>
           </div>
         </form>
       </Modal.Body>

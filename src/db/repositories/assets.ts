@@ -102,6 +102,12 @@ export interface AssetWriteInput {
   cost_charges: string | null;
   interest_rate: string | null;
   tag_ids: number[];
+  /**
+   * Composition, written in the same transaction as the asset. An empty array
+   * clears them; the section only exists for stocks and bonds, and switching a
+   * category back to cash must not leave orphan rows behind.
+   */
+  holdings: Array<{ isin: string; label: string | null; quantity: string; price: string | null }>;
 }
 
 export interface CreateAssetInput extends AssetWriteInput {
@@ -146,6 +152,13 @@ export async function createAsset(input: CreateAssetInput): Promise<number> {
     );
   }
 
+  for (const holding of input.holdings) {
+    statements.push(
+      `INSERT INTO asset_holdings (asset_id, isin, label, quantity, price)
+       VALUES (${justInserted("assets")}, ${sqlText(holding.isin)}, ${sqlText(holding.label)}, ${sqlText(holding.quantity)}, ${sqlText(holding.price)})`,
+    );
+  }
+
   if (input.initial_amount && input.initial_amount.trim() !== "") {
     // Local calendar date: `toISOString` is UTC, which dated an asset created
     // between midnight and 02:00 in Zurich to the previous day.
@@ -179,6 +192,12 @@ export async function updateAsset(id: number, input: AssetWriteInput): Promise<v
       (tagId) =>
         `INSERT INTO asset_tags (asset_id, tag_id) VALUES (${sqlInt(id)}, ${sqlInt(tagId)})`,
     ),
+    `DELETE FROM asset_holdings WHERE asset_id = ${sqlInt(id)}`,
+    ...input.holdings.map(
+      (holding) =>
+        `INSERT INTO asset_holdings (asset_id, isin, label, quantity, price)
+         VALUES (${sqlInt(id)}, ${sqlText(holding.isin)}, ${sqlText(holding.label)}, ${sqlText(holding.quantity)}, ${sqlText(holding.price)})`,
+    ),
   ];
   await runTransaction(statements);
 }
@@ -192,6 +211,7 @@ export async function updateAsset(id: number, input: AssetWriteInput): Promise<v
 export async function deleteAsset(id: number): Promise<void> {
   await runTransaction([
     `DELETE FROM asset_tags WHERE asset_id = ${sqlInt(id)}`,
+    `DELETE FROM asset_holdings WHERE asset_id = ${sqlInt(id)}`,
     `DELETE FROM snapshots WHERE asset_id = ${sqlInt(id)}`,
     `DELETE FROM assets WHERE id = ${sqlInt(id)}`,
   ]);
