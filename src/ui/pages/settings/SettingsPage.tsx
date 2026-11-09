@@ -2,8 +2,9 @@
  * General settings.
  *
  * The API key section is deliberately absent: there is no REST API in this
- * build. Everything else is here: the six fields, save, reset to defaults, and
- * settings JSON export/import.
+ * build. Everything else is here: the six fields, save, reset to defaults,
+ * settings JSON export/import, and the update check — which belongs to the app
+ * as a whole rather than to Data & Backup, where it used to sit.
  */
 
 import { useEffect, useState, type FormEvent } from "react";
@@ -21,6 +22,7 @@ import {
 } from "../../../domain/settings";
 import { useToast } from "../../layout/Toasts";
 import { SettingsLayout } from "./SettingsLayout";
+import { UpdateCard } from "./UpdateCard";
 
 type Draft = {
   base_currency: string;
@@ -197,6 +199,10 @@ export function SettingsPage() {
             </div>
           </div>
         </div>
+
+        {/* Not a field: its buttons are type="button", so it is never submitted
+            with the form. It sits last, above the save bar, like the rest. */}
+        <UpdateCard />
 
         <div className="d-flex flex-wrap gap-2 mt-4 pt-3 border-top">
           <button type="submit" className="btn btn-primary" disabled={save.isPending}>

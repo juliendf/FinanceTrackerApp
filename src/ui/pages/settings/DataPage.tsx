@@ -11,7 +11,6 @@ import { SettingsLayout } from "./SettingsLayout";
 import { DeleteConfirmModal } from "../../components/DeleteConfirmModal";
 import { ImportWizard } from "../import/ImportWizard";
 import { BackupExportCard } from "./BackupExportCard";
-import { UpdateCard } from "./UpdateCard";
 import { useToast } from "../../layout/Toasts";
 import { resetDatabase } from "../../../db/reset";
 import { seedFirstRun } from "../../../db/seed";
@@ -86,8 +85,6 @@ export function DataPage() {
       </div>
 
       <BackupExportCard />
-
-      <UpdateCard />
 
       <div className="card card-finance mb-4">
         <div className="card-body">

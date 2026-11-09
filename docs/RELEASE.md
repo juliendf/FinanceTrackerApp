@@ -77,8 +77,8 @@ already excludes `*.p12`, `.env*` and provisioning profiles.
 ## Updates
 
 `tauri-plugin-updater` is wired (`src-tauri/tauri.conf.json` → `plugins.updater`)
-and exposed as **Check for updates** on the Data page. It reads a static
-`latest.json` from GitHub Releases.
+and exposed as **Check for updates** under **Settings → General**. It reads a
+static `latest.json` from GitHub Releases.
 
 1. The endpoint points at `juliendf/FinanceTrackerApp`. If the repository is
    ever renamed or moved, change it here too.

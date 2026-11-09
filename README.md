@@ -37,7 +37,7 @@ xattr -dr com.apple.quarantine /Applications/FinanceTracker.app
 ```
 
 Updates are signed separately and verified with the app's own key — **Check for
-updates** on the Data page.
+updates** in Settings → General.
 
 ## Demo build
 

@@ -31,6 +31,9 @@ vi.mock("../../../db/repositories/exchangeRates", () => ({
 }));
 const invoke = vi.hoisted(() => vi.fn());
 vi.mock("@tauri-apps/api/core", () => ({ invoke: (...a: unknown[]) => invoke(...a) }));
+vi.mock("@tauri-apps/api/app", () => ({ getVersion: async () => "0.6.1" }));
+vi.mock("@tauri-apps/plugin-updater", () => ({ check: async () => null }));
+vi.mock("@tauri-apps/plugin-process", () => ({ relaunch: async () => undefined }));
 
 import { ExchangeRatesEditPage } from "./ExchangeRatesEditPage";
 import { ExchangeRatesPage } from "./ExchangeRatesPage";
@@ -92,6 +95,17 @@ describe("SettingsPage", () => {
     await user.click(screen.getByRole("button", { name: /Save Settings/ }));
     await waitFor(() => expect(repo.setSettings).toHaveBeenCalledTimes(1));
     expect(repo.setSettings.mock.calls[0][0]).toMatchObject({ base_currency: "USD", theme: "dark" });
+  });
+
+  it("carries the update check without it being a field", async () => {
+    const user = userEvent.setup();
+    renderAt("/settings", <SettingsPage />, "/settings");
+    await screen.findByLabelText("Base Currency");
+    expect(await screen.findByText(/This build is FinanceTracker/)).toBeTruthy();
+    const check = await screen.findByRole("button", { name: /Check for updates/ });
+    await user.click(check);
+    // type="button": the check never submits the settings form.
+    expect(repo.setSettings).not.toHaveBeenCalled();
   });
 
   it("has no API key section", async () => {

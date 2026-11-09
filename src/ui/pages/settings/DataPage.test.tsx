@@ -51,6 +51,13 @@ function renderWith(client: QueryClient) {
 }
 
 describe("DataPage", () => {
+  it("no longer carries the update check", async () => {
+    renderWith(new QueryClient({ defaultOptions: { queries: { retry: false } } }));
+    await screen.findByText("18");
+    // Moved to Settings > General: Data & Backup is about the user's data.
+    expect(screen.queryByRole("button", { name: /Check for updates/ })).toBeNull();
+  });
+
   it("shows the counts", async () => {
     renderWith(new QueryClient({ defaultOptions: { queries: { retry: false } } }));
     expect(await screen.findByText("18")).toBeTruthy();

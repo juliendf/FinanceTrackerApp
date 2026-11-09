@@ -81,7 +81,7 @@ export function UpdateCard() {
     phase.kind === "installing" && phase.total ? Math.min(100, Math.round((phase.downloaded / phase.total) * 100)) : null;
 
   return (
-    <div className="card card-finance mb-4">
+    <div className="card card-finance">
       <div className="card-body">
         <h5 className="card-title">
           <i className="bi bi-arrow-repeat me-2" aria-hidden="true" />
