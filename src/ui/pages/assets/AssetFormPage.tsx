@@ -38,9 +38,7 @@ import { todayIso } from "../../../domain/dates";
 import {
   categoryHasHoldings,
   cleanHoldings,
-  compositionGap,
-  holdingValue,
-  holdingsTotal,
+  valueHoldings,
   validateHoldings,
   type HoldingInput,
 } from "../../../domain/holdings";
@@ -285,14 +283,13 @@ function AssetForm({ editing }: { editing?: EditingState }) {
   });
 
   const holdingsCurrency = watch("currency");
-  const holdingsTotalValue = holdingsTotal(holdings);
   const latestSnapshotValue = useMemo(() => {
     const points = snapshots.data ?? [];
     if (points.length === 0) return null;
     const latest = [...points].sort((a, b) => b.date.localeCompare(a.date))[0];
     return fromMinorUnits(latest.amount_minor);
   }, [snapshots.data]);
-  const gap = compositionGap(holdings, latestSnapshotValue);
+  const valuation = valueHoldings(holdings, latestSnapshotValue);
 
   const addHolding = () => {
     setHoldings((current) => [...current, { isin: "", label: "", quantity: "", price: "" }]);
@@ -583,7 +580,9 @@ function AssetForm({ editing }: { editing?: EditingState }) {
                             ) : null}
                           </td>
                           <td className="text-end money">
-                            {holdingValue(row)?.toFixed(2) ?? <span className="text-muted">—</span>}
+                            {valuation.lines[index]?.value
+                              ? formatCurrency(valuation.lines[index].value!.toNumber(), holdingsCurrency)
+                              : <span className="text-muted">—</span>}
                           </td>
                           <td className="text-end">
                             <button
@@ -604,8 +603,8 @@ function AssetForm({ editing }: { editing?: EditingState }) {
                           Total
                         </td>
                         <td className="text-end money fw-semibold">
-                          {holdingsTotalValue
-                            ? formatCurrency(holdingsTotalValue.total.toNumber(), holdingsCurrency)
+                          {valuation.total
+                            ? formatCurrency(valuation.total.toNumber(), holdingsCurrency)
                             : "—"}
                         </td>
                         <td />
@@ -614,21 +613,19 @@ function AssetForm({ editing }: { editing?: EditingState }) {
                   </table>
                 )}
 
-                {holdingsTotalValue && !holdingsTotalValue.allPriced ? (
+                {valuation.scaled ? (
                   <div className="field-help mt-2">
-                    {holdingsTotalValue.rows - holdingsTotalValue.priced} line
-                    {holdingsTotalValue.rows - holdingsTotalValue.priced === 1 ? " has" : "s have"} no
-                    price, so the total covers the rest.
+                    Values split the latest snapshot
+                    {latestSnapshotValue
+                      ? ` of ${formatCurrency(latestSnapshotValue.toNumber(), holdingsCurrency)}`
+                      : ""}{" "}
+                    by quantity × price, so they add up to what the asset is worth. The prices only
+                    decide the proportions.
                   </div>
-                ) : null}
-
-                {gap && gap.greaterThan(0.01) ? (
-                  <div className="field-help mt-1 text-warning">
-                    The lines add up to {formatCurrency(holdingsTotalValue!.total.toNumber(), holdingsCurrency)},
-                    and the latest snapshot says{" "}
-                    {latestSnapshotValue ? formatCurrency(latestSnapshotValue.toNumber(), holdingsCurrency) : "—"}.
-                    Update the prices or the snapshot, or leave it if fees or cash explain the
-                    difference.
+                ) : valuation.priced > 0 ? (
+                  <div className="field-help mt-2">
+                    {valuation.priced} of {valuation.rows} line{valuation.rows === 1 ? "" : "s"} priced:
+                    the values are quantity × price, not split across the snapshot.
                   </div>
                 ) : null}
               </div>

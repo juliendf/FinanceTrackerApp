@@ -25,12 +25,7 @@ import {
 } from "../../../domain/format";
 import { formatSymbolAmount } from "../../../domain/format";
 import { formatCurrency } from "../../../domain/format";
-import {
-  compositionGap,
-  holdingShare,
-  holdingValue,
-  holdingsTotal,
-} from "../../../domain/holdings";
+import { valueHoldings } from "../../../domain/holdings";
 import { fromMinorUnits } from "../../../domain/money";
 import { messages } from "../../../domain/snapshots";
 import { SnapshotDeleteModal } from "../../components/SnapshotDeleteModal";
@@ -60,7 +55,6 @@ export function AssetDetailPage() {
     quantity: row.quantity,
     price: row.price ?? "",
   }));
-  const holdingsValue = holdingsTotal(holdingInputs);
   const anyPriced = holdingInputs.some((row) => row.price.trim() !== "");
   const showName = holdingInputs.some((row) => row.label !== "");
   const latestSnapshot = (() => {
@@ -69,7 +63,9 @@ export function AssetDetailPage() {
     const latest = [...points].sort((a, b) => b.date.localeCompare(a.date))[0];
     return fromMinorUnits(latest.amount_minor);
   })();
-  const compositionDiff = compositionGap(holdingInputs, latestSnapshot);
+  // Values split the snapshot when every line is priced, so they add up to what
+  // the asset is worth; otherwise they are raw quantity × price.
+  const valuation = valueHoldings(holdingInputs, latestSnapshot);
 
   const remove = useMutation({
     mutationFn: () => deleteAsset(id),
@@ -273,9 +269,7 @@ export function AssetDetailPage() {
             </h5>
             <span className="text-muted small">
               {holdingsQuery.data?.length} instrument{holdingsQuery.data?.length === 1 ? "" : "s"}
-              {holdingsValue
-                ? ` · ${formatCurrency(holdingsValue.total.toNumber(), asset.currency)}`
-                : ""}
+              {valuation.total ? ` · ${formatCurrency(valuation.total.toNumber(), asset.currency)}` : ""}
             </span>
           </div>
           <div className="card-body p-0">
@@ -294,8 +288,8 @@ export function AssetDetailPage() {
               </thead>
               <tbody>
                 {holdingInputs.map((row, index) => {
-                  const value = holdingValue(row);
-                  const share = holdingShare(row, holdingsValue);
+                  const value = valuation.lines[index]?.value ?? null;
+                  const share = valuation.lines[index]?.share ?? null;
                   return (
                     <tr key={(holdingsQuery.data ?? [])[index]?.id ?? index}>
                       {showName ? (
@@ -322,14 +316,14 @@ export function AssetDetailPage() {
                   );
                 })}
               </tbody>
-              {holdingsValue ? (
+              {valuation.total ? (
                 <tfoot>
                   <tr>
                     <td colSpan={(showName ? 1 : 0) + (anyPriced ? 3 : 1)} className="text-end fw-semibold">
-                      {holdingsValue.allPriced ? "Total" : "Total (priced lines)"}
+                      {valuation.allPriced ? "Total" : "Total (priced lines)"}
                     </td>
                     <td className="text-end money fw-semibold">
-                      {formatCurrency(holdingsValue.total.toNumber(), asset.currency)}
+                      {formatCurrency(valuation.total.toNumber(), asset.currency)}
                     </td>
                     {anyPriced ? <td /> : null}
                   </tr>
@@ -337,13 +331,15 @@ export function AssetDetailPage() {
               ) : null}
             </table>
 
-            {compositionDiff && compositionDiff.greaterThan(0.01) ? (
-              <div className="px-3 py-2 text-warning small border-top">
-                <i className="bi bi-exclamation-triangle me-2" aria-hidden="true" />
-                These lines add up to {formatCurrency(holdingsValue!.total.toNumber(), asset.currency)};
-                the latest snapshot says{" "}
-                {latestSnapshot ? formatCurrency(latestSnapshot.toNumber(), asset.currency) : "—"}. A price or
-                the snapshot is out of date.
+            {valuation.scaled ? (
+              <div className="px-3 py-2 text-muted small border-top">
+                Values split the latest snapshot by quantity × price; the prices decide the
+                proportions, the snapshot decides the total.
+              </div>
+            ) : valuation.priced > 0 ? (
+              <div className="px-3 py-2 text-muted small border-top">
+                {valuation.priced} of {valuation.rows} line{valuation.rows === 1 ? "" : "s"} priced: these
+                are quantity × price, not a split of the snapshot.
               </div>
             ) : null}
           </div>

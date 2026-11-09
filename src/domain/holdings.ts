@@ -189,49 +189,66 @@ export function holdingValue(row: Pick<HoldingInput, "quantity" | "price">): Dec
   }
 }
 
-export interface HoldingsTotal {
-  /** Sum of the lines that have a price. */
-  total: Decimal;
+export interface HoldingsValuation {
+  /** One entry per input row, in order. */
+  lines: Array<{ value: Decimal | null; share: Decimal | null }>;
+  /** The total the lines add up to: the snapshot when the split is scaled. */
+  total: Decimal | null;
+  /** True when the values are the snapshot split by price, not raw quantity × price. */
+  scaled: boolean;
+  allPriced: boolean;
   priced: number;
   rows: number;
-  /** False when at least one line has no price: the total is then partial. */
-  allPriced: boolean;
-}
-
-/** The valued part of the composition, or null when nothing is priced. */
-export function holdingsTotal(rows: readonly HoldingInput[]): HoldingsTotal | null {
-  let total = new Decimal(0);
-  let priced = 0;
-  for (const row of rows) {
-    const value = holdingValue(row);
-    if (value === null) continue;
-    total = total.plus(value);
-    priced += 1;
-  }
-  if (priced === 0) return null;
-  return { total, priced, rows: rows.length, allPriced: priced === rows.length };
-}
-
-/** This line's share of the valued total, as a fraction (0.54), or null. */
-export function holdingShare(row: Pick<HoldingInput, "quantity" | "price">, total: HoldingsTotal | null): Decimal | null {
-  if (!total || total.total.isZero()) return null;
-  const value = holdingValue(row);
-  return value === null ? null : value.dividedBy(total.total);
 }
 
 /**
- * How far the valued composition is from the asset's snapshot, as a fraction.
+ * Value the composition.
  *
- * `null` when the composition is not fully priced, so a partial total is never
- * compared with a complete valuation.
+ * The snapshot is the truth for the asset's total, and the prices only decide
+ * the *proportions* — so when every line is priced and a snapshot exists, each
+ * line's value is `share × snapshot`. Chasing an exact `Σ quantity × price` is
+ * hopeless (fees, cash, prices you only roughly know), and a total that does not
+ * match the asset is worse than a split that does.
+ *
+ * Without a snapshot, or with a line missing its price, the raw `quantity ×
+ * price` is all that can be said, and `scaled` is false.
  */
-export function compositionGap(
+export function valueHoldings(
   rows: readonly HoldingInput[],
   snapshot: Decimal | null,
-): Decimal | null {
-  const total = holdingsTotal(rows);
-  if (!total || !total.allPriced || !snapshot || snapshot.isZero()) return null;
-  return total.total.minus(snapshot).dividedBy(snapshot).abs();
+): HoldingsValuation {
+  const raw = rows.map((row) => holdingValue(row));
+  const priced = raw.filter((value): value is Decimal => value !== null);
+  const sum = priced.reduce((total, value) => total.plus(value), new Decimal(0));
+
+  if (priced.length === 0) {
+    return {
+      lines: rows.map(() => ({ value: null, share: null })),
+      total: null,
+      scaled: false,
+      allPriced: false,
+      priced: 0,
+      rows: rows.length,
+    };
+  }
+
+  const allPriced = priced.length === rows.length;
+  // A partial composition cannot be scaled: it would hand the unpriced lines'
+  // share of the snapshot to the priced ones.
+  const scaled = allPriced && snapshot !== null && !snapshot.isZero() && !sum.isZero();
+
+  return {
+    lines: raw.map((value) => {
+      if (value === null) return { value: null, share: null };
+      const share = sum.isZero() ? null : value.dividedBy(sum);
+      return { value: scaled && share ? share.times(snapshot) : value, share };
+    }),
+    total: scaled ? snapshot : sum,
+    scaled,
+    allPriced,
+    priced: priced.length,
+    rows: rows.length,
+  };
 }
 
 /** Total quantity, for the card's subtitle. `null` when there are no rows. */

@@ -174,16 +174,23 @@ describe("read tools", () => {
     ]);
   });
 
-  it("values the composition when every line has a price", async () => {
+  it("splits the asset's value across the priced lines", async () => {
     repo.listAllHoldings.mockResolvedValue([
       { id: 1, asset_id: 1, isin: "FR0000120073", label: "World", quantity: "10", price: "20" },
       { id: 2, asset_id: 1, isin: "IE00B4L5Y983", label: null, quantity: "5", price: "40" },
     ]);
     const { result } = await executeTool("get_asset_details", { asset_id: 1 }, ctx);
-    const details = result as { holdings: Array<Record<string, unknown>>; holdings_value: number };
-    expect(details.holdings_value).toBe(400);
-    expect(details.holdings[0]).toMatchObject({ isin: "FR0000120073", name: "World", price: 20, value: 200, share_pct: 50 });
-    expect(details.holdings[1]).toMatchObject({ isin: "IE00B4L5Y983", value: 200, share_pct: 50 });
+    const details = result as {
+      holdings: Array<Record<string, unknown>>;
+      holdings_value: number;
+      holdings_basis: string;
+    };
+    // 200 and 200 of raw price × quantity: equal weights, so half of the asset's
+    // 1,000 each. The snapshot is the total; the prices only set the split.
+    expect(details.holdings_value).toBe(1000);
+    expect(details.holdings_basis).toMatch(/split/);
+    expect(details.holdings[0]).toMatchObject({ isin: "FR0000120073", name: "World", price: 20, value: 500, share_pct: 50 });
+    expect(details.holdings[1]).toMatchObject({ isin: "IE00B4L5Y983", value: 500, share_pct: 50 });
   });
 
   it("reports no total when a line has no price", async () => {

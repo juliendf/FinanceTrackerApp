@@ -11,6 +11,7 @@ import Decimal from "decimal.js";
 import { fromMinorUnits, toMinorUnits } from "../domain/money";
 import { listAssets } from "../db/repositories/assets";
 import { listAllHoldings } from "../db/repositories/holdings";
+import { valueHoldings } from "../domain/holdings";
 import {
   createPendingAction,
   listPendingActions,
@@ -375,14 +376,17 @@ async function assetDetails(assetId: number, today: string): Promise<unknown> {
   // Composition, when there is any. A savings account has none, and the field
   // is absent rather than an empty array so the model does not invent one.
   const holdings = (await listAllHoldings()).filter((holding) => holding.asset_id === assetId);
-  const valued = holdings.map((holding) => {
-    const price = holding.price ?? "";
-    const value = price === "" ? null : new Decimal(holding.quantity).times(new Decimal(price));
-    return { holding, price, value };
-  });
-  const valuedTotal = valued.every((row) => row.value !== null)
-    ? valued.reduce((sum, row) => sum.plus(row.value ?? 0), new Decimal(0))
-    : null;
+  // The same valuation the screen shows: the snapshot split by price when every
+  // line is priced, so the numbers add up to what the asset is worth.
+  const valuation = valueHoldings(
+    holdings.map((holding) => ({
+      isin: holding.isin,
+      label: holding.label ?? "",
+      quantity: holding.quantity,
+      price: holding.price ?? "",
+    })),
+    latest ? major(latest.amount_minor) : null,
+  );
 
   return {
     asset_id: asset.id,
@@ -394,21 +398,26 @@ async function assetDetails(assetId: number, today: string): Promise<unknown> {
     description: asset.description,
     ...(holdings.length > 0
       ? {
-          holdings: valued.map(({ holding, price, value }) => ({
-            isin: holding.isin,
-            ...(holding.label ? { name: holding.label } : {}),
-            quantity: holding.quantity,
-            ...(price ? { price: round2(new Decimal(price)) } : {}),
-            ...(value ? { value: round2(value) } : {}),
-            // Share of the valued composition, so "which holding is the
-            // biggest" needs no arithmetic the model can get wrong.
-            ...(value && valuedTotal && !valuedTotal.isZero()
-              ? { share_pct: round2(value.dividedBy(valuedTotal).times(100)) }
-              : {}),
-          })),
-          // Present only when every line is priced: a partial total compared
-          // with the snapshot would be a wrong number, not an incomplete one.
-          ...(valuedTotal ? { holdings_value: round2(valuedTotal) } : {}),
+          holdings: holdings.map((holding, index) => {
+            const value = valuation.lines[index]?.value ?? null;
+            const share = valuation.lines[index]?.share ?? null;
+            return {
+              isin: holding.isin,
+              ...(holding.label ? { name: holding.label } : {}),
+              quantity: holding.quantity,
+              ...(holding.price ? { price: round2(new Decimal(holding.price)) } : {}),
+              ...(value ? { value: round2(value) } : {}),
+              // Share of the composition, so "which holding is the biggest"
+              // needs no arithmetic the model can get wrong.
+              ...(share ? { share_pct: round2(share.times(100)) } : {}),
+            };
+          }),
+          // Only when every line is priced: a partial total would be read as the
+          // asset's value.
+          ...(valuation.allPriced && valuation.total ? { holdings_value: round2(valuation.total) } : {}),
+          ...(valuation.scaled
+            ? { holdings_basis: "the latest snapshot split by quantity × price" }
+            : {}),
         }
       : {}),
     cost_charges: asset.cost_charges,

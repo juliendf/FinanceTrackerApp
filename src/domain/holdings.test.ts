@@ -3,10 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   categoryHasHoldings,
   cleanHoldings,
-  compositionGap,
   holdingValue,
-  holdingsTotal,
   priceError,
+  valueHoldings,
   isinCheckDigitValid,
   isinError,
   normaliseIsin,
@@ -113,30 +112,47 @@ describe("a whole list", () => {
     expect(priceError("45,20")).toBeNull();
   });
 
-  it("totals only the priced lines and says so", () => {
+  it("splits the snapshot by price when every line is priced", () => {
     const rows = [
       { isin: "FR0000120073", label: "", quantity: "12", price: "45" },
       { isin: "IE00B4L5Y983", label: "", quantity: "2", price: "100" },
-      { isin: "DE0007164600", label: "", quantity: "1", price: "" },
     ];
-    const total = holdingsTotal(rows);
-    expect(total?.total.toString()).toBe("740");
-    expect(total?.allPriced).toBe(false);
-    expect(total?.priced).toBe(2);
-    expect(holdingsTotal([{ isin: "A", label: "", quantity: "1", price: "" }])).toBeNull();
+    // 540 and 200: raw total 740, split across a snapshot of 1000.
+    const valuation = valueHoldings(rows, new Decimal(1000));
+    expect(valuation.scaled).toBe(true);
+    expect(valuation.total?.toString()).toBe("1000");
+    expect(valuation.lines[0].value?.toFixed(2)).toBe("729.73");
+    expect(valuation.lines[0].share?.toFixed(4)).toBe("0.7297");
+    expect(valuation.lines[1].value?.toFixed(2)).toBe("270.27");
   });
 
-  it("compares the composition with the snapshot only when every line is priced", () => {
-    const priced = [
-      { isin: "FR0000120073", label: "", quantity: "10", price: "10" },
-      { isin: "IE00B4L5Y983", label: "", quantity: "10", price: "10" },
+  it("leaves the raw values alone without a snapshot", () => {
+    const rows = [
+      { isin: "FR0000120073", label: "", quantity: "12", price: "45" },
+      { isin: "IE00B4L5Y983", label: "", quantity: "2", price: "100" },
     ];
-    // 200 against a 190 snapshot: 10/190 ≈ 5.3%
-    expect(compositionGap(priced, new Decimal(190))?.toFixed(4)).toBe("0.0526");
-    expect(compositionGap(priced, new Decimal(200))?.isZero()).toBe(true);
-    // A line without a price makes the total partial: never compared.
-    expect(compositionGap([...priced, { isin: "X", label: "", quantity: "1", price: "" }], new Decimal(190))).toBeNull();
-    expect(compositionGap(priced, null)).toBeNull();
+    const valuation = valueHoldings(rows, null);
+    expect(valuation.scaled).toBe(false);
+    expect(valuation.total?.toString()).toBe("740");
+    expect(valuation.lines[0].value?.toString()).toBe("540");
+  });
+
+  it("never scales a partial composition: the unpriced lines would hand over their share", () => {
+    const rows = [
+      { isin: "FR0000120073", label: "", quantity: "12", price: "45" },
+      { isin: "IE00B4L5Y983", label: "", quantity: "2", price: "" },
+    ];
+    const valuation = valueHoldings(rows, new Decimal(1000));
+    expect(valuation.scaled).toBe(false);
+    expect(valuation.allPriced).toBe(false);
+    expect(valuation.total?.toString()).toBe("540");
+    expect(valuation.lines[1]).toEqual({ value: null, share: null });
+  });
+
+  it("has nothing to say without a price at all", () => {
+    const valuation = valueHoldings([{ isin: "FR0000120073", label: "", quantity: "1", price: "" }], new Decimal(1000));
+    expect(valuation.total).toBeNull();
+    expect(valuation.priced).toBe(0);
   });
 
   it("sums the quantities for the card's subtitle", () => {
