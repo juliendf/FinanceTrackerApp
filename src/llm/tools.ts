@@ -38,6 +38,14 @@ export interface ToolDefinition {
   };
 }
 
+/**
+ * Limits on a remembered fact (FIN-48). Every saved memory is written into every
+ * system prompt, so an unbounded one grows the prompt on every turn. Keep the
+ * schema descriptions in `TOOL_DEFINITIONS` in step with these.
+ */
+export const MAX_MEMORY_KEY = 200;
+export const MAX_MEMORY_CONTENT = 500;
+
 /** Verbatim from `tools.json`. */
 export const TOOL_DEFINITIONS: ToolDefinition[] = [
   {
@@ -200,11 +208,11 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
             enum: ["personal", "financial", "goal", "preference", "life_event"],
             description: "Category of the memory",
           },
-          key: { type: "string", description: "Short label (max 200 chars), e.g. 'house_downpayment', 'kids_ages'" },
+          key: { type: "string", description: `Short label (max ${MAX_MEMORY_KEY} chars), e.g. 'house_downpayment', 'kids_ages'` },
           content: {
             type: "string",
             description:
-              "The fact to remember, written in third person, e.g. 'User is saving for a house downpayment of CHF 100k in the next 3 years'",
+              `The fact to remember, written in third person, one fact, at most ${MAX_MEMORY_CONTENT} characters, e.g. 'User is saving for a house downpayment of CHF 100k in the next 3 years'`,
           },
           importance: {
             type: "integer",
@@ -549,11 +557,16 @@ async function proposeSnapshot(
 
 const MEMORY_CATEGORIES = ["personal", "financial", "goal", "preference", "life_event"];
 
+/** Length in characters (code points), not UTF-16 units, so an emoji counts once. */
+function charLength(text: string): number {
+  return Array.from(text).length;
+}
+
 async function rememberFact(
   ctx: ToolContext,
   category: string,
-  key: string,
-  content: string,
+  rawKey: string,
+  rawContent: string,
   importance: number,
 ): Promise<unknown> {
   if (!MEMORY_CATEGORIES.includes(category)) {
@@ -562,6 +575,21 @@ async function rememberFact(
   const weight = Number(importance);
   if (!Number.isInteger(weight) || weight < 1 || weight > 5) {
     return { error: "Importance must be between 1 and 5." };
+  }
+
+  // Trimmed first, so a whitespace-only key or content is refused as empty and
+  // the stored value carries no stray padding.
+  const key = String(rawKey ?? "").trim();
+  const content = String(rawContent ?? "").trim();
+  if (charLength(key) === 0) return { error: "The key must not be empty." };
+  if (charLength(key) > MAX_MEMORY_KEY) {
+    return { error: `The key is ${charLength(key)} characters; the limit is ${MAX_MEMORY_KEY}.` };
+  }
+  if (charLength(content) === 0) return { error: "The content must not be empty." };
+  if (charLength(content) > MAX_MEMORY_CONTENT) {
+    return {
+      error: `The content is ${charLength(content)} characters; the limit is ${MAX_MEMORY_CONTENT}. Keep one fact per memory.`,
+    };
   }
 
   const id = await createPendingAction({

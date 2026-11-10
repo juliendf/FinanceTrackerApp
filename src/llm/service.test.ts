@@ -408,6 +408,24 @@ describe("extractMemories", () => {
     expect(proposals.map((proposal) => proposal.key)).toEqual(["age"]);
   });
 
+  it("drops proposals over the memory length limits (FIN-48)", async () => {
+    repo.listMessages.mockResolvedValue([
+      { id: 1, conversation_id: 5, role: "user", content: "hello", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },
+    ]);
+    const transport: ChatTransport = async () => ({
+      content: JSON.stringify([
+        { category: "personal", key: "long", content: "c".repeat(501), importance: 3 },
+        { category: "personal", key: "k".repeat(201), content: "fine", importance: 3 },
+        { category: "personal", key: "ok", content: "c".repeat(500), importance: 3 },
+      ]),
+      toolCalls: [],
+      cancelled: false,
+    });
+
+    const proposals = await extractMemories(5, transport, "x");
+    expect(proposals.map((proposal) => proposal.key)).toEqual(["ok"]);
+  });
+
   it("collapses a fact proposed twice in one batch", async () => {
     repo.listMessages.mockResolvedValue([
       { id: 1, conversation_id: 5, role: "user", content: "I sail", tool_calls: null, tool_call_id: null, created_at: "", updated_at: "" },

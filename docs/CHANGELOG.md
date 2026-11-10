@@ -18,6 +18,10 @@ together.
   memories, is marked as data before it reaches the assistant. An instruction
   hidden in a note no longer reads as one, and the assistant is told not to
   save a memory because data asks for it. Memories still need your confirmation.
+- **Fixed:** a remembered fact is capped at 200 characters for its label and
+  500 for its text, and an empty one is refused. The assistant is asked for one
+  fact per memory. Extracted memories get the same limits, so every chat's
+  system prompt stays bounded.
 - **Fixed:** restoring a backup asks before any remote endpoint it names receives
   chat or an API key, one question per endpoint, not only for the default
   provider. Declining cancels the restore, and nothing is written. Loopback

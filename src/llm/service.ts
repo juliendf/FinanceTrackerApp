@@ -34,7 +34,7 @@ import {
   buildSummaryTranscript,
   buildSystemPrompt,
 } from "./prompts";
-import { executeTool, type ToolResult } from "./tools";
+import { executeTool, MAX_MEMORY_CONTENT, MAX_MEMORY_KEY, type ToolResult } from "./tools";
 import { fromMinorUnits } from "../domain/money";
 import Decimal from "decimal.js";
 import { listAssets } from "../db/repositories/assets";
@@ -422,7 +422,15 @@ export async function extractMemories(
         content: String(item.content ?? ""),
         importance: Number(item.importance ?? 3),
       }))
-      .filter((item) => item.key && item.content);
+      .filter((item) => item.key && item.content)
+      // The same limits as `remember_fact` (FIN-48): every memory lands in every
+      // system prompt. An over-long proposal is dropped, not truncated, so the
+      // user never confirms a fact that was cut mid-thought.
+      .filter(
+        (item) =>
+          Array.from(item.key).length <= MAX_MEMORY_KEY &&
+          Array.from(item.content).length <= MAX_MEMORY_CONTENT,
+      );
 
     // Drop what is already known, then what repeats itself inside this batch.
     const fresh: MemoryProposal[] = [];

@@ -331,4 +331,49 @@ describe("write tools only stage a confirmation", () => {
     expect(result).toMatchObject({ pending_action_id: 11, action_type: "create_memory" });
     expect(repo.createMemory).not.toHaveBeenCalled();
   });
+
+  describe("remember_fact length limits (FIN-48)", () => {
+    const base = { category: "goal", key: "house", content: "User is saving for a house", importance: 3 };
+
+    it("refuses a key over 200 characters, with no pending action", async () => {
+      const { result } = await executeTool("remember_fact", { ...base, key: "k".repeat(201) }, ctx);
+      expect((result as { error: string }).error).toMatch(/limit is 200/);
+      expect(repo.createPendingAction).not.toHaveBeenCalled();
+    });
+
+    it("accepts a key of exactly 200 characters", async () => {
+      const { result } = await executeTool("remember_fact", { ...base, key: "k".repeat(200) }, ctx);
+      expect(result).toMatchObject({ pending_action_id: 11 });
+    });
+
+    it("refuses content over 500 characters, with no pending action", async () => {
+      const { result } = await executeTool("remember_fact", { ...base, content: "c".repeat(501) }, ctx);
+      expect((result as { error: string }).error).toMatch(/limit is 500/);
+      expect(repo.createPendingAction).not.toHaveBeenCalled();
+    });
+
+    it("counts characters, not UTF-16 units", async () => {
+      // 250 emoji: 500 code points but 1000 UTF-16 units. Still within the limit.
+      const emoji = "\u{1F4B0}".repeat(250);
+      const { result } = await executeTool("remember_fact", { ...base, content: emoji }, ctx);
+      expect(result).toMatchObject({ pending_action_id: 11 });
+    });
+
+    it("refuses a key or content that is empty after trimming", async () => {
+      const blankKey = await executeTool("remember_fact", { ...base, key: "   " }, ctx);
+      const blankContent = await executeTool("remember_fact", { ...base, content: "\n\t " }, ctx);
+      expect((blankKey.result as { error: string }).error).toMatch(/key must not be empty/);
+      expect((blankContent.result as { error: string }).error).toMatch(/content must not be empty/);
+      expect(repo.createPendingAction).not.toHaveBeenCalled();
+    });
+
+    it("stores the trimmed key and content", async () => {
+      await executeTool("remember_fact", { ...base, key: "  house  ", content: " User saves. " }, ctx);
+      expect(repo.createPendingAction).toHaveBeenCalledWith({
+        conversationId: 7,
+        actionType: "create_memory",
+        payload: { category: "goal", key: "house", content: "User saves.", importance: 3 },
+      });
+    });
+  });
 });
