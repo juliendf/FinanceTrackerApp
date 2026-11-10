@@ -127,6 +127,7 @@ export async function loadSampleData(): Promise<void> {
 
 /** Remove everything, for repeated sample-data runs. */
 export async function resetData(): Promise<void> {
+  await executeWrite(`DELETE FROM asset_holdings`);
   await executeWrite(`DELETE FROM snapshots`);
   await executeWrite(`DELETE FROM assets`);
   await executeWrite(`DELETE FROM categories`);

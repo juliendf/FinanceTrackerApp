@@ -9,7 +9,10 @@
 //!
 //! No network access: every test uses a throwaway file in the temp directory.
 
-use financetrackerapp_lib::commands::db::{check_statement, install_write_authorizer, write_statement};
+use financetrackerapp_lib::commands::db::{
+    check_statement, install_write_authorizer, is_writable_table, statement_table, write_statement,
+    WRITABLE_TABLES,
+};
 use serde_json::json;
 use sqlx::sqlite::SqliteConnectOptions;
 use sqlx::{Connection, SqliteConnection};
@@ -25,10 +28,12 @@ async fn fresh(name: &str) -> (String, String) {
 
     let mut connection = SqliteConnection::connect(&url).await.unwrap();
     sqlx::raw_sql(
-        "CREATE TABLE t (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
+        "CREATE TABLE institutions (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT);
          CREATE TABLE llm_providers (id INTEGER PRIMARY KEY, base_url TEXT);
          CREATE TABLE provider_models (provider_id INTEGER, model TEXT);
-         INSERT INTO t (name) VALUES ('first');",
+         -- Real name, so the authorizer is what refuses it rather than the schema.
+         CREATE TABLE _sqlx_migrations (version INTEGER PRIMARY KEY, description TEXT);
+         INSERT INTO institutions (name) VALUES ('first');",
     )
     .execute(&mut connection)
     .await
@@ -58,15 +63,15 @@ async fn count(url: &str, sql: &str) -> Result<i64, String> {
 async fn the_reported_bypass_is_refused() {
     // A `'` inside a double-quoted identifier used to flip the scanner into
     // "inside a string" mode, so the `;` and the DROP were invisible.
-    let payload = r#"DELETE FROM t WHERE (SELECT 1 AS "'") = 0; DROP TABLE t; SELECT 1 AS "'""#;
+    let payload = r#"DELETE FROM institutions WHERE (SELECT 1 AS "'") = 0; DROP TABLE institutions; SELECT 1 AS "'""#;
     assert!(check_statement(payload).is_err(), "the scanner let this through");
 }
 
 #[tokio::test]
 async fn the_same_trick_with_backticks_and_brackets_is_refused() {
     for payload in [
-        "DELETE FROM t WHERE (SELECT 1 AS `'`) = 0; DROP TABLE t; SELECT 1 AS `'`",
-        "DELETE FROM t WHERE (SELECT 1 AS ['']) = 0; DROP TABLE t; SELECT 1 AS [']",
+        "DELETE FROM institutions WHERE (SELECT 1 AS `'`) = 0; DROP TABLE institutions; SELECT 1 AS `'`",
+        "DELETE FROM institutions WHERE (SELECT 1 AS ['']) = 0; DROP TABLE institutions; SELECT 1 AS [']",
     ] {
         assert!(check_statement(payload).is_err(), "the scanner let this through: {payload}");
     }
@@ -75,12 +80,12 @@ async fn the_same_trick_with_backticks_and_brackets_is_refused() {
 #[test]
 fn legitimate_statements_still_pass() {
     for sql in [
-        "INSERT INTO t (name) VALUES ('a;b -- not a comment')",
-        "UPDATE t SET name = 'o''brien' WHERE id = 1",
-        r#"UPDATE t SET "odd;name" = 'x' WHERE id = 1"#,
-        "UPDATE t SET `odd;name` = 'x' WHERE id = 1",
-        "UPDATE t SET [odd;name] = 'x' WHERE id = 1",
-        "DELETE FROM t WHERE id = 1;",
+        "INSERT INTO institutions (name) VALUES ('a;b -- not a comment')",
+        "UPDATE institutions SET name = 'o''brien' WHERE id = 1",
+        r#"UPDATE institutions SET "odd;name" = 'x' WHERE id = 1"#,
+        "UPDATE institutions SET `odd;name` = 'x' WHERE id = 1",
+        "UPDATE institutions SET [odd;name] = 'x' WHERE id = 1",
+        "DELETE FROM institutions WHERE id = 1;",
     ] {
         assert!(check_statement(sql).is_ok(), "refused a legitimate statement: {sql}");
     }
@@ -89,11 +94,11 @@ fn legitimate_statements_still_pass() {
 #[test]
 fn comments_and_second_statements_are_refused() {
     for sql in [
-        "DELETE FROM t -- why\nWHERE id = 1",
-        "DELETE FROM t /* x */ WHERE id = 1",
-        "DELETE FROM t WHERE id = 1; DROP TABLE t",
+        "DELETE FROM institutions -- why\nWHERE id = 1",
+        "DELETE FROM institutions /* x */ WHERE id = 1",
+        "DELETE FROM institutions WHERE id = 1; DROP TABLE institutions",
         "SELECT 1",
-        "INSERT INTO t (name) VALUES ('unterminated)",
+        "INSERT INTO institutions (name) VALUES ('unterminated)",
     ] {
         assert!(check_statement(sql).is_err(), "accepted: {sql}");
     }
@@ -110,13 +115,13 @@ async fn the_authorizer_refuses_a_hidden_second_statement() {
 
     // One string, three statements, no scanning: exactly what the tail of a
     // smuggled payload looks like to the engine.
-    let payload = "DELETE FROM t; DROP TABLE t; SELECT 1";
+    let payload = "DELETE FROM institutions; DROP TABLE institutions; SELECT 1";
     let error = sqlx::raw_sql(payload).execute(&mut connection).await.unwrap_err();
     assert!(error.to_string().contains("not authorized"), "unexpected error: {error}");
 
-    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 0, "the delete should have run");
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(), 0, "the delete should have run");
     // The table survived, which is the point.
-    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 0);
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(), 0);
 }
 
 #[tokio::test]
@@ -126,10 +131,10 @@ async fn the_authorizer_refuses_ddl_pragma_and_attach() {
     for sql in [
         // REINDEX and ANALYZE are refused when they would do work, but a no-op
         // never reaches the authorizer, so they are not listed here.
-        "DROP TABLE t".to_string(),
-        "ALTER TABLE t ADD COLUMN extra TEXT".to_string(),
+        "DROP TABLE institutions".to_string(),
+        "ALTER TABLE institutions ADD COLUMN extra TEXT".to_string(),
         "CREATE TABLE fresh (id INTEGER)".to_string(),
-        "CREATE INDEX idx ON t (name)".to_string(),
+        "CREATE INDEX idx ON institutions (name)".to_string(),
         "PRAGMA foreign_keys = OFF".to_string(),
         format!("ATTACH DATABASE '{file}' AS copy"),
         "VACUUM INTO '/tmp/ft-vacuum-copy.db'".to_string(),
@@ -145,6 +150,77 @@ async fn the_authorizer_refuses_ddl_pragma_and_attach() {
             }
         }
     }
+}
+
+#[test]
+fn the_writable_list_is_exactly_the_apps_own_data() {
+    for table in WRITABLE_TABLES {
+        assert!(is_writable_table(table), "{table} should be writable");
+        // Case does not matter: SQLite hands the name back as written.
+        assert!(is_writable_table(&table.to_ascii_uppercase()));
+    }
+    for table in [
+        "llm_providers",
+        "provider_models",
+        "_sqlx_migrations",
+        "sqlite_sequence",
+        "sqlite_stat1",
+        "not_a_table",
+    ] {
+        assert!(!is_writable_table(table), "{table} must not be writable");
+    }
+}
+
+#[test]
+fn the_table_is_read_out_of_every_shape_the_app_generates() {
+    for (sql, expected) in [
+        ("INSERT INTO institutions (name) VALUES ('a')", "institutions"),
+        ("INSERT OR IGNORE INTO asset_tags (asset_id, tag_id) VALUES (1, 2)", "asset_tags"),
+        ("UPDATE snapshots SET amount_minor = 1 WHERE id = 2", "snapshots"),
+        ("UPDATE OR REPLACE settings SET value = 'x' WHERE key = 'y'", "settings"),
+        ("DELETE FROM user_goals WHERE id = 3", "user_goals"),
+        // Quoted and schema-qualified names are normalised, not waved through.
+        (r#"INSERT INTO "asset_holdings" (isin) VALUES ('x')"#, "asset_holdings"),
+        ("INSERT INTO `messages` (role) VALUES ('user')", "messages"),
+        ("INSERT INTO [pending_actions] (payload) VALUES ('{}')", "pending_actions"),
+        ("INSERT INTO main.conversations (title) VALUES ('x')", "conversations"),
+        (r#"DELETE FROM "main"."messages""#, "messages"),
+    ] {
+        assert_eq!(statement_table(sql).as_deref(), Some(expected), "{sql}");
+    }
+    assert_eq!(statement_table("SELECT 1"), None);
+    assert_eq!(statement_table("DROP TABLE institutions"), None);
+}
+
+#[test]
+fn a_table_outside_the_list_is_refused_before_it_runs() {
+    for sql in [
+        "INSERT INTO llm_providers (id, base_url) VALUES (9, 'https://attacker.tld')",
+        "UPDATE provider_models SET enabled = 0",
+        "DELETE FROM _sqlx_migrations",
+        "DELETE FROM sqlite_sequence",
+        r#"INSERT INTO "llm_providers" (base_url) VALUES ('https://attacker.tld')"#,
+        "INSERT INTO main.llm_providers (base_url) VALUES ('https://attacker.tld')",
+        "INSERT INTO `provider_models` (model) VALUES ('x')",
+        "INSERT INTO [sqlite_stat1] (tbl) VALUES ('x')",
+    ] {
+        let error = check_statement(sql).expect_err(sql);
+        assert!(error.contains("not a writable table"), "{sql}: {error}");
+    }
+}
+
+#[tokio::test]
+async fn the_authorizer_refuses_a_table_outside_the_list() {
+    let (_file, url) = fresh("allow-list").await;
+    let mut connection = guarded(&url).await;
+
+    // `_sqlx_migrations` is the one that would matter: it is how the app decides
+    // which migrations have run, so a write there corrupts every future start.
+    let error = sqlx::raw_sql("DELETE FROM _sqlx_migrations")
+        .execute(&mut connection)
+        .await
+        .unwrap_err();
+    assert!(error.to_string().contains("not authorized"), "{error}");
 }
 
 #[tokio::test]
@@ -169,24 +245,24 @@ async fn ordinary_writes_still_work_under_the_authorizer() {
     let (_file, url) = fresh("ordinary").await;
     let mut connection = guarded(&url).await;
 
-    sqlx::raw_sql("INSERT INTO t (name) VALUES ('second'); UPDATE t SET name = 'third' WHERE id = 1;")
+    sqlx::raw_sql("INSERT INTO institutions (name) VALUES ('second'); UPDATE institutions SET name = 'third' WHERE id = 1;")
         .execute(&mut connection)
         .await
         .expect("plain DML must pass the authorizer");
     // AUTOINCREMENT maintains sqlite_sequence internally; the authorizer must not
     // refuse that, or every insert into an autoincrement table would fail.
-    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 2);
-    assert_eq!(count(&url, "SELECT seq FROM sqlite_sequence WHERE name = 't'").await.unwrap(), 2);
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(), 2);
+    assert_eq!(count(&url, "SELECT seq FROM sqlite_sequence WHERE name = 'institutions'").await.unwrap(), 2);
 }
 
 #[tokio::test]
 async fn the_guarded_write_path_refuses_the_bypass_before_touching_the_database() {
     let (_file, url) = fresh("write-path").await;
-    let payload = r#"DELETE FROM t WHERE (SELECT 1 AS "'") = 0; DROP TABLE t; SELECT 1 AS "'""#;
+    let payload = r#"DELETE FROM institutions WHERE (SELECT 1 AS "'") = 0; DROP TABLE institutions; SELECT 1 AS "'""#;
 
     let error = write_statement(&url, payload, &[json!(1)]).await.unwrap_err();
     assert!(error.contains("multiple statements"), "unexpected error: {error}");
-    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 1, "the delete ran anyway");
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(), 1, "the delete ran anyway");
 }
 
 // ---------------------------------------------------------------------------
@@ -201,11 +277,11 @@ async fn the_reader_refuses_a_stacked_drop() {
 
     // The hole this closes: `sql:allow-select` ran this through the plugin's pool,
     // which executed the whole string and returned Ok.
-    let error = select_rows(&url, "SELECT 1 AS x; DROP TABLE t", &[]).await.unwrap_err();
+    let error = select_rows(&url, "SELECT 1 AS x; DROP TABLE institutions", &[]).await.unwrap_err();
     assert!(error.contains("not authorized") || error.contains("authorization"), "{error}");
 
     assert_eq!(
-        count(&url, "SELECT COUNT(*) FROM t").await.unwrap(),
+        count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(),
         1,
         "the table must still be there"
     );
@@ -244,15 +320,15 @@ async fn the_reader_refuses_any_write_even_a_single_one() {
     let (_file, url) = fresh("read-write").await;
 
     for sql in [
-        "INSERT INTO t (name) VALUES ('x')",
-        "UPDATE t SET name = 'x'",
-        "DELETE FROM t",
+        "INSERT INTO institutions (name) VALUES ('x')",
+        "UPDATE institutions SET name = 'x'",
+        "DELETE FROM institutions",
         "PRAGMA foreign_keys = OFF",
         "ATTACH DATABASE ':memory:' AS mem",
     ] {
         assert!(select_rows(&url, sql, &[]).await.is_err(), "accepted: {sql}");
     }
-    assert_eq!(count(&url, "SELECT COUNT(*) FROM t").await.unwrap(), 1);
+    assert_eq!(count(&url, "SELECT COUNT(*) FROM institutions").await.unwrap(), 1);
 }
 
 #[tokio::test]
@@ -261,7 +337,7 @@ async fn the_reader_returns_rows_with_names_and_bound_parameters() {
 
     let rows = select_rows(
         &url,
-        "SELECT id, name FROM t WHERE name = ?",
+        "SELECT id, name FROM institutions WHERE name = ?",
         &[json!("first")],
     )
     .await
@@ -272,7 +348,7 @@ async fn the_reader_returns_rows_with_names_and_bound_parameters() {
     assert_eq!(rows[0]["name"], json!("first"));
 
     // A query with no rows is an empty list, not an error, and NULL survives.
-    let empty = select_rows(&url, "SELECT id FROM t WHERE id = ?", &[json!(99)])
+    let empty = select_rows(&url, "SELECT id FROM institutions WHERE id = ?", &[json!(99)])
         .await
         .unwrap();
     assert!(empty.is_empty());
@@ -284,13 +360,13 @@ async fn the_reader_returns_rows_with_names_and_bound_parameters() {
 async fn the_reader_works_on_a_wal_database_that_is_being_written() {
     let (_file, url) = fresh("read-wal").await;
     let mut writer = SqliteConnection::connect(&url).await.unwrap();
-    sqlx::raw_sql("PRAGMA journal_mode=WAL; INSERT INTO t (name) VALUES ('second');")
+    sqlx::raw_sql("PRAGMA journal_mode=WAL; INSERT INTO institutions (name) VALUES ('second');")
         .execute(&mut writer)
         .await
         .unwrap();
 
     // The app keeps a writer open while the UI reads; read-only must not choke on
     // the -wal/-shm files that leaves behind.
-    let rows = select_rows(&url, "SELECT COUNT(*) AS n FROM t", &[]).await.unwrap();
+    let rows = select_rows(&url, "SELECT COUNT(*) AS n FROM institutions", &[]).await.unwrap();
     assert_eq!(rows[0]["n"], json!(2));
 }

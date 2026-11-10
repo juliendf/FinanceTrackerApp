@@ -17,6 +17,7 @@ export async function resetDatabase(): Promise<void> {
     `DELETE FROM messages`,
     `DELETE FROM conversations`,
     `DELETE FROM asset_tags`,
+    `DELETE FROM asset_holdings`,
     `DELETE FROM snapshots`,
     `DELETE FROM assets`,
     `DELETE FROM tags`,

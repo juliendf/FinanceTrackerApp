@@ -174,6 +174,17 @@ pub fn check_statement(statement: &str) -> Result<(), String> {
         return Err(format!("only INSERT, UPDATE and DELETE are allowed, got `{verb}`"));
     }
 
+    // The table, not just the verb: the importer hands whole statements to Rust,
+    // so "which table" is part of what has to be checked. The authorizer enforces
+    // the same list at the engine level; this gives a message a human can read.
+    let table = statement_table(statement)
+        .ok_or_else(|| format!("cannot tell which table this statement writes: {statement}"))?;
+    if !is_writable_table(&table) {
+        return Err(format!(
+            "`{table}` is not a writable table: only the app's own data may be changed here"
+        ));
+    }
+
     #[derive(Clone, Copy, PartialEq)]
     enum Quoted {
         None,
@@ -247,6 +258,149 @@ pub fn check_statement(statement: &str) -> Result<(), String> {
     Ok(())
 }
 
+/// The tables the webview may write.
+///
+/// Everything else is refused, by the authorizer and by `check_statement`:
+/// `llm_providers` and `provider_models`, because those rows decide where an API
+/// key is sent and only the named Rust commands may change them; and SQLite's
+/// own bookkeeping (`_sqlx_migrations`, `sqlite_sequence`, `sqlite_stat1`).
+///
+/// The list is deliberately explicit: a table added by a migration is *not*
+/// writable until it is added here, so the surface cannot widen by accident.
+pub const WRITABLE_TABLES: [&str; 15] = [
+    "institutions",
+    "categories",
+    "tags",
+    "assets",
+    "asset_tags",
+    "asset_holdings",
+    "snapshots",
+    "exchange_rates",
+    "settings",
+    "profile",
+    "user_memories",
+    "user_goals",
+    "conversations",
+    "messages",
+    "pending_actions",
+];
+
+pub fn is_writable_table(name: &str) -> bool {
+    WRITABLE_TABLES
+        .iter()
+        .any(|table| table.eq_ignore_ascii_case(name))
+}
+
+/// Reads identifiers out of SQL, honouring the four quoted forms.
+struct IdentifierReader<'a> {
+    chars: std::iter::Peekable<std::str::Chars<'a>>,
+}
+
+impl<'a> IdentifierReader<'a> {
+    fn new(text: &'a str) -> Self {
+        Self {
+            chars: text.chars().peekable(),
+        }
+    }
+
+    fn next(&mut self) -> Option<String> {
+        self.skip_trivia()?;
+        let mut token = self.read_token()?;
+        // `main.institutions`: the table is the part after the last dot.
+        while self.chars.peek() == Some(&'.') {
+            self.chars.next();
+            token = self.read_token()?;
+        }
+        Some(token)
+    }
+
+    fn skip_trivia(&mut self) -> Option<()> {
+        loop {
+            match self.chars.peek() {
+                Some(c) if c.is_whitespace() || *c == ',' => {
+                    self.chars.next();
+                }
+                // A second statement is a separate problem, already refused.
+                Some(';') | None => return None,
+                Some(_) => return Some(()),
+            }
+        }
+    }
+
+    fn read_token(&mut self) -> Option<String> {
+        match *self.chars.peek()? {
+            open @ ('"' | '`' | '[') => {
+                self.chars.next();
+                let close = if open == '[' { ']' } else { open };
+                let mut out = String::new();
+                while let Some(c) = self.chars.next() {
+                    if c == close {
+                        // `"a""b"` is an escaped quote inside a quoted name.
+                        if close != ']' && self.chars.peek() == Some(&close) {
+                            self.chars.next();
+                            out.push(close);
+                            continue;
+                        }
+                        return Some(out);
+                    }
+                    out.push(c);
+                }
+                None
+            }
+            _ => {
+                let mut out = String::new();
+                while let Some(c) = self.chars.peek() {
+                    if c.is_alphanumeric() || *c == '_' || *c == '$' {
+                        out.push(*c);
+                        self.chars.next();
+                    } else {
+                        break;
+                    }
+                }
+                if out.is_empty() {
+                    None
+                } else {
+                    Some(out)
+                }
+            }
+        }
+    }
+}
+
+/// The table a data-modifying statement writes, lowercased.
+///
+/// A table name is a literal identifier — SQL does not allow an expression
+/// there — so reading it cannot be fooled by a computed name. Quoted forms and a
+/// schema prefix are normalised. `None` means the statement is not one of the
+/// three shapes this app generates.
+pub fn statement_table(statement: &str) -> Option<String> {
+    let mut reader = IdentifierReader::new(statement);
+    let verb = reader.next()?.to_ascii_lowercase();
+    match verb.as_str() {
+        "insert" => loop {
+            let token = reader.next()?;
+            if token.eq_ignore_ascii_case("into") {
+                return reader.next();
+            }
+        },
+        "update" => {
+            let mut token = reader.next()?;
+            if token.eq_ignore_ascii_case("or") {
+                reader.next()?; // ROLLBACK | ABORT | REPLACE | FAIL | IGNORE
+                token = reader.next()?;
+            }
+            Some(token)
+        }
+        "delete" => {
+            if !reader.next()?.eq_ignore_ascii_case("from") {
+                return None;
+            }
+            reader.next()
+        }
+        _ => None,
+    }
+}
+
 /// Refuse, at the engine level, anything that is not a data modification.
 ///
 /// Installed on every connection that runs SQL supplied by the webview. SQLite
@@ -255,8 +409,11 @@ pub fn check_statement(statement: &str) -> Result<(), String> {
 /// scanner did not notice, and including one hidden inside a quoted identifier.
 /// The text scanner cannot be trusted to be exhaustive; this can.
 ///
-/// `llm_providers` and `provider_models` are refused too: those rows decide where
-/// an API key would be sent, so only the named Rust commands may change them.
+/// What it permits is [`WRITABLE_TABLES`]: the app's own data, and nothing else.
+/// `llm_providers` and `provider_models` are absent from it because those rows
+/// decide where an API key is sent, so only the named Rust commands may change
+/// them; `_sqlx_migrations` and `sqlite_sequence` are absent because corrupting
+/// either breaks every future start.
 unsafe extern "C" fn write_authorizer(
     _user_data: *mut c_void,
     action: c_int,
@@ -275,8 +432,10 @@ unsafe extern "C" fn write_authorizer(
 
     let allowed = match action {
         ffi::SQLITE_SELECT | ffi::SQLITE_READ | ffi::SQLITE_FUNCTION | ffi::SQLITE_RECURSIVE => true,
+        // Only the tables the app writes. The provider tables are simply absent
+        // from the list, which is the same refusal by another route.
         ffi::SQLITE_INSERT | ffi::SQLITE_UPDATE | ffi::SQLITE_DELETE => {
-            !matches!(table, Some("llm_providers") | Some("provider_models"))
+            table.map(is_writable_table).unwrap_or(false)
         }
         // sqlx wraps a batch in BEGIN/COMMIT and a nested one in SAVEPOINT; denying
         // those would break every transaction. A smuggled COMMIT cannot grant
