@@ -11,6 +11,9 @@ together.
   endpoints (`localhost`, `127.0.0.1`, `[::1]`) such as Ollama still work over
   `http://`. Existing providers saved with a remote `http://` URL must be edited
   to `https://` before their key is used again.
+- **Fixed:** restoring a backup runs under its own SQLite authorizer. A crafted
+  backup can no longer write the migration bookkeeping or any table outside the
+  app's data and the two provider tables.
 - **Fixed:** the guard test that forbids browser dialogs now also catches
   `window.confirm(`, `window.alert(` and `globalThis.alert(`, and no longer
   exempts files by name.

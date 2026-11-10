@@ -415,12 +415,49 @@ pub fn statement_table(statement: &str) -> Option<String> {
 /// them; `_sqlx_migrations` and `sqlite_sequence` are absent because corrupting
 /// either breaks every future start.
 unsafe extern "C" fn write_authorizer(
+    user_data: *mut c_void,
+    action: c_int,
+    arg1: *const c_char,
+    arg2: *const c_char,
+    database: *const c_char,
+    trigger: *const c_char,
+) -> c_int {
+    // SAFETY: forwarded unchanged from SQLite's callback arguments.
+    unsafe { decide(user_data, action, arg1, arg2, database, trigger, is_writable_table) }
+}
+
+/// Same rules as [`write_authorizer`], plus the two provider tables the backup
+/// restore replaces. Used only by [`install_import_authorizer`].
+unsafe extern "C" fn import_authorizer(
+    user_data: *mut c_void,
+    action: c_int,
+    arg1: *const c_char,
+    arg2: *const c_char,
+    database: *const c_char,
+    trigger: *const c_char,
+) -> c_int {
+    // SAFETY: forwarded unchanged from SQLite's callback arguments.
+    unsafe {
+        decide(user_data, action, arg1, arg2, database, trigger, |table| {
+            is_writable_table(table) || IMPORT_ONLY_TABLES.iter().any(|t| t.eq_ignore_ascii_case(table))
+        })
+    }
+}
+
+/// The provider tables a backup restore writes. The webview may not write them.
+pub const IMPORT_ONLY_TABLES: [&str; 2] = ["llm_providers", "provider_models"];
+
+/// Shared decision for both authorizers. `allowed_table` decides which tables may
+/// be written; reads, transactions and savepoints are the same for both.
+#[allow(clippy::too_many_arguments)]
+unsafe fn decide(
     _user_data: *mut c_void,
     action: c_int,
     arg1: *const c_char,
     _arg2: *const c_char,
     _database: *const c_char,
     _trigger: *const c_char,
+    allowed_table: impl Fn(&str) -> bool,
 ) -> c_int {
     // SAFETY: SQLite passes a NUL-terminated string for the arguments it
     // documents as non-null; the pointer is only read during this call.
@@ -433,9 +470,9 @@ unsafe extern "C" fn write_authorizer(
     let allowed = match action {
         ffi::SQLITE_SELECT | ffi::SQLITE_READ | ffi::SQLITE_FUNCTION | ffi::SQLITE_RECURSIVE => true,
         // Only the tables the app writes. The provider tables are simply absent
-        // from the list, which is the same refusal by another route.
+        // from the write list, which is the same refusal by another route.
         ffi::SQLITE_INSERT | ffi::SQLITE_UPDATE | ffi::SQLITE_DELETE => {
-            table.map(is_writable_table).unwrap_or(false)
+            table.map(allowed_table).unwrap_or(false)
         }
         // sqlx wraps a batch in BEGIN/COMMIT and a nested one in SAVEPOINT; denying
         // those would break every transaction. A smuggled COMMIT cannot grant
@@ -591,6 +628,31 @@ pub async fn db_select(app: AppHandle, sql: String, params: Vec<Value>) -> Resul
 
 /// Attach [`write_authorizer`] to a connection this module owns.
 pub async fn install_write_authorizer(connection: &mut SqliteConnection) -> Result<(), String> {
+    install_authorizer(connection, write_authorizer).await
+}
+
+/// Attach [`import_authorizer`] to the backup-restore connection.
+///
+/// The restore replaces the provider tables, which the webview's write path
+/// refuses, so it cannot use [`install_write_authorizer`]. It gets the writable
+/// tables plus exactly the two provider tables, and nothing else: in particular
+/// `_sqlx_migrations` stays refused, so a crafted backup cannot make the next
+/// start replay a migration.
+pub async fn install_import_authorizer(connection: &mut SqliteConnection) -> Result<(), String> {
+    install_authorizer(connection, import_authorizer).await
+}
+
+async fn install_authorizer(
+    connection: &mut SqliteConnection,
+    callback: unsafe extern "C" fn(
+        *mut c_void,
+        c_int,
+        *const c_char,
+        *const c_char,
+        *const c_char,
+        *const c_char,
+    ) -> c_int,
+) -> Result<(), String> {
     let mut handle = connection
         .lock_handle()
         .await
@@ -600,7 +662,7 @@ pub async fn install_write_authorizer(connection: &mut SqliteConnection) -> Resu
     let status = unsafe {
         ffi::sqlite3_set_authorizer(
             handle.as_raw_handle().as_ptr(),
-            Some(write_authorizer),
+            Some(callback),
             std::ptr::null_mut(),
         )
     };

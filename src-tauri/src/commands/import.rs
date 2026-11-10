@@ -18,7 +18,7 @@ use serde::Deserialize;
 use sqlx::{Connection, Sqlite};
 use tauri::AppHandle;
 
-use super::db::check_statement;
+use super::db::{check_statement, install_import_authorizer};
 use super::providers::{
     confirm_endpoint, connect, default_needs_confirmation, replace_providers, PendingKey,
     RestoreInput,
@@ -118,6 +118,10 @@ pub fn backup_default_needs_confirmation(providers: &[RestoreInput]) -> Option<S
 #[tauri::command]
 pub async fn import_all(app: AppHandle, request: ImportRequest) -> Result<usize, String> {
     let mut connection = connect(&app).await?;
+    // The backup's statements come from a file the webview hands us. Without this,
+    // a statement that slipped past `check_statement` could write any table,
+    // including `_sqlx_migrations`. The authorizer is the backstop.
+    install_import_authorizer(&mut connection).await?;
     let mut transaction = connection
         .begin()
         .await
