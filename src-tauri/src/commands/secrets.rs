@@ -66,6 +66,18 @@ pub fn origin_of(base_url: &str) -> Result<String, String> {
     let host = parsed
         .host_str()
         .ok_or_else(|| format!("invalid base URL: {base_url}"))?;
+    // Plain http is only allowed on loopback, so a key never travels in cleartext
+    // to a remote host. `url` renders IPv6 hosts with brackets.
+    let loopback = matches!(host, "localhost" | "127.0.0.1" | "[::1]");
+    match parsed.scheme() {
+        "https" => {}
+        "http" if loopback => {}
+        other => {
+            return Err(format!(
+                "refusing {other}:// for {host}: remote endpoints must use https"
+            ))
+        }
+    }
     let port = parsed
         .port_or_known_default()
         .ok_or_else(|| format!("invalid port in {base_url}"))?;
@@ -184,10 +196,20 @@ mod tests {
             origin_of("http://localhost:11434/v1").unwrap(),
             origin_of("http://localhost:11435/v1").unwrap()
         );
+        // Scheme still matters on loopback.
         assert_ne!(
-            origin_of("https://api.openai.com/v1").unwrap(),
-            origin_of("http://api.openai.com/v1").unwrap()
+            origin_of("https://localhost:11434/v1").unwrap(),
+            origin_of("http://localhost:11434/v1").unwrap()
         );
+    }
+
+    #[test]
+    fn remote_plain_http_is_refused() {
+        assert!(origin_of("http://api.openai.com/v1").is_err());
+        assert!(origin_of("http://192.168.1.10:8080/v1").is_err());
+        assert!(origin_of("https://api.openai.com/v1").is_ok());
+        assert!(origin_of("http://127.0.0.1:11434/v1").is_ok());
+        assert!(origin_of("http://[::1]:11434/v1").is_ok());
     }
 
     #[test]

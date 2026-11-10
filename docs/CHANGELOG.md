@@ -4,6 +4,17 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## Unreleased
+
+- **Fixed:** a remote provider endpoint on plain `http://` is refused, so an API
+  key is never sent in cleartext. The error asks for `https://`. Loopback
+  endpoints (`localhost`, `127.0.0.1`, `[::1]`) such as Ollama still work over
+  `http://`. Existing providers saved with a remote `http://` URL must be edited
+  to `https://` before their key is used again.
+- **Fixed:** the guard test that forbids browser dialogs now also catches
+  `window.confirm(`, `window.alert(` and `globalThis.alert(`, and no longer
+  exempts files by name.
+
 ## 0.6.1
 
 - **Fixed:** a question broad enough to need several tool calls could end with
