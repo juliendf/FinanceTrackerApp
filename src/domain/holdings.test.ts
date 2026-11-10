@@ -65,6 +65,10 @@ describe("quantity", () => {
     expect(normaliseQuantity("12.50")).toBe("12.5");
     expect(normaliseQuantity(" 1,25 ")).toBe("1.25");
     expect(normaliseQuantity("3")).toBe("3");
+    // Small and large values stay in plain digits, so the quantity CHECK accepts them (FIN-51).
+    expect(normaliseQuantity("0.00000012")).toBe("0.00000012");
+    expect(normaliseQuantity("0,0000001")).toBe("0.0000001");
+    expect(normaliseQuantity("1000000000000000000000")).toBe("1000000000000000000000");
   });
 });
 
@@ -96,6 +100,11 @@ describe("a whole list", () => {
 
   it("leaves the name empty rather than writing whitespace", () => {
     expect(cleanHoldings([{ isin: "FR0000120073", label: "   ", quantity: "1", price: "" }])[0].label).toBeNull();
+
+    // A small price is written in plain digits too, not as 1.2e-7 (FIN-51).
+    const [small] = cleanHoldings([{ isin: "FR0000120073", label: "", quantity: "1", price: "0.00000012" }]);
+    expect(small.price).toBe("0.00000012");
+    expect(small.quantity).toBe("1");
     expect(validateHoldings([{ isin: "FR0000120073", label: "x".repeat(81), quantity: "1", price: "" }])[0].label).toBe(
       "At most 80 characters",
     );

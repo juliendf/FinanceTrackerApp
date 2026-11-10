@@ -25,6 +25,9 @@ together.
 - **Fixed:** renaming, pinning or deleting a session shows an error when the
   change fails. The old name, pin state or session stays as it was, instead of
   looking saved.
+- **Fixed:** a holding with a very small quantity (below 0.0000001) could not be
+  saved. Quantities and prices are now stored in plain digits, never exponent
+  notation.
 - **Fixed:** restoring a backup asks before any remote endpoint it names receives
   chat or an API key, one question per endpoint, not only for the default
   provider. Declining cancels the restore, and nothing is written. Loopback

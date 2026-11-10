@@ -108,9 +108,21 @@ export function labelError(raw: string): string | null {
   return raw.trim().length > 80 ? "At most 80 characters" : null;
 }
 
+/**
+ * A decimal as plain digits, never exponent notation (FIN-51).
+ *
+ * `Decimal#toString()` switches to `1.2e-7` below 1e-7 and above 1e21. The
+ * quantity column's CHECK only accepts digits and dots, so such a quantity was
+ * refused at save; the price was stored in a form nothing else in the app
+ * writes. `toFixed()` with no argument keeps every digit in normal notation.
+ */
+export function plainDecimal(raw: string): string {
+  return new Decimal(raw.trim().replace(",", ".")).toFixed();
+}
+
 /** Normalised quantity for storage: "12.50" → "12.5". */
 export function normaliseQuantity(raw: string): string {
-  return new Decimal(raw.trim().replace(",", ".")).toString();
+  return plainDecimal(raw);
 }
 
 export interface HoldingInput {
@@ -173,7 +185,7 @@ export function cleanHoldings(
     isin: normaliseIsin(row.isin),
     label: row.label.trim() || null,
     quantity: normaliseQuantity(row.quantity),
-    price: row.price.trim() === "" ? null : new Decimal(row.price.trim().replace(",", ".")).toString(),
+    price: row.price.trim() === "" ? null : plainDecimal(row.price),
   }));
 }
 
