@@ -20,8 +20,7 @@ use tauri::AppHandle;
 
 use super::db::{check_statement, install_import_authorizer};
 use super::providers::{
-    confirm_endpoint, connect, default_needs_confirmation, replace_providers, PendingKey,
-    RestoreInput,
+    confirm_endpoint, connect, is_loopback, replace_providers, PendingKey, RestoreInput,
 };
 use super::secrets::{delete_key, origin_of, store_key};
 
@@ -87,29 +86,26 @@ pub async fn import_into(
     Ok(keys)
 }
 
-/// The origin to confirm before an import, if the file's default provider is one
-/// the user has not implicitly agreed to.
+/// Every remote origin a backup can send data to, sorted and without duplicates.
+/// Empty means nothing to ask.
 ///
 /// A backup is a file the user picked, but the same command can be called by a
-/// compromised renderer with a fabricated one, and the default provider receives
-/// every chat afterwards. The rule is the same as for `provider_set_default`: a
-/// keyless, non-loopback endpoint has to be confirmed natively.
-pub fn backup_default_needs_confirmation(providers: &[RestoreInput]) -> Option<String> {
-    // The row `replace_providers` will mark as default: the first with the flag,
-    // or the lowest id when the file has none.
-    let default = providers
+/// compromised renderer with a fabricated one. Any provider in the file can
+/// receive chat (a restored conversation may point at it, whether or not it is
+/// the default) and any provider with a key receives that key. So every
+/// non-loopback origin is asked about, once. Loopback stays on the user's machine.
+///
+/// A row whose origin does not parse is refused by `replace_providers`, which
+/// aborts the import, so it needs no entry here.
+pub fn backup_origins_needing_confirmation(providers: &[RestoreInput]) -> Vec<String> {
+    let mut origins: Vec<String> = providers
         .iter()
-        .find(|row| row.is_default)
-        .or_else(|| providers.iter().min_by_key(|row| row.id))?;
-
-    let has_key = default
-        .api_key
-        .as_deref()
-        .map(str::trim)
-        .is_some_and(|key| !key.is_empty());
-    let origin = origin_of(&default.base_url).ok()?;
-
-    default_needs_confirmation(&origin, has_key).then_some(origin)
+        .filter_map(|row| origin_of(&row.base_url).ok())
+        .filter(|origin| !is_loopback(origin))
+        .collect();
+    origins.sort();
+    origins.dedup();
+    origins
 }
 
 /// Replace the whole database with a backup, in one transaction.
@@ -117,6 +113,18 @@ pub fn backup_default_needs_confirmation(providers: &[RestoreInput]) -> Option<S
 /// Returns how many API keys were written to the Keychain.
 #[tauri::command]
 pub async fn import_all(app: AppHandle, request: ImportRequest) -> Result<usize, String> {
+    // Ask before the database is touched. A dialog shown while the import holds
+    // the write transaction would block every other writer for its whole duration.
+    // A refusal here writes nothing; the database has not been opened yet.
+    for origin in backup_origins_needing_confirmation(&request.providers) {
+        confirm_endpoint(
+            &app,
+            &origin,
+            "This backup sends data or an API key to an endpoint you have not used.",
+        )
+        .await?;
+    }
+
     let mut connection = connect(&app).await?;
     // The backup's statements come from a file the webview hands us. Without this,
     // a statement that slipped past `check_statement` could write any table,
@@ -136,21 +144,6 @@ pub async fn import_all(app: AppHandle, request: ImportRequest) -> Result<usize,
             return Err(error);
         }
     };
-
-    // A fabricated "backup" could point the default provider anywhere. Ask before
-    // the rows become visible, and roll back if the user says no.
-    if let Some(origin) = backup_default_needs_confirmation(&request.providers) {
-        if let Err(error) = confirm_endpoint(
-            &app,
-            &origin,
-            "This backup's default provider points at an endpoint you have not used.",
-        )
-        .await
-        {
-            let _ = transaction.rollback().await;
-            return Err(error);
-        }
-    }
 
     // Keys before the commit. A refusal here (a locked Keychain, "Deny" on the
     // access prompt) aborts everything: the transaction is dropped uncommitted and

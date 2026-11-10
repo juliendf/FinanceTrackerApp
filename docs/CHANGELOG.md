@@ -14,6 +14,10 @@ together.
 - **Fixed:** restoring a backup runs under its own SQLite authorizer. A crafted
   backup can no longer write the migration bookkeeping or any table outside the
   app's data and the two provider tables.
+- **Fixed:** restoring a backup asks before any remote endpoint it names receives
+  chat or an API key, one question per endpoint, not only for the default
+  provider. Declining cancels the restore, and nothing is written. Loopback
+  endpoints are not asked.
 - **Fixed:** the guard test that forbids browser dialogs now also catches
   `window.confirm(`, `window.alert(` and `globalThis.alert(`, and no longer
   exempts files by name.

@@ -256,29 +256,98 @@ async fn a_statement_the_guard_refuses_is_rejected_before_anything_runs() {
 }
 
 #[test]
-fn an_import_asks_only_for_a_keyless_remote_default() {
-    use financetrackerapp_lib::commands::import::backup_default_needs_confirmation;
+fn an_import_asks_for_a_keyless_remote_default() {
+    use financetrackerapp_lib::commands::import::backup_origins_needing_confirmation;
 
     let mut remote = provider(5, "Remote");
     remote.is_default = true;
     // Keyless and remote: chat would go there without the user ever agreeing.
     assert_eq!(
-        backup_default_needs_confirmation(std::slice::from_ref(&remote)),
-        Some("https://api.openai.com:443".to_string())
+        backup_origins_needing_confirmation(std::slice::from_ref(&remote)),
+        vec!["https://api.openai.com:443".to_string()]
     );
-
-    // With a key the origin was typed into the form, so it was agreed to.
-    let mut keyed = provider(5, "Remote");
-    keyed.is_default = true;
-    keyed.api_key = Some("sk-test".to_string());
-    assert_eq!(backup_default_needs_confirmation(&[keyed]), None);
 
     // A local model is not going anywhere.
     let mut local = provider(6, "Local");
     local.is_default = true;
     local.base_url = "http://localhost:11434/v1".to_string();
-    assert_eq!(backup_default_needs_confirmation(&[local]), None);
+    assert!(backup_origins_needing_confirmation(&[local]).is_empty());
 
     // No providers at all: nothing to ask.
-    assert_eq!(backup_default_needs_confirmation(&[]), None);
+    assert!(backup_origins_needing_confirmation(&[]).is_empty());
+}
+
+/// FIN-46: a key for an endpoint the user never typed must be asked about, even
+/// when the provider is not the default. The default is a keyless local model here,
+/// so the only reason to ask is the non-default keyed provider.
+#[test]
+fn an_import_asks_for_every_keyed_remote_origin() {
+    use financetrackerapp_lib::commands::import::backup_origins_needing_confirmation;
+
+    let mut local_default = provider(1, "Local");
+    local_default.is_default = true;
+    local_default.base_url = "http://localhost:11434/v1".to_string();
+
+    let mut attacker = provider(2, "Attacker");
+    attacker.base_url = "https://evil.example.com/v1".to_string();
+    attacker.api_key = Some("sk-stolen".to_string());
+
+    assert_eq!(
+        backup_origins_needing_confirmation(&[local_default, attacker]),
+        vec!["https://evil.example.com:443".to_string()]
+    );
+}
+
+#[test]
+fn a_keyed_default_is_asked_too() {
+    use financetrackerapp_lib::commands::import::backup_origins_needing_confirmation;
+
+    // The old rule trusted any keyed default. A backup is still a file the webview
+    // can fabricate, so the key's origin is asked about.
+    let mut keyed = provider(5, "Remote");
+    keyed.is_default = true;
+    keyed.api_key = Some("sk-test".to_string());
+    assert_eq!(
+        backup_origins_needing_confirmation(&[keyed]),
+        vec!["https://api.openai.com:443".to_string()]
+    );
+}
+
+/// Loopback is never asked, keyed or not. A keyless remote provider that is not
+/// the default is asked: a restored conversation can point at it and send chat there.
+#[test]
+fn loopback_is_not_asked_but_a_keyless_remote_other_is() {
+    use financetrackerapp_lib::commands::import::backup_origins_needing_confirmation;
+
+    let mut default = provider(1, "Default");
+    default.is_default = true;
+    default.base_url = "http://127.0.0.1:11434/v1".to_string();
+    default.api_key = Some("sk-local".to_string());
+
+    let keyless_other = provider(2, "Other");
+
+    let mut ipv6 = provider(3, "IPv6");
+    ipv6.base_url = "http://[::1]:8080/v1".to_string();
+    ipv6.api_key = Some("sk-ipv6".to_string());
+
+    assert_eq!(
+        backup_origins_needing_confirmation(&[default, keyless_other, ipv6]),
+        vec!["https://api.openai.com:443".to_string()]
+    );
+}
+
+#[test]
+fn several_keys_for_one_origin_are_asked_once() {
+    use financetrackerapp_lib::commands::import::backup_origins_needing_confirmation;
+
+    let mut a = provider(1, "A");
+    a.is_default = true;
+    a.api_key = Some("sk-a".to_string());
+    let mut b = provider(2, "B");
+    b.api_key = Some("sk-b".to_string());
+
+    assert_eq!(
+        backup_origins_needing_confirmation(&[a, b]),
+        vec!["https://api.openai.com:443".to_string()]
+    );
 }

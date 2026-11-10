@@ -127,7 +127,7 @@ pub struct PendingKey {
 ///
 /// A local model cannot receive the data anywhere else, and the user runs it
 /// themselves, so asking would be noise on every save.
-fn is_loopback(origin: &str) -> bool {
+pub fn is_loopback(origin: &str) -> bool {
     url::Url::parse(origin)
         .ok()
         .and_then(|url| url.host_str().map(|host| {
