@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** Chat page: the AI opt-in gate and the confirm/reject cards. */
 
-import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useNavigate } from "react-router-dom";
@@ -580,6 +580,63 @@ describe("ChatPage", () => {
     await user.clear(screen.getByPlaceholderText("Search"));
     await user.type(screen.getByPlaceholderText("Search"), "zzz");
     expect(await screen.findByText("No session matches.")).toBeTruthy();
+  });
+
+  describe("session actions report failures (FIN-49)", () => {
+    it("shows an error and keeps the old name when a rename fails", async () => {
+      const user = userEvent.setup();
+      repo.renameConversation.mockRejectedValue(new Error("disk full"));
+      renderChat();
+      await user.dblClick(await screen.findByRole("button", { name: "Portfolio question" }));
+      const input = screen.getByDisplayValue("Portfolio question");
+      await user.clear(input);
+      await user.type(input, "Retirement");
+      await user.keyboard("{Enter}");
+
+      expect(await screen.findByText(/Could not rename the session: disk full/)).toBeTruthy();
+      // The editor closed and the list still shows the old name.
+      expect(screen.queryByDisplayValue("Retirement")).toBeNull();
+      expect(screen.getByRole("button", { name: "Portfolio question" })).toBeTruthy();
+    });
+
+    it("calls renameConversation once when Enter is followed by blur", async () => {
+      const user = userEvent.setup();
+      repo.renameConversation.mockResolvedValue(undefined);
+      renderChat();
+      await user.dblClick(await screen.findByRole("button", { name: "Portfolio question" }));
+      const input = screen.getByDisplayValue("Portfolio question");
+      await user.clear(input);
+      await user.type(input, "Retirement");
+      await user.keyboard("{Enter}");
+      // The blur that follows Enter, from the input that was just closed.
+      fireEvent.blur(input);
+
+      await waitFor(() => expect(repo.renameConversation).toHaveBeenCalled());
+      expect(repo.renameConversation).toHaveBeenCalledTimes(1);
+      expect(repo.renameConversation).toHaveBeenCalledWith(5, "Retirement");
+    });
+
+    it("shows an error and leaves the pin unchanged when pinning fails", async () => {
+      const user = userEvent.setup();
+      repo.setConversationPinned.mockRejectedValue(new Error("locked"));
+      renderChat();
+      const pin = await screen.findByRole("button", { name: "Pin Portfolio question" });
+      await user.click(pin);
+
+      expect(await screen.findByText(/Could not pin the session: locked/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Pin Portfolio question" }).getAttribute("aria-pressed")).toBe("false");
+    });
+
+    it("shows an error and keeps the session when deleting fails", async () => {
+      const user = userEvent.setup();
+      repo.deleteConversation.mockRejectedValue(new Error("busy"));
+      renderChat();
+      await user.click(await screen.findByRole("button", { name: "Delete Portfolio question" }));
+      await user.click(screen.getByRole("button", { name: "Delete" }));
+
+      expect(await screen.findByText(/Could not delete the session: busy/)).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Portfolio question" })).toBeTruthy();
+    });
   });
 
   it("offers the suggested prompts", async () => {

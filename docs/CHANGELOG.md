@@ -22,6 +22,9 @@ together.
   500 for its text, and an empty one is refused. The assistant is asked for one
   fact per memory. Extracted memories get the same limits, so every chat's
   system prompt stays bounded.
+- **Fixed:** renaming, pinning or deleting a session shows an error when the
+  change fails. The old name, pin state or session stays as it was, instead of
+  looking saved.
 - **Fixed:** restoring a backup asks before any remote endpoint it names receives
   chat or an API key, one question per endpoint, not only for the default
   provider. Declining cancels the restore, and nothing is written. Loopback

@@ -72,6 +72,11 @@ interface PendingBubble {
   streaming?: boolean;
 }
 
+/** The text of a rejected call, whatever was thrown. */
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 export function ChatPage() {
   const { conversationId } = useParams();
   const navigate = useNavigate();
@@ -260,29 +265,57 @@ export function ChatPage() {
     onError: (error: unknown) => toast.error(String(error)),
   });
 
+  // The rename in progress, read synchronously. Enter commits and the input then
+  // blurs, and the blur handler still sees the render's `renaming` value, so the
+  // ref is what stops a second `renameConversation` (FIN-49).
+  const renamingRef = useRef<number | null>(null);
+
   const startRename = (convId: number, title: string) => {
+    renamingRef.current = convId;
     setRenaming(convId);
     setRenameValue(title);
   };
 
-  const commitRename = async () => {
-    if (renaming === null) return;
-    const title = renameValue.trim();
+  const endRename = () => {
+    renamingRef.current = null;
     setRenaming(null);
+  };
+
+  const commitRename = async () => {
+    const convId = renamingRef.current;
+    if (convId === null) return;
+    const title = renameValue.trim();
+    endRename();
     if (!title) return;
-    await renameConversation(renaming, title.slice(0, 100));
-    refreshList();
+    try {
+      await renameConversation(convId, title.slice(0, 100));
+      refreshList();
+    } catch (error) {
+      // The editor is already closed and the list was not refreshed, so the old
+      // name stays on screen.
+      toast.error(`Could not rename the session: ${errorMessage(error)}`);
+    }
   };
 
   const togglePin = async (convId: number, pinned: boolean) => {
-    await setConversationPinned(convId, !pinned);
+    try {
+      await setConversationPinned(convId, !pinned);
+    } catch (error) {
+      toast.error(`Could not ${pinned ? "unpin" : "pin"} the session: ${errorMessage(error)}`);
+      return;
+    }
     // Only the list changed: pinning does not touch messages or the transcript.
     void queryClient.invalidateQueries({ queryKey: ["conversations"] });
   };
 
   const removeConversation = async (convId: number) => {
     setPendingDelete(null);
-    await deleteConversation(convId);
+    try {
+      await deleteConversation(convId);
+    } catch (error) {
+      toast.error(`Could not delete the session: ${errorMessage(error)}`);
+      return;
+    }
     refreshList();
     if (id === convId) navigate("/chat");
   };
@@ -655,7 +688,7 @@ export function ChatPage() {
                         onBlur={() => void commitRename()}
                         onKeyDown={(event) => {
                           if (event.key === "Enter") void commitRename();
-                          if (event.key === "Escape") setRenaming(null);
+                          if (event.key === "Escape") endRename();
                         }}
                       />
                     ) : (
