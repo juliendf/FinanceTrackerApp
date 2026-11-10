@@ -186,18 +186,15 @@ function AssetForm({ editing }: { editing?: EditingState }) {
 
   // Switching to a category that cannot hold instruments drops the rows, and
   // says so: silently losing them on save would be the worse outcome.
+  // The toast is decided here, from the current rows, not inside a state updater:
+  // React may run an updater twice (StrictMode), so a side effect there repeats.
+  // Clearing to [] leaves nothing to clear, so the effect settles.
   useEffect(() => {
-    if (!showHoldings) {
-      setHoldings((current) => {
-        if (current.length === 0) return current;
-        toast.warning("Holdings cleared: this category's role does not hold instruments.");
-        return [];
-      });
-      setHoldingErrors({});
-    }
-    // `toast` is stable; the trigger is the role, not the rows.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showHoldings]);
+    if (showHoldings || holdings.length === 0) return;
+    toast.warning("Holdings cleared: this category's role does not hold instruments.");
+    setHoldings([]);
+    setHoldingErrors({});
+  }, [showHoldings, holdings, toast]);
 
   const refreshReference = (key: "institutions" | "categories" | "tags") =>
     queryClient.invalidateQueries({ queryKey: [key] });

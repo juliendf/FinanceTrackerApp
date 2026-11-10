@@ -96,6 +96,45 @@ describe("AssetFormPage — holdings", () => {
     expect(await screen.findByText("Holdings")).toBeTruthy();
   });
 
+  it("clears the rows and says so once when the category cannot hold them", async () => {
+    renderAt("/assets/new");
+    await screen.findByRole("option", { name: "UBS" });
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "2");
+    await userEvent.click(await screen.findByRole("button", { name: /add a holding/i }));
+    await userEvent.type(screen.getByLabelText("ISIN, line 1"), "FR0000120073");
+
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "1");
+    expect(await screen.findByText(/Holdings cleared/)).toBeTruthy();
+    expect(screen.queryByText("Holdings")).toBeNull();
+    expect(screen.getAllByText(/Holdings cleared/)).toHaveLength(1);
+  });
+
+  it("says it once under StrictMode, which runs state updaters twice", async () => {
+    const { StrictMode } = await import("react");
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <StrictMode>
+        <QueryClientProvider client={client}>
+          <ToastProvider>
+            <MemoryRouter initialEntries={["/assets/new"]}>
+              <Routes>
+                <Route path="/assets/new" element={<AssetFormPage />} />
+              </Routes>
+            </MemoryRouter>
+          </ToastProvider>
+        </QueryClientProvider>
+      </StrictMode>,
+    );
+    await screen.findByRole("option", { name: "UBS" });
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "2");
+    await userEvent.click(await screen.findByRole("button", { name: /add a holding/i }));
+    await userEvent.type(screen.getByLabelText("ISIN, line 1"), "FR0000120073");
+
+    await userEvent.selectOptions(screen.getByLabelText(/^category/i), "1");
+    expect(await screen.findByText(/Holdings cleared/)).toBeTruthy();
+    expect(screen.getAllByText(/Holdings cleared/)).toHaveLength(1);
+  });
+
   it("validates an ISIN before writing anything", async () => {
     renderAt("/assets/new");
     await fillMinimum();
