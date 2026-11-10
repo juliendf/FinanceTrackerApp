@@ -14,6 +14,10 @@ together.
 - **Fixed:** restoring a backup runs under its own SQLite authorizer. A crafted
   backup can no longer write the migration bookkeeping or any table outside the
   app's data and the two provider tables.
+- **Fixed:** text from imported notes, descriptions and labels, and saved
+  memories, is marked as data before it reaches the assistant. An instruction
+  hidden in a note no longer reads as one, and the assistant is told not to
+  save a memory because data asks for it. Memories still need your confirmation.
 - **Fixed:** restoring a backup asks before any remote endpoint it names receives
   chat or an API key, one question per endpoint, not only for the default
   provider. Declining cancels the restore, and nothing is written. Loopback

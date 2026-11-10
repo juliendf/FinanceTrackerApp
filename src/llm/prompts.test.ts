@@ -70,8 +70,9 @@ describe("prompt sections", () => {
       },
       [],
     );
-    expect(text).toContain("job: Senior SRE");
-    expect(text).toContain("financial goals: Retire comfortably, buy a house.");
+    // Free text is fenced as data (FIN-47).
+    expect(text).toContain("job: <data>Senior SRE</data>");
+    expect(text).toContain("financial goals: <data>Retire comfortably, buy a house.</data>");
     // Order: name, job, salary, risk profile, financial goals, savings.
     expect(text.indexOf("job:")).toBeLessThan(text.indexOf("financial goals:"));
   });
@@ -80,7 +81,7 @@ describe("prompt sections", () => {
     const text = buildProfileContext({ ...profile, salary_minor: null }, [
       { id: 1, label: "House", target_amount_minor: 10000000, target_date: "2029-01-01", priority: "high", category: "housing", created_at: "", updated_at: "" },
     ]);
-    expect(text).toContain("- House \u2014 100,000 CHF \u2014 by 2029-01-01 (high, housing)");
+    expect(text).toContain("- <data>House</data> \u2014 100,000 CHF \u2014 by 2029-01-01 (high, housing)");
   });
 
   it("is empty without any profile field", () => {
@@ -94,7 +95,7 @@ describe("prompt sections", () => {
     expect(buildMemoryContext([])).toBe("");
     expect(
       buildMemoryContext([{ id: 1, category: "goal", key: "k", content: "Saving for a house", source: "manual", conversation_id: null, importance: 5, created_at: "", updated_at: "" }]),
-    ).toBe("## What I know about the user (from past conversations)\n- [goal] Saving for a house\n");
+    ).toBe("## What I know about the user (from past conversations)\n- [<data>goal</data>] <data>Saving for a house</data>\n");
   });
 
   it("assembles the system prompt with date, currency and sections", () => {
@@ -280,11 +281,11 @@ describe("prompt sections", () => {
     });
 
     expect(known).toContain("## Already known");
-    expect(known).toContain("job: SRE");
+    expect(known).toContain("job: <data>SRE</data>");
     expect(known).toContain("tax residence: Switzerland (CH)");
-    expect(known).toContain("- UBS - Compte (Cash)");
+    expect(known).toContain("- <data>UBS - Compte (Cash)</data>");
     expect(known).toContain("## Financial goals");
-    expect(known).toContain("- kids: User has two children");
+    expect(known).toContain("- <data>kids</data>: <data>User has two children</data>");
   });
 
   it("says nothing when the app knows nothing yet", () => {

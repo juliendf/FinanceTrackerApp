@@ -55,7 +55,9 @@ describe("runTurn", () => {
     expect(result.finalContent).toBe("Your portfolio is 10.");
     const tool = result.messages.find((message) => message.role === "tool");
     expect(tool).toMatchObject({ tool_call_id: "c1", name: "get_portfolio_summary" });
-    expect(JSON.parse(tool!.content)).toEqual({ total_value_base: 10 });
+    // The result is fenced as data (FIN-47); the payload inside is unchanged.
+    expect(tool!.content.startsWith("<data>") && tool!.content.endsWith("</data>")).toBe(true);
+    expect(JSON.parse(tool!.content.slice("<data>".length, -"</data>".length))).toEqual({ total_value_base: 10 });
     const assistantCall = result.messages.find((message) => message.role === "assistant" && message.tool_calls);
     expect(assistantCall?.tool_calls?.[0].function.name).toBe("get_portfolio_summary");
   });

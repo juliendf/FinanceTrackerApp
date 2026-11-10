@@ -6,6 +6,7 @@
  */
 
 import type { ChatMessage, StreamEvent, ToolCall } from "./client";
+import { fenceData } from "./fence";
 import { TOOL_DEFINITIONS, type ToolResult } from "./tools";
 
 /** Five tool rounds per user turn. */
@@ -127,7 +128,8 @@ export async function runTurn(options: LoopOptions): Promise<LoopResult> {
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: JSON.stringify(result.result),
+        // Tool results carry the user's notes and descriptions: fenced as data (FIN-47).
+        content: fenceData(JSON.stringify(result.result)),
         name: call.name,
       });
       await options.onToolResult?.({ call, result });

@@ -14,6 +14,7 @@
 
 import type { ChatMessage } from "./client";
 import type { Message } from "../db/repositories/chat";
+import { fenceData } from "./fence";
 import { TOOL_DEFINITIONS } from "./tools";
 
 /** Function names the model may call. Anything else in a stored row is corrupt. */
@@ -100,7 +101,8 @@ export function buildHistoryMessages(rows: readonly Message[]): ChatMessage[] {
       if (!row.tool_call_id || !(row.tool_call_id in namesById)) continue;
       messages.push({
         role: "tool",
-        content: row.content ?? "",
+        // Stored raw; fenced here as data on the way to the model (FIN-47).
+        content: fenceData(row.content ?? ""),
         tool_call_id: row.tool_call_id,
         name: namesById[row.tool_call_id],
       });

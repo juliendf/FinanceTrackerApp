@@ -446,9 +446,9 @@ describe("extractMemories", () => {
     const request = (transport.mock.calls[0] as unknown[])[0] as { messages: Array<{ role: string; content: string }> };
     const system = request.messages.find((message) => message.role === "system")?.content ?? "";
     expect(system).toContain("## Already known");
-    expect(system).toContain("job: SRE");
-    expect(system).toContain("- kids: User has two children");
-    expect(system).toContain("- UBS - P (Cash)");
+    expect(system).toContain("job: <data>SRE</data>");
+    expect(system).toContain("- <data>kids</data>: <data>User has two children</data>");
+    expect(system).toContain("- <data>UBS - P (Cash)</data>");
   });
 
   it("does not call the model on an empty conversation", async () => {
