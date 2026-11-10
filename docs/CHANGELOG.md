@@ -4,44 +4,57 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
-## Unreleased
+## 0.7.1
 
-- **Fixed:** a remote provider endpoint on plain `http://` is refused, so an API
-  key is never sent in cleartext. The error asks for `https://`. Loopback
-  endpoints (`localhost`, `127.0.0.1`, `[::1]`) such as Ollama still work over
-  `http://`. Existing providers saved with a remote `http://` URL must be edited
-  to `https://` before their key is used again.
-- **Fixed:** restoring a backup runs under its own SQLite authorizer. A crafted
-  backup can no longer write the migration bookkeeping or any table outside the
-  app's data and the two provider tables.
-- **Fixed:** text from imported notes, descriptions and labels, and saved
-  memories, is marked as data before it reaches the assistant. An instruction
-  hidden in a note no longer reads as one, and the assistant is told not to
-  save a memory because data asks for it. Memories still need your confirmation.
-- **Fixed:** a remembered fact is capped at 200 characters for its label and
-  500 for its text, and an empty one is refused. The assistant is asked for one
-  fact per memory. Extracted memories get the same limits, so every chat's
-  system prompt stays bounded.
-- **Fixed:** renaming, pinning or deleting a session shows an error when the
-  change fails. The old name, pin state or session stays as it was, instead of
-  looking saved.
-- **Fixed:** a holding with a very small quantity (below 0.0000001) could not be
-  saved. Quantities and prices are now stored in plain digits, never exponent
-  notation.
-- **Changed:** amounts you type (snapshots, salary, expenses, savings target,
-  goal targets) are limited to 10,000,000 in either direction and to two decimal
-  places. A larger or more precise amount is refused with a message, not rounded.
-  An existing amount above 10,000,000 still shows, but saving it again asks for a
-  smaller figure.
-- **Fixed:** an amount too large to store exactly is refused instead of silently
-  losing cents.
-- **Fixed:** restoring a backup asks before any remote endpoint it names receives
-  chat or an API key, one question per endpoint, not only for the default
-  provider. Declining cancels the restore, and nothing is written. Loopback
-  endpoints are not asked.
-- **Fixed:** the guard test that forbids browser dialogs now also catches
-  `window.confirm(`, `window.alert(` and `globalThis.alert(`, and no longer
-  exempts files by name.
+0.7.0 was never released, so this entry covers both what it added and the fixes
+from a full review of the codebase.
+
+**Holdings**
+- **An asset lists what it is made of.** Add lines of ISIN, quantity and an
+  optional name and price, and the asset page reads as a composition: each line's
+  share of the value, not just the total. The list shows the ISINs.
+- A line's share comes from the snapshot when there is one, so the composition
+  agrees with the asset's value instead of drifting from it.
+- Switching an asset to a category that cannot hold instruments clears the lines
+  and says so, once.
+
+**Backups**
+- **Backups carry the chat history**, and a backup from a newer version is refused
+  with a message rather than half-imported.
+- **Restoring asks before data leaves.** Every remote endpoint a backup names is
+  confirmed once, natively, before anything is written; declining restores
+  nothing. Loopback endpoints such as Ollama are not asked.
+- The restore runs under its own SQLite authorizer, so a crafted backup cannot
+  touch the migration bookkeeping or any table outside the app's data.
+
+**Amounts**
+- Amounts you type are limited to 10,000,000 in either direction and to two
+  decimal places. A larger or more precise amount is refused with a message
+  naming the field, not rounded.
+- An amount too large to store exactly is refused instead of silently losing
+  cents.
+- A holding with a very small quantity (below 0.0000001) saves: quantities and
+  prices are stored in plain digits, never exponent notation.
+
+**Assistant**
+- **Imported text is data.** Notes, descriptions, labels and saved memories reach
+  the model inside `<data>` markers, and it is told that such text is not an
+  instruction. A sentence hidden in a note no longer reads as a rule.
+- **Remembered facts are bounded:** 200 characters for the label, 500 for the
+  text, and one fact per memory. Memory extraction keeps the same limits, so the
+  prompt every chat carries stays a known size.
+- **Provider endpoints must use https** unless they are on this machine. A remote
+  `http://` endpoint is refused, so a key is never sent in cleartext. An existing
+  provider on a remote `http://` URL must be edited to `https://` before its key
+  is used again.
+
+**Sessions and layout**
+- Renaming, pinning or deleting a session reports a failure and leaves the list
+  as it was, instead of looking saved.
+- The performance screen owns the chart, and the update check lives in General
+  settings.
+- Long messages wrap inside a toast, and row actions stay reachable on a wide
+  table.
 
 ## 0.6.1
 

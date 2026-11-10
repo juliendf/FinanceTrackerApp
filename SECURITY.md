@@ -69,6 +69,8 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 
 ## Open issues (to fix before shipping)
 
+0. **A backup can change the standing instructions** without asking. Settings are imported verbatim, including `settings.custom_instructions`, which is injected into every system prompt as instructions the user wrote. The provider endpoints are confirmed natively; this value is not. Filed as a 0.8.0 issue: the fix needs settings carried as structured rows in the import request, so the dialog can show the value that is actually written.
+
 1. **`run_transaction` has no table allow-list** beyond the provider tables. Statements are validated (DML only, no stacking, no comments, enforced by the authorizer) and `llm_providers`/`provider_models` are refused outright, but any other table can still be rewritten or deleted by a compromised webview. Replace with named, parameterised operations as the write set stabilises.
 2. **Database is unencrypted** (see Data at rest).
 
