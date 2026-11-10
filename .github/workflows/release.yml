@@ -82,30 +82,28 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "FinanceTracker __VERSION__"
-          releaseBody: |
-            **Alpha software.** Under active development: things can break, and a release may change behaviour without notice. Take a backup from Settings → Data & Backup before importing real data.
-
-            ## What's new in 0.6.1
-
-            One fix.
-
-            - **A broad question no longer ends with "I stopped after 5 tool rounds".** When the assistant reaches its tool-call limit it now answers from what the tools already returned, instead of giving up. Reported with a local model on the portfolio review, where the data had been gathered but no answer was written.
-
-            Everything from 0.6.0 is included — the chat rework, asset holdings groundwork, exchange rates from the European Central Bank, and the English summary screen. See the [0.6.0 release](https://github.com/juliendf/FinanceTrackerApp/releases/tag/v0.6.0) for the full list.
-
-            ## The app
-
-            A native macOS app for tracking assets and their value over time.
-
-            Everything stays on your Mac: a local SQLite database, provider API keys in the macOS Keychain, no account and no telemetry. AI is off until you configure a provider.
-
-            Requires macOS 11+ on Apple silicon. The build is signed ad hoc (no Apple Developer ID yet), so macOS blocks the first launch: allow it in System Settings → Privacy & Security → **Open Anyway**, or right-click the app → **Open** on macOS 14 and older. The terminal equivalent is `xattr -dr com.apple.quarantine /Applications/FinanceTracker.app`, which does the same thing for a copy you trust. Later updates arrive through **Check for updates** on the Data page.
+          # Left empty on purpose: the next step writes the body from
+          # docs/CHANGELOG.md. A literal here drifted once already, and shipped a
+          # release describing the previous version.
+          releaseBody: ""
           # Turn on once releases carry user-facing changes worth auto-summarising;
           # the first release describes the app instead of listing 70 commits.
           generateReleaseNotes: false
           releaseDraft: true
           prerelease: false
           args: --target aarch64-apple-darwin --config src-tauri/tauri.release.conf.json
+
+      # The changelog is the single source of the notes. Doing it here rather than
+      # in tauri-action's `releaseBody` means the text cannot drift from the entry
+      # users read in the app's history, and a missing section fails the build.
+      - name: Write the release notes from the changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./src-tauri/tauri.conf.json').version")"
+          node scripts/release-notes.mjs "$version" > "$RUNNER_TEMP/notes.md"
+          gh release edit "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md"
 
       # tauri-action publishes `latest.json` with api.github.com asset URLs,
       # which are rate-limited to 60 requests/hour unauthenticated; downloads then
