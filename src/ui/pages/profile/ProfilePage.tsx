@@ -29,7 +29,7 @@ import {
   type Memory,
   type Profile,
 } from "../../../db/repositories/profile";
-import { fromMinorUnits, toMinorUnits } from "../../../domain/money";
+import { fromMinorUnits, moneyError, toMinorUnits } from "../../../domain/money";
 import { CURRENCY_CHOICES } from "../../../domain/settings";
 import { formatDate } from "../../../domain/format";
 import { deriveMemoryKey } from "../../../domain/memoryKey";
@@ -169,6 +169,19 @@ export function ProfilePage() {
     if (!draft.first_name?.trim()) {
       toast.error("First name is required.");
       return;
+    }
+    // Checked before the save, so the user sees which field is wrong (FIN-52).
+    for (const [label, value] of [
+      ["Annual salary", draft.salary],
+      ["Monthly living expenses", draft.expenses],
+      ["Monthly savings target", draft.savings],
+    ] as const) {
+      if (value.trim() === "") continue;
+      const problem = moneyError(value);
+      if (problem) {
+        toast.error(`${label}: ${problem}`);
+        return;
+      }
     }
     save.mutate(draft);
   };
@@ -683,6 +696,13 @@ function GoalsSection({ goals, onChange, currency }: { goals: Goal[]; onChange: 
     if (!form.label.trim()) {
       toast.error("A goal needs a label.");
       return;
+    }
+    if (form.amount.trim() !== "") {
+      const problem = moneyError(form.amount);
+      if (problem) {
+        toast.error(`Target amount: ${problem}`);
+        return;
+      }
     }
     const payload = {
       label: form.label.trim(),

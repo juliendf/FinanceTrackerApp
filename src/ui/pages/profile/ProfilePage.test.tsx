@@ -147,6 +147,32 @@ describe("ProfilePage", () => {
     });
   });
 
+  it("refuses a salary with a third decimal, and names the field (FIN-52)", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+
+    const salary = (await screen.findByLabelText("Annual Salary")) as HTMLInputElement;
+    await user.clear(salary);
+    await user.type(salary, "85000.005");
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    expect(await screen.findByText("Annual salary: Use at most 2 decimal places.")).toBeTruthy();
+    expect(repo.saveProfile).not.toHaveBeenCalled();
+  });
+
+  it("refuses an expense above 10,000,000 before saving", async () => {
+    const user = userEvent.setup();
+    renderProfile();
+
+    const expenses = (await screen.findByLabelText("Monthly Living Expenses")) as HTMLInputElement;
+    await user.clear(expenses);
+    await user.type(expenses, "10000001");
+    await user.click(screen.getByRole("button", { name: /save profile/i }));
+
+    expect(await screen.findByText("Monthly living expenses: Amount must be at most 10,000,000.")).toBeTruthy();
+    expect(repo.saveProfile).not.toHaveBeenCalled();
+  });
+
   it("leaves an empty planning field as null, not zero", async () => {
     const user = userEvent.setup();
     renderProfile();

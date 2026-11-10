@@ -94,3 +94,39 @@ describe("isExactAtTwoDecimals", () => {
     expect(isExactAtTwoDecimals(0.001)).toBe(false);
   });
 });
+
+// FIN-52: bounds on amounts a user enters, and exact storage.
+import { moneyError, MAX_MONEY_MAJOR, toMinorUnits as toMinor } from "./money";
+
+describe("moneyError (FIN-52)", () => {
+  it("accepts up to two decimals and the 10,000,000 ceiling", () => {
+    expect(moneyError("12.34")).toBeNull();
+    expect(moneyError("10000000")).toBeNull();
+    expect(moneyError("-10000000")).toBeNull();
+    expect(moneyError("0.01")).toBeNull();
+  });
+  it("refuses more than two decimals rather than rounding", () => {
+    expect(moneyError("1.005")).toBe("Use at most 2 decimal places.");
+  });
+  it("refuses amounts above the ceiling in either direction", () => {
+    expect(moneyError("10000000.01")).toBe("Amount must be at most 10,000,000.");
+    expect(moneyError("-10000001")).toBe("Amount must be at most 10,000,000.");
+    expect(MAX_MONEY_MAJOR.toString()).toBe("10000000");
+  });
+  it("refuses what is not a number", () => {
+    expect(moneyError("abc")).toBe("Please enter a valid amount.");
+    expect(moneyError("")).toBe("Please enter a valid amount.");
+    expect(moneyError("Infinity")).toBe("Please enter a valid amount.");
+  });
+});
+
+describe("toMinorUnits safe-integer guard (FIN-52)", () => {
+  it("stores amounts exactly within the safe range", () => {
+    expect(toMinor("10000000")).toBe(1_000_000_000);
+    expect(toMinor("123.45")).toBe(12345);
+  });
+  it("throws rather than storing a value that has lost cents", () => {
+    // 100 trillion major units is 1e16 minor units, past Number.MAX_SAFE_INTEGER.
+    expect(() => toMinor("100000000000000")).toThrow(/too large to store exactly/);
+  });
+});

@@ -11,7 +11,7 @@ import { z } from "zod";
 import { displayName } from "./assets";
 import { isFutureSnapshotDate, isValidIsoDate } from "./dates";
 import { formatNumber, formatSymbolAmount } from "./format";
-import { fromMinorUnits, toMinorUnits } from "./money";
+import { fromMinorUnits, MAX_MONEY_MAJOR, moneyError, toMinorUnits } from "./money";
 import { clampPerPage, type ListDefaults } from "./pagination";
 
 /** A snapshot joined to its asset, institution and category. */
@@ -363,23 +363,17 @@ export const messages = {
 
 // --- single-snapshot form ----------------------------------------------------
 
-/** Upper bound for a snapshot amount. */
-export const MAX_AMOUNT = new Decimal(1_000_000_000);
+/** Upper bound for a snapshot amount, shared with every money field (FIN-52). */
+export const MAX_AMOUNT = MAX_MONEY_MAJOR;
 const MIN_AMOUNT = new Decimal("0.01");
 
 /** Shared amount rules; returns the message for the first failure, or null. */
 export function amountError(raw: string): string | null {
   const text = raw.trim();
   if (text === "") return "Please enter an amount";
-  let value: Decimal;
-  try {
-    value = new Decimal(text);
-  } catch {
-    return "Please enter a valid amount.";
-  }
-  if (!value.isFinite()) return "Please enter a valid amount.";
-  if (value.lessThan(MIN_AMOUNT)) return "Amount must be greater than 0";
-  if (value.greaterThan(MAX_AMOUNT)) return "Amount seems unusually large. Please verify.";
+  const problem = moneyError(text);
+  if (problem) return problem;
+  if (new Decimal(text).lessThan(MIN_AMOUNT)) return "Amount must be greater than 0";
   return null;
 }
 

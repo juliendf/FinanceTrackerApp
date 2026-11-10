@@ -162,10 +162,11 @@ describe("single-snapshot form", () => {
   it("amount rules", () => {
     expect(amountError("")).toBe("Please enter an amount");
     expect(amountError("0")).toBe("Amount must be greater than 0");
-    expect(amountError("0.001")).toBe("Amount must be greater than 0");
+    expect(amountError("0.001")).toBe("Use at most 2 decimal places.");
     expect(amountError("-5")).toBe("Amount must be greater than 0");
-    expect(amountError("1000000001")).toBe("Amount seems unusually large. Please verify.");
-    expect(amountError("1000000000")).toBeNull();
+    expect(amountError("10000001")).toBe("Amount must be at most 10,000,000.");
+    expect(amountError("10000000")).toBeNull();
+    expect(amountError("12.345")).toBe("Use at most 2 decimal places.");
     expect(amountError("abc")).toBe("Please enter a valid amount.");
   });
   it("duplicate message", () => {
@@ -188,15 +189,20 @@ describe("messages", () => {
 
 describe("validateBulkEntry", () => {
   const entries = [
-    { assetId: 1, label: "A", amount: "10.005" },
+    { assetId: 1, label: "A", amount: "10.00" },
     { assetId: 2, label: "B", amount: "" },
     { assetId: 3, label: "C", amount: "5" },
   ];
   const base = { date: "2026-01-01", entries, existingAssetIds: new Set<number>(), today: "2026-06-01" };
-  it("skips blanks and converts half-even to minor units", () => {
+  it("skips blanks and stores the amounts in minor units", () => {
     const r = validateBulkEntry(base);
     expect(r.errors).toEqual([]);
     expect(r.rows).toEqual([{ assetId: 1, amountMinor: 1000 }, { assetId: 3, amountMinor: 500 }]);
+  });
+  it("refuses a third decimal instead of rounding it (FIN-52)", () => {
+    const r = validateBulkEntry({ ...base, entries: [{ assetId: 1, label: "A", amount: "10.005" }] });
+    expect(r.rows).toEqual([]);
+    expect(r.errors).toEqual([{ assetId: 1, message: "A: Use at most 2 decimal places." }]);
   });
   it("one bad row blocks the batch and returns no rows", () => {
     const r = validateBulkEntry({ ...base, entries: [...entries, { assetId: 4, label: "D", amount: "0" }] });

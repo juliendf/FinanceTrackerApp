@@ -274,11 +274,11 @@ describe("write tools only stage a confirmation", () => {
   const ctx = { conversationId: 7, today: "2026-10-31" };
 
   it("propose_snapshot creates a pending action and writes no snapshot", async () => {
-    const { result } = await executeTool("propose_snapshot", { asset_id: 1, amount: 1234.565 }, ctx);
+    const { result } = await executeTool("propose_snapshot", { asset_id: 1, amount: 1234.56 }, ctx);
     expect(repo.createPendingAction).toHaveBeenCalledWith({
       conversationId: 7,
       actionType: "create_snapshot",
-      payload: { asset_id: 1, amount_minor: 123456, amount: 1234.565, date: "2026-10-31" },
+      payload: { asset_id: 1, amount_minor: 123456, amount: 1234.56, date: "2026-10-31" },
     });
     expect(result).toMatchObject({ pending_action_id: 11, asset_name: "UBS - P1 (Cash)", currency: "CHF", date: "2026-10-31" });
     expect(repo.createSnapshot).not.toHaveBeenCalled();

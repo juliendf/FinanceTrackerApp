@@ -28,6 +28,13 @@ together.
 - **Fixed:** a holding with a very small quantity (below 0.0000001) could not be
   saved. Quantities and prices are now stored in plain digits, never exponent
   notation.
+- **Changed:** amounts you type (snapshots, salary, expenses, savings target,
+  goal targets) are limited to 10,000,000 in either direction and to two decimal
+  places. A larger or more precise amount is refused with a message, not rounded.
+  An existing amount above 10,000,000 still shows, but saving it again asks for a
+  smaller figure.
+- **Fixed:** an amount too large to store exactly is refused instead of silently
+  losing cents.
 - **Fixed:** restoring a backup asks before any remote endpoint it names receives
   chat or an API key, one question per endpoint, not only for the default
   provider. Declining cancels the restore, and nothing is written. Loopback

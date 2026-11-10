@@ -8,7 +8,7 @@
  */
 
 import Decimal from "decimal.js";
-import { fromMinorUnits, toMinorUnits } from "../domain/money";
+import { fromMinorUnits, moneyError, toMinorUnits } from "../domain/money";
 import { listAssets } from "../db/repositories/assets";
 import { listAllHoldings } from "../db/repositories/holdings";
 import { valueHoldings } from "../domain/holdings";
@@ -514,6 +514,9 @@ async function proposeSnapshot(
 ): Promise<unknown> {
   const today = ctx.today ?? todayIso();
   if (!(amount > 0)) return { error: "Amount must be positive." };
+  // The same rules as the form (FIN-52): at most 2 decimals, at most 10,000,000.
+  const amountProblem = moneyError(String(amount));
+  if (amountProblem) return { error: amountProblem };
 
   const rows = await listAssets();
   const asset = rows.find((row) => row.id === assetId);
