@@ -13,6 +13,7 @@ const NAV = [
   { to: "/settings", label: "General", icon: "bi-gear" },
   { to: "/settings/exchange-rates", label: "Exchange Rates", icon: "bi-currency-exchange" },
   { to: "/settings/llm-providers", label: "LLM Providers", icon: "bi-cpu" },
+  { to: "/settings/security", label: "Security", icon: "bi-shield-lock" },
   { to: "/settings/data", label: "Data & Backup", icon: "bi-hdd-stack" },
 ];
 

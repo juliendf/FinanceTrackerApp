@@ -4114,3 +4114,51 @@ body {
 .app-sidebar.collapsed .app-sidebar-about {
     padding: 0.25rem;
 }
+
+/* =========================================================================
+   App lock — the gate above the router
+   -------------------------------------------------------------------------
+   A full-height stage with a single card. It renders instead of the app shell,
+   so there is deliberately no sidebar, navbar or content behind it: the lock
+   screen is the whole window, not an overlay on a mounted app.
+   ========================================================================= */
+
+.lock-stage {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+    background: var(--surface-0);
+}
+
+.lock-card {
+    width: 100%;
+    max-width: 24rem;
+    padding: 2rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-md);
+}
+
+.lock-icon {
+    font-size: 2.25rem;
+    line-height: 1;
+    color: var(--accent);
+}
+
+.lock-card details summary {
+    cursor: pointer;
+}
+
+/* Four digit boxes, without four inputs: one field, spaced so the digits read as
+   a code. `text-indent` compensates for the trailing letter-space, which
+   otherwise pulls the digits off centre. */
+.lock-pin {
+    letter-spacing: 0.75rem;
+    text-indent: 0.75rem;
+    font-variant-numeric: tabular-nums;
+    font-size: 1.5rem;
+    font-weight: 600;
+}

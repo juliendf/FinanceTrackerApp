@@ -24,6 +24,7 @@ import { ExchangeRatesPage } from "./ui/pages/settings/ExchangeRatesPage";
 import { SettingsExportPage } from "./ui/pages/settings/SettingsExportPage";
 import { SettingsImportPage } from "./ui/pages/settings/SettingsImportPage";
 import { SettingsPage } from "./ui/pages/settings/SettingsPage";
+import { SecurityPage } from "./ui/pages/settings/SecurityPage";
 import { SettingsResetPage } from "./ui/pages/settings/SettingsResetPage";
 import { ResumePage } from "./ui/pages/dashboard/ResumePage";
 import { StartRoute } from "./ui/pages/start/StartRoute";
@@ -192,6 +193,14 @@ export const router = createHashRouter([
     element: (
       <AppShell>
         <SettingsPage />
+      </AppShell>
+    ),
+  },
+  {
+    path: "/settings/security",
+    element: (
+      <AppShell>
+        <SecurityPage />
       </AppShell>
     ),
   },

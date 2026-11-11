@@ -2,7 +2,7 @@
 
 A native macOS app for tracking assets and their value over time. Single user, offline, data stays on your Mac.
 
-Version 0.7.1 · MIT · macOS 11+ (Apple silicon)
+Version 0.7.2 · MIT · macOS 11+ (Apple silicon)
 
 ![FinanceTracker on first launch: a sidebar with Dashboard, Assets, Snapshots and Performance, and a welcome screen offering to import a backup or start empty](docs/screenshots/first-run.png)
 
@@ -145,6 +145,7 @@ Keys live in the macOS Keychain, never in the database or a backup.
 
 - Database: `~/Library/Application Support/app.financetracker/financetracker.db`
 - Provider API keys: macOS Keychain, service `app.financetracker`
+- Optional app lock: a 4-digit PIN, stored as an Argon2id hash in the same Keychain under `lock:<digest of the data directory>`. It locks the screen, not the file — the database stays plaintext SQLite, so treat it as a deterrent against someone at your keyboard, not as encryption.
 - Import a legacy JSON backup (v2) from the first-run screen or Settings → Data & Backup; format in [docs/IMPORT_FORMAT.md](docs/IMPORT_FORMAT.md). Never commit a real backup.
 
 ## Troubleshooting

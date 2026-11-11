@@ -1,12 +1,13 @@
 # Security
 
-Threat model: a single user's personal finance data on their own Mac. There is no server, no login, no multi-user isolation and no telemetry. The realistic risks are local data exposure, a leaked provider API key, and the webview executing untrusted content.
+Threat model: a single user's personal finance data on their own Mac. There is no server, no account and no multi-user isolation, and no telemetry. A 4-digit PIN lock over the UI is available but off by default; it gates the screen, not the file. The realistic risks are local data exposure, a leaked provider API key, and the webview executing untrusted content.
 
 ## Data at rest
 
 - The database is a plain SQLite file in `~/Library/Application Support/app.financetracker/`. It is **not encrypted** by the app; protection is macOS user permissions and FileVault. Turn FileVault on.
 - Time Machine and other backups of that folder include the database.
 - Backup exports (JSON) and CSV exports are plain text written wherever the user chooses. Treat them as sensitive.
+- **The optional app lock does not encrypt anything.** Turning it on in Settings → Security asks for a 4-digit PIN at launch and after a period of inattention, and stops a person at an unlocked keyboard from browsing the app. The database stays plaintext SQLite, so anyone who can read the data directory can open the file instead of the app. Encrypting the file is a separate, open problem (FIN-6).
 
 ## Secrets
 
@@ -18,6 +19,17 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 - **The webview can neither read nor write a key.** There is no `secret_get`, `secret_set` or `secret_delete`. `chat_completion`, `provider_models` and `provider_connection` take a **provider id**; Rust reads the base URL from SQLite and the secret from the Keychain, then makes the request. Keys are written and deleted only by `provider_save`, `provider_delete`, `import_all` and `providers_reset`, which all record the origin.
 - **Old keys must be re-entered once.** A key saved before the binding existed has no origin, and an unbound key cannot be sent safely, so it is refused with a message until the user enters it again.
 - The two `probe_*` commands do accept a base URL and a key, because the provider form must test an endpoint before it is saved. That key is the one the user just typed, not a stored one, so nothing is exposed that the user did not hand over.
+
+## The app lock
+
+- **Four digits, knowingly.** It is quick to type on a desktop keyboard and it is also 10,000 combinations — trivial to enumerate offline. That is acceptable only because of the paragraph above: the gate protects the screen, not the file, so the person who can read the hash can also read the database. The PIN is a deterrent against someone at the keyboard, and the UI says exactly that.
+- **The PIN is an Argon2id hash in the Keychain**, service `app.financetracker`, account `lock:<sha256 of the database path>` (first 8 bytes, hex). The digest scopes the item to one installation, so the demo build and the normal build never share a PIN, and a second data directory would not either.
+- **It is never in SQLite and never in a backup.** `settings` holds only `lock_enabled` and `lock_idle_minutes`, both of which are exported verbatim — so a backup can restore "the lock is on", never the PIN. A hash in `settings` would travel into any backup the user shares and hand out a free offline target.
+- **The hash never reaches the webview.** There is still no `secret_get`: `app_lock_set` writes, `app_lock_verify` checks, `app_lock_clear` removes, all in Rust. `app_lock_status` answers `{ pinSet: boolean }` and nothing more.
+- **Changing or removing the PIN requires the current one**, under the same failure delay as an unlock attempt, so the command cannot be used as a free oracle. Three wrong attempts introduce a 2-second wait that doubles to a 60-second cap; it is in memory only, and restarting the app clears it. Against someone typing guesses that turns 10,000 combinations into days; against an offline attack on the hash it buys nothing, which is why the paragraph above matters.
+- **A missing Keychain item is recoverable, by design.** If `lock_enabled` is true and no item exists (a restored backup, a deleted item, a migrated Mac), the lock screen explains it and offers to set a new PIN or turn the lock off, instead of leaving the app unusable. There is no PIN reset and no security question — the gate protects neither the file nor the data.
+- **Deleting that Keychain item needs no PIN**, and the lock screen documents the trick. That is the honest description of a screen lock: a deterrent against someone who does not know it, not a boundary. Anyone who wants a boundary needs the database encrypted (FIN-6), not a better PIN.
+- **Auto-lock is timed from input and from window focus.** Losing focus for the configured delay locks on return. macOS sleep and screen lock are not watched; that needs platform code and is not claimed.
 
 ## Network
 
@@ -36,7 +48,7 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 - All assets are bundled (Bootstrap, icons and fonts from npm); there are no CDN or remote scripts.
 - **Content Security Policy** (`tauri.conf.json`): `default-src 'self'`, `script-src 'self'`, `connect-src ipc: http://ipc.localhost`, `object-src 'none'`, `frame-ancestors 'none'`. `style-src` allows `'unsafe-inline'` because React, Bootstrap and Chart.js set inline styles. A separate `devCsp` adds the Vite dev server and its websocket, and applies only to `tauri dev`.
 - Capabilities (`src-tauri/capabilities/default.json`) grant the main window `core:default`, `updater:default`, and `core:window:allow-start-dragging` / `allow-internal-toggle-maximize` (the window uses an overlay title bar, so the toolbar and the sidebar's top strip drag it). **No SQL plugin is registered at all.** It used to own the schema migrations and exposed `select` to the webview, which ran every statement in the string (`SELECT 1; DROP TABLE snapshots` returned `Ok` with the table gone) on a pool outside the authorizer. The migrations now run from `Builder::setup` with `sqlx::migrate!`, before the window exists. The `fs` and `dialog` plugin permissions are **not** granted; the `fs` plugin is not installed, and `window.confirm`/`alert` do not work — the app uses its own modals.
-- Custom commands: `run_transaction`, `run_transaction_returning_id`, `execute_write`, `database_path`, `pick_and_read_text_file`, `save_text_file`, `open_external`, `provider_save`, `provider_delete`, `provider_set_default`, `providers_reset`, `import_all`, `chat_completion`, `cancel_chat`, `provider_models`, `provider_connection`, `probe_models`, `probe_connection` (the last two take a key typed into the form, never a stored one).
+- Custom commands: `run_transaction`, `run_transaction_returning_id`, `execute_write`, `database_path`, `pick_and_read_text_file`, `save_text_file`, `open_external`, `provider_save`, `provider_delete`, `provider_set_default`, `providers_reset`, `import_all`, `chat_completion`, `cancel_chat`, `provider_models`, `provider_connection`, `probe_models`, `probe_connection` (the last two take a key typed into the form, never a stored one), and `app_lock_status`, `app_lock_verify`, `app_lock_set`, `app_lock_clear` (the app lock; none of them returns the hash).
 - **Links never navigate the window.** Three layers: `src/lib/externalLinks.ts` intercepts every click on an absolute http(s) link for the whole document (including Cmd- and Shift-clicks, since the window has no tabs) and hands it to the system browser through `open_external`, which refuses anything that is not `http://` or `https://`; and `navigation_guard()` in `src-tauri/src/lib.rs` — an inline plugin using `tauri::plugin::Builder::on_navigation` — cancels any document navigation that is not the app itself (`tauri`/`asset`/`about`, or http(s) on `localhost`/`127.0.0.1`/`ipc.localhost`). Relative and hash hrefs are left alone; `javascript:` and `file:` hrefs are never passed to the opener.
 
 ## File access

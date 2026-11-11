@@ -14,6 +14,8 @@ export function useSettings() {
   return {
     settings,
     isLoading: query.isLoading,
+    /** Whether any row was ever read: a failed refetch is not a cold start. */
+    hasData: query.data !== undefined,
     error: query.error,
     baseCurrency: String(settings.base_currency ?? "EUR"),
     itemsPerPage: Number(settings.items_per_page ?? 20),

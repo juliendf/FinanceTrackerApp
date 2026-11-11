@@ -39,7 +39,9 @@ for agents; this file is the reasoning.
   document the copy step in the changelog and release notes.
 - **The demo build shares the Keychain but not the data.** Its identifier is
   `app.financetracker.demo`; provider keys are shared on purpose
-  (`secrets.rs` uses one service name), financial data is not.
+  (`secrets.rs` uses one service name), financial data is not. The app lock's
+  item is the exception: its account is keyed on the database path
+  (`lock:<digest>`), so a PIN set in one build never locks the other.
 - **Never commit the updater private key**, a `.p12`, a real backup or a real
   database. `.gitignore` covers the usual names; the key lives at
   `~/.config/financetrackerapp/updater.key`.
