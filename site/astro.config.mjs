@@ -35,6 +35,8 @@ export default defineConfig({
       social: [{ icon: "github", label: "GitHub", href: repo }],
       editLink: { baseUrl: `${repo}/edit/main/site/` },
       customCss: ["./src/styles/starlight.css"],
+      // SiteTitle adds the release-version badge next to the site title.
+      components: { SiteTitle: "./src/overrides/SiteTitle.astro" },
       sidebar: [
         {
           label: "Start here",
