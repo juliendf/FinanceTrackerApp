@@ -80,6 +80,11 @@ current code before proposing a rewrite. Security and the coding rules in
 AGENTS.md outrank style. Do not suggest reformatting, renaming for taste, or
 extracting a helper that would be used once.
 """
+# GitHub's "Add suggestion to batch" buttons exist only on inline review
+# comments, not on the summary-table comment. Dual publishing keeps the table
+# for context and posts applyable inline comments for high-impact suggestions.
+committable_code_suggestions = true
+dual_publishing_score_threshold = 7
 
 [pr_description]
 extra_instructions = """
