@@ -9,6 +9,16 @@
 # Any LiteLLM model works. Gemini is used because the key already exists; a
 # local model is not an option here, since a GitHub runner cannot reach one.
 model = "gemini/gemini-3.8-flash"
+# Only a Gemini key exists in the repo secrets, so the default OpenAI fallback
+# tier is unconfigured: when Gemini times out, the fallback dies on
+# "Incorrect API key provided: dummy_key" and the whole run publishes nothing.
+# Empty list means no fallback; a failed chunk is dropped, a failed tool run
+# reports the error itself.
+fallback_models = []
+# The default 120 s is too short for a large chunk on this model: a /improve run
+# lost a 32k-token chunk to two consecutive litellm.Timeout errors. 300 s keeps
+# the request within the free-tier latency instead of retrying past it.
+ai_timeout = 300
 response_language = "en"
 # Output goes into a PR comment, not a file.
 patch_extension = "tsx"
