@@ -18,6 +18,10 @@
 //!
 //! Keys saved before this binding existed carry no origin, so they are refused
 //! with a message asking for re-entry — an unbound key cannot be safely sent.
+//!
+//! The app lock's PIN hash also lives here, under its own `lock:<digest>`
+//! accounts, so that one Keychain does not grow a second storage mechanism. See
+//! `lock.rs` for the Argon2id side and the rules the two account families keep.
 
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
@@ -49,6 +53,102 @@ fn check_account(account: &str) -> Result<(), String> {
 /// The account name for a provider id.
 pub fn account_for(provider_id: i64) -> String {
     format!("provider:{provider_id}")
+}
+
+// --- app lock ---------------------------------------------------------------
+//
+// The lock's Argon2id hash lives in the Keychain, never in SQLite: `settings` is
+// exported verbatim in every backup, and a hash there would travel into files the
+// user shares and hand out a free offline target. Only `lock_enabled` and
+// `lock_idle_minutes` live in the database.
+//
+// There is still no `secret_get`: the hash is written by `app_lock_set`, checked
+// by `app_lock_verify` and removed by `app_lock_clear`, all in Rust, and never
+// travels back to the webview.
+
+/// Keychain account for the app lock of one installation.
+///
+/// The normal and the demo build share `SERVICE` on purpose and differ only by
+/// their data directory, so the account is scoped on the database path: a PIN set
+/// in one build must not lock the other, where it was never entered.
+///
+/// The digest is an identifier, not a security control: it only has to be stable
+/// and to differ between installations. It is load-bearing anyway — **changing how
+/// it is derived logs every installation out of its own lock**, because the stored
+/// item is then simply not found, which the UI reports as "no PIN set".
+///
+/// The directory is canonicalised first for the same reason: a symlinked home or a
+/// `/var` vs `/private/var` spelling of the same path must not derive a different
+/// account.
+pub fn lock_account(db_path: &std::path::Path) -> String {
+    use sha2::{Digest, Sha256};
+
+    let canonical = db_path
+        .parent()
+        .and_then(|dir| std::fs::canonicalize(dir).ok())
+        .map(|dir| match db_path.file_name() {
+            Some(name) => dir.join(name),
+            None => dir,
+        });
+    let path = canonical.unwrap_or_else(|| db_path.to_path_buf());
+
+    let digest = Sha256::digest(path.to_string_lossy().as_bytes());
+    let mut account = String::with_capacity("lock:".len() + 16);
+    account.push_str("lock:");
+    for byte in &digest[..8] {
+        account.push_str(&format!("{byte:02x}"));
+    }
+    account
+}
+
+/// Only `lock:<16 hex>` accounts reach the lock items.
+///
+/// Kept apart from `check_account` so provider code can never be pointed at the
+/// lock item, nor the lock at a provider key.
+fn check_lock_account(account: &str) -> Result<(), String> {
+    let digest = account.strip_prefix("lock:").unwrap_or("");
+    // Lowercase only: that is what `lock_account` emits, so anything else did not
+    // come from it.
+    if digest.len() == 16 && digest.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f')) {
+        Ok(())
+    } else {
+        Err(format!(
+            "refusing Keychain account '{account}': expected lock:<digest>"
+        ))
+    }
+}
+
+/// Store the Argon2id PHC string.
+pub fn store_lock_hash(account: &str, phc: &str) -> Result<(), String> {
+    check_lock_account(account)?;
+    entry(account)?
+        .set_password(phc)
+        .map_err(|e| format!("keyring set failed: {e}"))
+}
+
+/// Read the stored PHC string. `None` when no PIN is set.
+fn read_lock_hash(account: &str) -> Result<Option<String>, String> {
+    check_lock_account(account)?;
+    read_raw(account)
+}
+
+/// Whether a PIN is set, without returning the hash.
+pub fn has_lock_hash(account: &str) -> Result<bool, String> {
+    Ok(read_lock_hash(account)?.is_some())
+}
+
+/// The stored hash, for verification. Not a command: the value stays in Rust.
+pub fn lock_hash(account: &str) -> Result<Option<String>, String> {
+    read_lock_hash(account)
+}
+
+/// Remove the lock item. A missing item is not an error.
+pub fn delete_lock_hash(account: &str) -> Result<(), String> {
+    check_lock_account(account)?;
+    match entry(account)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(e) => Err(format!("keyring delete failed: {e}")),
+    }
 }
 
 /// `scheme://host:port`, which is what "the same endpoint" means here.
@@ -163,7 +263,7 @@ pub fn delete_key(account: &str) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
-    use super::{account_for, check_account, origin_of};
+    use super::{account_for, check_account, lock_account, origin_of};
 
     #[test]
     fn only_provider_accounts_are_writable() {
@@ -178,8 +278,57 @@ mod tests {
             "provider:1/../x",
             "other:1",
             "app.financetracker",
+            // The lock items are a different family, and provider code must not
+            // be able to reach them.
+            "lock:0123456789abcdef",
         ] {
             assert!(check_account(account).is_err(), "should refuse {account}");
+        }
+    }
+
+    #[test]
+    fn a_lock_account_is_scoped_to_its_data_directory() {
+        let normal = lock_account(std::path::Path::new(
+            "/Users/x/Library/Application Support/app.financetracker/financetracker.db",
+        ));
+        let demo = lock_account(std::path::Path::new(
+            "/Users/x/Library/Application Support/app.financetracker.demo/financetracker.db",
+        ));
+
+        assert_eq!(
+            normal,
+            lock_account(std::path::Path::new(
+                "/Users/x/Library/Application Support/app.financetracker/financetracker.db",
+            )),
+            "the same path must always give the same account"
+        );
+        assert_ne!(normal, demo, "two builds must not share a PIN");
+        assert!(normal.starts_with("lock:"));
+        assert_eq!(normal.len(), "lock:".len() + 16);
+    }
+
+    #[test]
+    fn lock_accounts_are_the_only_ones_the_lock_accepts() {
+        for account in ["lock:0123456789abcdef", "lock:ffffffffffffffff"] {
+            assert!(
+                super::check_lock_account(account).is_ok(),
+                "should accept {account}"
+            );
+        }
+        for account in [
+            "",
+            "lock:",
+            "lock:0123456789abcde",
+            "lock:0123456789abcdef0",
+            "lock:0123456789abcdeg",
+            "lock:0123456789ABCDEF",
+            "provider:1",
+            "app.financetracker",
+        ] {
+            assert!(
+                super::check_lock_account(account).is_err(),
+                "should refuse {account}"
+            );
         }
     }
 

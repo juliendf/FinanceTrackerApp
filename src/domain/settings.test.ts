@@ -37,6 +37,9 @@ describe("DEFAULT_SETTINGS", () => {
       rates_as_of: "",
       rates_fetched_on: "",
       rates_last_fetch: "",
+      // The app lock: off until asked for, five minutes of inattention by default.
+      lock_enabled: false,
+      lock_idle_minutes: "5",
     });
   });
 });
@@ -139,6 +142,12 @@ describe("settings screen helpers", () => {
     expect(validateSetting("custom_instructions", "")).toBe(true);
     expect(validateSetting("custom_instructions", "x".repeat(MAX_CUSTOM_INSTRUCTIONS))).toBe(true);
     expect(validateSetting("custom_instructions", "x".repeat(MAX_CUSTOM_INSTRUCTIONS + 1))).toBe(false);
+    // The app lock: a boolean, and one of the offered delays.
+    expect(validateSetting("lock_enabled", true)).toBe(true);
+    expect(validateSetting("lock_enabled", "false")).toBe(true);
+    expect(validateSetting("lock_idle_minutes", "0")).toBe(true);
+    expect(validateSetting("lock_idle_minutes", "30")).toBe(true);
+    expect(validateSetting("lock_idle_minutes", "7")).toBe(false);
   });
 
   it("exports indented JSON of the merged settings", () => {

@@ -1,6 +1,6 @@
 [package]
 name = "financetrackerapp"
-version = "0.7.1"
+version = "0.7.2"
 description = "A native macOS personal finance tracker: assets, snapshots, dashboards and an AI assistant"
 authors = ["Julien de Freitas"]
 license = "MIT"
@@ -37,6 +37,13 @@ libsqlite3-sys = "0.30.1"
 # Origin comparison for API keys ("scheme://host:port").
 url = "2"
 tauri-plugin-process = "2.4.0"
+# The app lock's password hash (Argon2id) and the digest that scopes its Keychain
+# account to one data directory.
+argon2 = "0.5"
+sha2 = "0.10"
+# `argon2` re-exports rand_core without its `getrandom` feature, which `OsRng`
+# needs to produce the salt. Feature unification turns it on here.
+rand_core = { version = "0.6", features = ["getrandom"] }
 
 
 # Read the optimization guideline for more details: https://tauri.app/concept/size/#cargo-configuration

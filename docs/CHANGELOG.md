@@ -4,6 +4,26 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## 0.7.2
+
+**Security**
+- **An optional app lock.** Settings → Security can ask for a 4-digit PIN when the
+  app opens, again after 1, 5, 15 or 30 minutes without input, and after the
+  window has been unfocused that long. `Cmd+Shift+L` locks from anywhere.
+- **The lock screen is not an overlay.** While it is up, no route is mounted: the
+  sidebar, the toolbar and every page simply do not exist, so nothing can be
+  tabbed into or read behind it.
+- **The PIN is an Argon2id hash in the Keychain**, scoped to the data directory.
+  It is never in SQLite and never in a backup: `settings` carries only "the lock
+  is on" and the delay. Changing or removing it asks for the current PIN; three
+  wrong attempts make the app wait, doubling to a 60-second cap.
+- **It locks the screen, not the file.** Four digits is a deterrent, not
+  encryption: the database stays plaintext SQLite and the settings page says so.
+  Encrypting it at rest is still open.
+- **Losing the Keychain item is not a brick.** If the lock is on and its PIN is
+  missing — a restored backup, a deleted item, a new Mac — the lock screen
+  explains it and offers to set a new PIN or turn the lock off.
+
 ## 0.7.1
 
 0.7.0 was never released, so this entry covers both what it added and the fixes

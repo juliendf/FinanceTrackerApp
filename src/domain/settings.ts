@@ -37,6 +37,21 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
    * because it is the only outbound request besides the LLM provider.
    */
   rates_source_enabled: false,
+  /**
+   * The app lock. Off by default: the feature is inert until the user turns it on
+   * in Settings → Security, and a fresh install must not ask for a password it
+   * never set.
+   *
+   * The password itself is never here. It is an Argon2id hash in the Keychain, so
+   * that a backup — which exports every settings row verbatim — cannot carry it.
+   */
+  lock_enabled: false,
+  /**
+   * Minutes of inactivity before the lock returns; `"0"` never auto-locks but a
+   * cold start still asks. Five is long enough to read a page and short enough to
+   * cover a walk to the coffee machine.
+   */
+  lock_idle_minutes: "5",
   /** Publication date of the last fetched rates, `YYYY-MM-DD`. Empty: never. */
   rates_as_of: "",
   /**
@@ -125,6 +140,20 @@ export const THEME_CHOICES = [
   { value: "auto", label: "Auto (System Preference)" },
 ] as const;
 
+/**
+ * The auto-lock delays offered in Settings → Security, in minutes.
+ *
+ * Declared here rather than in `domain/lock.ts` because `validateSetting` has to
+ * reject anything else, and the two must not drift.
+ */
+export const LOCK_IDLE_CHOICES = [
+  { value: "0", label: "Never" },
+  { value: "1", label: "After 1 minute" },
+  { value: "5", label: "After 5 minutes" },
+  { value: "15", label: "After 15 minutes" },
+  { value: "30", label: "After 30 minutes" },
+] as const;
+
 /** The six fields `SettingsForm` edits, in template order. */
 export const EDITABLE_SETTINGS = [
   "base_currency",
@@ -142,6 +171,8 @@ export function validateSetting(key: string, value: SettingValue): boolean {
   if (key === "base_currency") return CURRENCY_CHOICES.some((c) => c.value === text);
   if (key === "items_per_page") return ITEMS_PER_PAGE_CHOICES.some((c) => c.value === text);
   if (key === "theme") return THEME_CHOICES.some((c) => c.value === text);
+  if (key === "lock_enabled") return text === "true" || text === "false";
+  if (key === "lock_idle_minutes") return LOCK_IDLE_CHOICES.some((c) => c.value === text);
   if (key === "custom_instructions") return text.length <= MAX_CUSTOM_INSTRUCTIONS;
   return true;
 }

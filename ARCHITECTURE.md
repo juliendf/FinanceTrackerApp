@@ -29,8 +29,12 @@ src/db/repositories/* typed SQL -> db_select (read-only) / execute_write / run_t
 src/domain/*          pure logic imported by both pages and repositories
 src/llm/*             chat loop, tools, pending actions (TypeScript)
 src/import/*          backup importer: parse -> plan -> SQL statements
-src-tauri/src/commands/{db,files,llm,secrets}.rs
+src-tauri/src/commands/{db,files,llm,lock,secrets}.rs
 ```
+
+The lock is the one thing above the router: `App.tsx` nests
+`SeedGate → LockGate → RouterProvider`, so while the gate is up no route is
+mounted and the shell does not exist (`src/ui/layout/LockGate.tsx`).
 
 ## Shell
 

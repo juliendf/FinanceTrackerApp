@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { router } from "./router";
 import { watchSystemTheme } from "./lib/theme";
+import { LockGate } from "./ui/layout/LockGate";
 import { SeedGate } from "./ui/layout/SeedGate";
 import { ToastProvider } from "./ui/layout/Toasts";
 import { useAutoRefreshRates } from "./lib/useAutoRefreshRates";
@@ -35,8 +36,12 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <ToastProvider>
         <SeedGate>
-          <RouterProvider router={router} />
-          <RateRefresh />
+          {/* Inside the seed gate (settings must exist) and above the router (no
+              route may mount behind the lock). */}
+          <LockGate>
+            <RouterProvider router={router} />
+            <RateRefresh />
+          </LockGate>
         </SeedGate>
       </ToastProvider>
     </QueryClientProvider>
