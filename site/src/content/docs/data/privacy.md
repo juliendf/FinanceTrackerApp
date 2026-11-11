@@ -11,7 +11,6 @@ description: The database file, the Keychain, and the complete list of outbound 
 
 One SQLite file. It holds assets, snapshots, institutions, categories, tags, holdings,
 exchange rates, providers (without keys), settings, profile, goals, memories and chat.
-The demo build uses `app.financetracker.demo` instead.
 
 **In a terminal, quote the path.** The folder name has a space in it, so an unquoted
 `cat ~/Library/Application Support/…` is read as two arguments. `~` does not expand inside
@@ -38,9 +37,6 @@ Provider keys live in the **macOS Keychain**, service `app.financetracker`, acco
 - Deleting a provider removes its key.
 - A key is bound to the endpoint it was entered for (`scheme://host:port`). Changing the
   base URL drops the key instead of sending it somewhere new.
-
-The demo app shares the Keychain service on purpose, so provider keys are shared; the
-financial data is not.
 
 ## The complete list of outbound requests
 

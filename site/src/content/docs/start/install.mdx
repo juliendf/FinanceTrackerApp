@@ -1,6 +1,6 @@
 ---
 title: Install and first launch
-description: The DMG, the Gatekeeper prompt, the demo build, and how to uninstall cleanly.
+description: The DMG, the Gatekeeper prompt, and how to uninstall cleanly.
 ---
 
 import Shot from "../../../components/Shot.astro";
@@ -39,23 +39,6 @@ equivalent of the steps above — for a copy you downloaded from the release pag
 ```sh
 xattr -dr com.apple.quarantine /Applications/FinanceTracker.app
 ```
-
-## The demo build
-
-A second app ships with every release: **FinanceTracker Demo**. It has its own bundle
-identifier (`app.financetracker.demo`), its own data directory, and sample data, so a
-demo never touches your real numbers.
-
-```sh
-npm run demo:build      # build the bundle
-npm run demo:local      # build and open it
-npm run demo:install    # replace /Applications/FinanceTracker Demo.app
-```
-
-It stores its database in
-`~/Library/Application Support/app.financetracker.demo/`. Provider API keys are shared
-with the normal app on purpose; financial data is not. Use it to explore the app before
-you type anything real.
 
 ## Where the version lives
 

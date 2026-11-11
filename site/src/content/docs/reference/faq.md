@@ -24,8 +24,8 @@ wins before you do it.
 
 **Multiple portfolios or people?**
 
-One database, one profile. Use institutions or tags to separate accounts by purpose; use
-separate installs or the demo build for a second person.
+One database, one profile. Use institutions or tags to separate accounts by purpose. For a
+second person, a separate macOS user account gets its own isolated database and Keychain.
 
 **Do I have to use the AI?**
 
