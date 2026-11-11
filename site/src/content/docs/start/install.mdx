@@ -1,0 +1,82 @@
+---
+title: Install and first launch
+description: The DMG, the Gatekeeper prompt, the demo build, and how to uninstall cleanly.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+## Requirements
+
+- macOS 11 or newer, Apple silicon (there is no Intel or universal build).
+- Nothing else. The app bundles its own database engine and fonts.
+
+## Install
+
+1. Open the [latest release](https://github.com/juliendf/FinanceTrackerApp/releases/latest)
+   and download `FinanceTracker_<version>_aarch64.dmg`.
+2. Open the image and drag **FinanceTracker** into **Applications**.
+3. Launch it from Applications.
+
+<Shot name="first-run" alt="The first-run screen offering to import a backup or start with an empty database" caption="First launch on an empty database: bring a backup across, or start with the seeded defaults." />
+
+## The first-launch warning is expected
+
+The build is signed ad hoc and **not notarised** — there is no paid Apple Developer ID
+behind it yet. macOS therefore says it *"could not verify that FinanceTracker is free of
+malware"*. The app is not damaged; the signature is just not one Apple has seen.
+
+| macOS version | What to do |
+|---|---|
+| 15 and newer | **System Settings → Privacy & Security**, scroll down, click **Open Anyway** next to FinanceTracker, authenticate, launch again |
+| 14 and older | Right-click the app → **Open** → **Open** |
+
+macOS remembers the choice. Updates later are signed separately and verified with the
+app's own key, so they install without repeating this.
+
+If macOS says the app **is damaged**, it carries a quarantine flag. The terminal
+equivalent of the steps above — for a copy you downloaded from the release page — is:
+
+```sh
+xattr -dr com.apple.quarantine /Applications/FinanceTracker.app
+```
+
+## The demo build
+
+A second app ships with every release: **FinanceTracker Demo**. It has its own bundle
+identifier (`app.financetracker.demo`), its own data directory, and sample data, so a
+demo never touches your real numbers.
+
+```sh
+npm run demo:build      # build the bundle
+npm run demo:local      # build and open it
+npm run demo:install    # replace /Applications/FinanceTracker Demo.app
+```
+
+It stores its database in
+`~/Library/Application Support/app.financetracker.demo/`. Provider API keys are shared
+with the normal app on purpose; financial data is not. Use it to explore the app before
+you type anything real.
+
+## Where the version lives
+
+The version is printed at the bottom of the sidebar and opens **About**, which shows
+the exact path of your database:
+
+```
+~/Library/Application Support/app.financetracker/financetracker.db
+```
+
+That path is the thing to quote in a bug report. It contains a space, so wrap it in quotes
+if you paste it into a terminal — and use `$HOME`, since `~` does not expand inside quotes.
+
+## Uninstall
+
+Quit the app, drag it from Applications to the Trash. Your database is untouched; remove
+it deliberately if you want the data gone too:
+
+```sh
+rm -rf ~/Library/Application\ Support/app.financetracker
+```
+
+Provider API keys live in the macOS Keychain under the service `app.financetracker` and
+are removed by **Reset the database** inside the app, not by deleting the folder.

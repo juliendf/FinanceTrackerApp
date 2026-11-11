@@ -1,0 +1,1008 @@
+---
+import "@fontsource-variable/inter";
+import pkg from "../../../package.json";
+
+const base = import.meta.env.BASE_URL;
+const url = (path: string) => `${base}${path.replace(/^\//, "")}`;
+const version = process.env.APP_VERSION || pkg.version;
+
+// Absolute URL: most scrapers ignore a relative og:image.
+const ogImage = new URL(`${base}shots/dashboard.png`, Astro.site ?? "https://juliendf.github.io").href;
+
+const features = [
+  {
+    icon: "◷",
+    title: "Snapshots, not guesses",
+    body: "Record what each account is worth on a date. History is the point: every figure in the app is built from those entries, so you always know when a number was true.",
+  },
+  {
+    icon: "¤",
+    title: "EUR, USD and CHF, side by side",
+    body: "Each asset keeps its own currency. Totals convert to a base currency you pick, with the ECB's daily reference rates a single opt-in away.",
+  },
+  {
+    icon: "▤",
+    title: "One portfolio, several views",
+    body: "Value today, net and annualised performance, allocation by category, institution, currency or product. The same data, asked different questions.",
+  },
+  {
+    icon: "◈",
+    title: "What a fund is made of",
+    body: "Keep an ISIN list with quantities for the Stocks and Bonds categories. Holdings split the latest value by price; the snapshot still owns the total.",
+  },
+  {
+    icon: "⌘",
+    title: "Your Mac, your database",
+    body: "A single SQLite file under Application Support. No account, no subscription, no telemetry. Export a JSON backup whenever you like.",
+  },
+  {
+    icon: "✦",
+    title: "An assistant you can unplug",
+    body: "Off by default. Point it at Ollama, LM Studio or an OpenAI-compatible endpoint with your own key. It reads your figures and writes nothing without a click.",
+  },
+];
+
+const steps = [
+  {
+    title: "Add what you own",
+    body: "Institutions, categories and assets. Three currencies, one product name, optionally an account code and notes.",
+  },
+  {
+    title: "Record the value",
+    body: "One asset from its page, or every account at once from Bulk Entry. One snapshot per asset per day, so the history stays clean.",
+  },
+  {
+    title: "Read the result",
+    body: "The dashboard values the portfolio, Performance measures it against a period, and the charts explain composition.",
+  },
+];
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>FinanceTracker — local-first portfolio tracking for macOS</title>
+    <meta
+      name="description"
+      content="A native macOS app that tracks what you own over time: snapshots, multi-currency totals, performance, and an optional AI assistant. Single user, offline, MIT."
+    />
+    <link rel="icon" href={url("favicon.svg")} type="image/svg+xml" />
+    <link rel="canonical" href={url("")} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FinanceTracker" />
+    <meta property="og:title" content="FinanceTracker — local-first portfolio tracking for macOS" />
+    <meta
+      property="og:description"
+      content="Snapshots, multi-currency totals, performance and an optional AI assistant. Single user, offline, MIT."
+    />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:alt" content="The FinanceTracker dashboard: portfolio value, allocation and history" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+  </head>
+  <body>
+    <div class="page">
+      <header class="nav">
+        <a class="brand" href={url("")}>
+          <img src={url("favicon.svg")} alt="" width="26" height="26" />
+          <span>FinanceTracker</span>
+        </a>
+        <nav class="nav-links" aria-label="Main">
+          <a href={url("start/why/")}>Docs</a>
+          <a class="nav-secondary" href={url("start/install/")}>Install</a>
+          <a class="nav-secondary" href="https://github.com/juliendf/FinanceTrackerApp">GitHub</a>
+          <a class="nav-cta" href="https://github.com/juliendf/FinanceTrackerApp/releases/latest">Download</a>
+        </nav>
+      </header>
+
+      <main>
+        <section class="hero">
+          <div class="hero-copy">
+            <p class="eyebrow">
+              <span class="eyebrow-plain">macOS · Apple silicon · v{version} · MIT</span>
+            </p>
+            <h1>Know what you <em>own.</em></h1>
+            <p class="lede">
+              Track your wealth — bank, broker, pension, wallet — in one place, and watch it evolve over
+              time. Use the AI for insight built around your profile, goals and what it remembers.
+              Provider-agnostic: hosted or local models. No budgets, no bank connectors, no account to create.
+            </p>
+            <div class="actions">
+              <a class="btn primary" href="https://github.com/juliendf/FinanceTrackerApp/releases/latest">
+                Download for macOS
+              </a>
+              <a class="btn ghost" href={url("start/install/")}>How to install</a>
+            </div>
+
+            <div class="hero-facts">
+              <div>
+                <strong>AI assistant</strong>
+                <span>Local or remote LLMs</span>
+              </div>
+              <div>
+                <strong>One SQLite file</strong>
+                <span>No account, no telemetry, no server</span>
+              </div>
+              <div>
+                <strong>EUR, USD, CHF</strong>
+                <span>ECB reference rates, refreshed daily</span>
+              </div>
+            </div>
+
+            <p class="note">
+              Signed ad hoc, not notarised yet: the first launch needs <strong>Open Anyway</strong> in
+              System&nbsp;Settings → Privacy&nbsp;&amp;&nbsp;Security. The guide explains it in one step.
+            </p>
+          </div>
+
+          <div class="hero-shot">
+            <div class="window">
+              <img src={url("shots/dashboard.png")} alt="The FinanceTracker dashboard, showing total assets, portfolio value and a portfolio breakdown chart" width="1280" height="860" />
+            </div>
+          </div>
+        </section>
+
+        <section class="alpha">
+          <div class="alpha-inner">
+            <span class="pill">Alpha</span>
+            <p class="alpha-text">
+              The app is pre-1.0 and under active development: features move, bugs happen, and a bad
+              import can leave your data in a state you did not want. Take a backup from{" "}
+              <strong>Settings → Data &amp; Backup</strong> and keep a copy of the JSON export
+              somewhere else.
+            </p>
+          </div>
+        </section>
+
+        <section class="story">
+          <div class="story-copy">
+            <p class="story-kicker">Why this exists</p>
+            <h2>I wanted a simple tracking app</h2>
+            <p>
+              My net worth lived in a Google Sheet for years: one row per account, one column per month, a chart
+              I rebuilt every time something moved. The sheet was never the problem — the evening I spent repairing
+              it was.
+            </p>
+            <p>
+              Every app I tried wanted to manage my spending instead. I did not want a budget; I wanted to know
+              what I own and how it moved. So this is that app, with one rule: if a number cannot be computed from
+              the snapshots you typed in, it does not belong on the screen.
+            </p>
+            <p>
+              Instead of banking integrations that break twice a year, you open your banking app, your broker, the
+              pension statement, and copy the value across. <strong>Five to ten minutes a month.</strong> That is
+              the whole ritual.
+            </p>
+            <a class="text-link" href={url("start/why/")}>Read the longer version →</a>
+          </div>
+          <aside class="story-aside">
+            <h3>Four decisions, made once</h3>
+            <ol>
+              <li>
+                <strong>Assets, not habits.</strong> No transaction ledger and no spending categories. The
+                monthly totals in your profile are the only expenses the app knows.
+              </li>
+              <li>
+                <strong>Manual by design.</strong> No connector covers every bank, broker, pension fund and wallet —
+                and maintaining a hundred of them is a liability, not a feature.
+              </li>
+              <li>
+                <strong>Local by default.</strong> One SQLite file on your Mac. No account, no server holding your
+                balances, nothing to keep online.
+              </li>
+              <li>
+                <strong>Your model, your machine.</strong> Point the assistant at Ollama and none of it leaves the
+                laptop.
+              </li>
+            </ol>
+          </aside>
+        </section>
+
+        <section class="features">
+          <h2>The whole picture, on one Mac</h2>
+          <div class="grid">
+            {
+              features.map((feature) => (
+                <article>
+                  <div class="feature-icon" aria-hidden="true">{feature.icon}</div>
+                  <h3>{feature.title}</h3>
+                  <p>{feature.body}</p>
+                </article>
+              ))
+            }
+          </div>
+        </section>
+
+        <section class="steps">
+          <h2>Three habits and the app does the rest</h2>
+          <ol>
+            {
+              steps.map((step, index) => (
+                <li>
+                  <span class="step-number">{String(index + 1).padStart(2, "0")}</span>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </li>
+              ))
+            }
+          </ol>
+        </section>
+
+        <section class="privacy">
+          <div class="privacy-copy">
+            <h2>Local-first is the design, not a setting</h2>
+            <p>Your database is a single file:</p>
+            <p class="db-path">
+              <code>~/Library/Application&nbsp;Support/app.financetracker/financetracker.db</code>
+            </p>
+            <p>There is no server to log in to and no analytics to opt out of.</p>
+            <ul>
+              <li>
+                Only three things touch the network. The update check runs when you press it. The ECB fetch
+                <em>downloads</em> a public rates file and sends nothing about you. AI requests are the only ones
+                that carry anything: your questions, and the figures the model looks up.
+              </li>
+              <li>API keys live in the macOS Keychain, bound to the endpoint they were entered for.</li>
+              <li>Backups are plain JSON. You can read them, diff them and keep them forever.</li>
+            </ul>
+            <a class="text-link" href={url("data/privacy/")}>What the app stores, and what it sends →</a>
+          </div>
+          <div class="privacy-card">
+            <div class="card-line"><span>Database</span><strong>SQLite, local</strong></div>
+            <div class="card-line"><span>Accounts</span><strong>None</strong></div>
+            <div class="card-line"><span>Telemetry</span><strong>None</strong></div>
+            <div class="card-line"><span>Cloud sync</span><strong>None</strong></div>
+            <div class="card-line"><span>Export</span><strong>JSON, v4</strong></div>
+            <div class="card-line"><span>Licence</span><strong>MIT</strong></div>
+          </div>
+        </section>
+
+        <section class="docs-teaser">
+          <h2>Read before you trust it</h2>
+          <p class="docs-lede">
+            The guide is written against the shipped build, screen by screen. Start with the concepts, then
+            whichever page matches what you are about to do.
+          </p>
+          <div class="doc-cards">
+            <a class="doc-card" href={url("start/what-it-is/")}>
+              <span class="doc-kicker">Concepts</span>
+              <h3>What FinanceTracker is</h3>
+              <p>Assets, snapshots, institutions, categories and the system roles behind the numbers.</p>
+            </a>
+            <a class="doc-card" href={url("start/install/")}>
+              <span class="doc-kicker">Setup</span>
+              <h3>Install and first launch</h3>
+              <p>The DMG, the Gatekeeper prompt, and the demo app that keeps its data separate.</p>
+            </a>
+            <a class="doc-card" href={url("data/snapshots/")}>
+              <span class="doc-kicker">Core loop</span>
+              <h3>Snapshots</h3>
+              <p>One value per asset per day, from a single entry or from Bulk Entry.</p>
+            </a>
+            <a class="doc-card" href={url("assistant/setup/")}>
+              <span class="doc-kicker">Optional</span>
+              <h3>The AI assistant</h3>
+              <p>Ollama on your Mac, or a hosted model with your own key. Off until you say otherwise.</p>
+            </a>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <div class="footer-brand">
+          <img src={url("favicon.svg")} alt="" width="22" height="22" />
+          <span>FinanceTracker</span>
+        </div>
+        <nav aria-label="Footer">
+          <a href={url("start/why/")}>Documentation</a>
+          <a href={url("start/why/")}>Why this exists</a>
+          <a href="https://github.com/juliendf/FinanceTrackerApp/releases">Releases</a>
+          <a href="https://github.com/juliendf/FinanceTrackerApp/blob/main/docs/CHANGELOG.md">Changelog</a>
+          <a href="https://github.com/juliendf/FinanceTrackerApp/issues">Issues</a>
+          <a href="https://github.com/juliendf/FinanceTrackerApp/blob/main/LICENSE">MIT</a>
+        </nav>
+        <p class="footer-note">
+          Not financial advice. An alpha project by
+          <a href="https://github.com/juliendf">Julien</a>.
+        </p>
+      </footer>
+    </div>
+  </body>
+</html>
+
+<style>
+  :root {
+    --bg: #0b1014;
+    --bg-soft: #11181e;
+    --panel: #151e25;
+    --line: #22303a;
+    --text: #e8eef2;
+    --muted: #9fb0bb;
+    --accent: #2dd4a7;
+    --accent-ink: #06231c;
+    --radius: 16px;
+    --max: 1120px;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  .page {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(900px 500px at 15% -10%, rgba(45, 212, 167, 0.13), transparent 70%),
+      radial-gradient(700px 420px at 90% 0%, rgba(56, 132, 255, 0.1), transparent 70%),
+      var(--bg);
+    color: var(--text);
+    font-family: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page a {
+    color: inherit;
+  }
+
+  .nav {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 22px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 650;
+    letter-spacing: -0.01em;
+    text-decoration: none;
+    font-size: 17px;
+  }
+
+  .nav-links {
+    display: flex;
+    align-items: center;
+    gap: 26px;
+    font-size: 14.5px;
+  }
+
+  .nav-links a {
+    text-decoration: none;
+    color: var(--muted);
+    transition: color 0.15s ease;
+  }
+
+  .nav-links a:hover {
+    color: var(--text);
+  }
+
+  .nav-cta {
+    color: var(--accent-ink) !important;
+    background: var(--accent);
+    padding: 8px 16px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+
+  .nav-cta:hover {
+    filter: brightness(1.08);
+  }
+
+  main {
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+    gap: 48px;
+    align-items: center;
+    padding: 56px 0 24px;
+  }
+
+  .eyebrow {
+    margin: 0 0 18px;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  h1 {
+    margin: 0 0 20px;
+    font-size: clamp(32px, 3.4vw, 46px);
+    line-height: 1.1;
+    letter-spacing: -0.032em;
+    font-weight: 680;
+    text-wrap: balance;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  .lede {
+    margin: 0 0 26px;
+    font-size: 17.5px;
+    color: var(--muted);
+    max-width: 46ch;
+  }
+
+  .actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 12px 22px;
+    border-radius: 999px;
+    font-weight: 600;
+    font-size: 15px;
+    text-decoration: none;
+    border: 1px solid transparent;
+    transition: transform 0.12s ease, filter 0.12s ease, border-color 0.12s ease;
+  }
+
+  .btn:hover {
+    transform: translateY(-1px);
+  }
+
+  .btn.primary {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+
+  .btn.ghost {
+    border-color: var(--line);
+    color: var(--text);
+    background: rgba(255, 255, 255, 0.02);
+  }
+
+  .btn.ghost:hover {
+    border-color: #3a4d5a;
+  }
+
+  .note {
+    margin: 0;
+    font-size: 13.5px;
+    color: #7d909c;
+    max-width: 52ch;
+  }
+
+  .note strong {
+    color: #b9c7d0;
+    font-weight: 600;
+  }
+
+  /* Three claims that would bloat the paragraph: short, scannable, above the fold. */
+  .hero-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    margin: 28px 0 22px;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .hero-facts div {
+    padding: 14px 16px 14px 0;
+    border-left: 1px solid var(--line);
+    padding-left: 16px;
+  }
+
+  .hero-facts div:first-child {
+    border-left: 0;
+    padding-left: 0;
+  }
+
+  .hero-facts strong {
+    display: block;
+    font-size: 13.5px;
+    font-weight: 620;
+    letter-spacing: -0.005em;
+    color: var(--text);
+    margin-bottom: 3px;
+  }
+
+  .hero-facts span {
+    display: block;
+    font-size: 12.5px;
+    line-height: 1.45;
+    color: var(--muted);
+  }
+
+  .hero-shot {
+    position: relative;
+  }
+
+  .window {
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 50px 100px -40px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+    overflow: hidden;
+    background: #f7f9fb;
+    transform: perspective(1600px) rotateY(-4deg) rotateX(1deg);
+    transition: transform 0.4s ease;
+  }
+
+  .window:hover {
+    transform: none;
+  }
+
+  .window img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .alpha {
+    margin: 18px 0 0;
+  }
+
+  .alpha-inner {
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+    padding: 16px 20px;
+    border: 1px solid #40331a;
+    background: rgba(255, 196, 87, 0.06);
+    border-radius: 12px;
+  }
+
+  .alpha-inner p {
+    margin: 0;
+    font-size: 14px;
+    color: #cbb894;
+  }
+
+  .alpha-inner strong {
+    color: #e8dcc4;
+    font-weight: 600;
+  }
+
+  .pill {
+    flex: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 9px;
+    border-radius: 999px;
+    background: rgba(255, 196, 87, 0.16);
+    color: #ffc457;
+    margin-top: 1px;
+  }
+
+  section h2 {
+    font-size: clamp(24px, 2.6vw, 32px);
+    letter-spacing: -0.025em;
+    margin: 0 0 26px;
+    font-weight: 650;
+  }
+
+  /* The origin story: the only first-person block on the page. */
+  .story {
+    display: grid;
+    grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+    gap: 56px;
+    padding: 76px 0 12px;
+    border-top: 1px solid var(--line);
+    margin-top: 56px;
+  }
+
+  .story-kicker {
+    margin: 0 0 14px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .story-copy h2 {
+    margin-bottom: 20px;
+    text-wrap: balance;
+  }
+
+  .story-copy p {
+    color: var(--muted);
+    font-size: 15.5px;
+    margin: 0 0 16px;
+    max-width: 60ch;
+  }
+
+  .story-copy strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .story-aside {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: linear-gradient(180deg, rgba(45, 212, 167, 0.05), rgba(255, 255, 255, 0.012));
+    padding: 26px 28px;
+    align-self: start;
+  }
+
+  .story-aside h3 {
+    margin: 0 0 16px;
+    font-size: 13px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
+  }
+
+  .story-aside ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: decision;
+  }
+
+  .story-aside li {
+    counter-increment: decision;
+    position: relative;
+    padding: 0 0 16px 30px;
+    font-size: 14.5px;
+    color: var(--muted);
+    line-height: 1.55;
+  }
+
+  .story-aside li:last-child {
+    padding-bottom: 0;
+  }
+
+  .story-aside li::before {
+    content: counter(decision, decimal-leading-zero);
+    position: absolute;
+    left: 0;
+    top: 1px;
+    font-size: 11.5px;
+    letter-spacing: 0.06em;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .story-aside strong {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .features {
+    padding: 84px 0 20px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .grid article {
+    padding: 24px;
+    border-radius: var(--radius);
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0));
+  }
+
+  .feature-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: rgba(45, 212, 167, 0.1);
+    color: var(--accent);
+    font-size: 16px;
+    margin-bottom: 16px;
+  }
+
+  .grid h3 {
+    margin: 0 0 8px;
+    font-size: 16.5px;
+    letter-spacing: -0.01em;
+    font-weight: 620;
+  }
+
+  .grid p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+
+  .steps {
+    padding: 72px 0 20px;
+  }
+
+  .steps ol {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+
+  .steps li {
+    border-top: 1px solid var(--line);
+    padding-top: 18px;
+  }
+
+  .step-number {
+    font-variant-numeric: tabular-nums;
+    font-size: 13px;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+  }
+
+  .steps h3 {
+    margin: 8px 0 6px;
+    font-size: 17px;
+    font-weight: 620;
+  }
+
+  .steps p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14.5px;
+  }
+
+  .privacy {
+    margin: 84px 0 0;
+    padding: 40px;
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.008));
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 40px;
+    align-items: center;
+  }
+
+  .privacy h2 {
+    margin-bottom: 14px;
+  }
+
+  .privacy p {
+    color: var(--muted);
+    font-size: 15px;
+    margin: 0 0 16px;
+  }
+
+  .privacy code {
+    display: inline-block;
+    max-width: 100%;
+    font-size: 12.5px;
+    background: #0b1116;
+    border: 1px solid var(--line);
+    padding: 3px 7px;
+    border-radius: 6px;
+    color: #b7c8d3;
+    overflow-wrap: anywhere;
+  }
+
+  .privacy .db-path {
+    margin: 0 0 14px;
+  }
+
+  .privacy ul {
+    margin: 0 0 18px;
+    padding-left: 18px;
+    color: var(--muted);
+    font-size: 15px;
+  }
+
+  .privacy li {
+    margin-bottom: 8px;
+  }
+
+  .page .text-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 14.5px;
+    font-weight: 560;
+  }
+
+  .page .text-link:hover {
+    text-decoration: underline;
+  }
+
+  .privacy-card {
+    border: 1px solid var(--line);
+    background: #0d141a;
+    border-radius: 14px;
+    padding: 8px 18px;
+  }
+
+  .card-line {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(34, 48, 58, 0.7);
+    font-size: 14px;
+  }
+
+  .card-line:last-child {
+    border-bottom: 0;
+  }
+
+  .card-line span {
+    color: var(--muted);
+  }
+
+  .card-line strong {
+    font-weight: 560;
+    color: var(--text);
+  }
+
+  .docs-teaser {
+    padding: 84px 0 40px;
+  }
+
+  .docs-lede {
+    color: var(--muted);
+    max-width: 62ch;
+    margin: -12px 0 28px;
+  }
+
+  .doc-cards {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .doc-card {
+    display: block;
+    text-decoration: none;
+    padding: 22px;
+    border-radius: 14px;
+    border: 1px solid var(--line);
+    background: var(--bg-soft);
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .doc-card:hover {
+    border-color: #35505f;
+    transform: translateY(-2px);
+  }
+
+  .doc-kicker {
+    font-size: 11.5px;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .doc-card h3 {
+    margin: 10px 0 6px;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    font-weight: 620;
+  }
+
+  .doc-card p {
+    margin: 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .footer {
+    max-width: var(--max);
+    margin: 40px auto 0;
+    padding: 28px 24px 48px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 18px 28px;
+  }
+
+  .footer-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14.5px;
+  }
+
+  .footer nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    font-size: 13.5px;
+  }
+
+  .footer nav a {
+    color: var(--muted);
+    text-decoration: none;
+  }
+
+  .footer nav a:hover {
+    color: var(--text);
+  }
+
+  .footer-note {
+    margin: 0 0 0 auto;
+    color: #6e828e;
+    font-size: 13px;
+  }
+
+  .footer-note a {
+    color: #9fb0bb;
+  }
+
+  @media (max-width: 900px) {
+    .hero {
+      grid-template-columns: 1fr;
+      padding-top: 32px;
+    }
+
+    .hero-facts {
+      grid-template-columns: 1fr;
+      border-bottom: 0;
+    }
+
+    .hero-facts div {
+      border-left: 0;
+      border-bottom: 1px solid var(--line);
+      padding: 12px 0;
+    }
+
+    .hero-facts div:last-child {
+      border-bottom: 0;
+    }
+
+    .grid,
+    .steps ol {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .story {
+      grid-template-columns: 1fr;
+      gap: 32px;
+      padding-top: 56px;
+    }
+
+    .privacy {
+      grid-template-columns: 1fr;
+      padding: 28px;
+    }
+
+    .doc-cards {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .nav-links .nav-secondary {
+      display: none;
+    }
+
+    .grid,
+    .steps ol,
+    .doc-cards {
+      grid-template-columns: 1fr;
+    }
+
+    .footer-note {
+      margin-left: 0;
+    }
+  }
+</style>

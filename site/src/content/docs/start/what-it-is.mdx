@@ -1,0 +1,71 @@
+---
+title: What FinanceTracker is
+description: The model behind the app — assets, snapshots, institutions, categories and the rules that make the numbers add up.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+FinanceTracker keeps a history of what you own. You describe your accounts once, then
+record what each one is worth on a date. Every number in the app — the dashboard, the
+performance figures, the charts, what the assistant reads — is computed from those
+recorded values. Nothing is estimated, imported from a bank, or inferred.
+
+It is a native macOS app. There is one user, one database file, and no account.
+
+:::note[Alpha]
+The app is pre-1.0. Features move between releases and a bad import can leave your data
+in a state you did not want. Export a backup from **Settings → Data & Backup** before
+anything that matters, and keep a copy of the JSON somewhere else.
+:::
+
+It was built for one person's use case and has not been widened since:
+[why I built this](/start/why/).
+
+## The five things you will use
+
+| Concept | What it represents | Example |
+|---|---|---|
+| **Institution** | Who holds the money | UBS, Swissquote, PostFinance |
+| **Category** | What kind of money it is | Savings, Investments, Pension |
+| **Asset** | One account or position | "Global Equity Fund" at UBS, in CHF |
+| **Snapshot** | The value of one asset on one date | 63,484.00 CHF on 2026-11-01 |
+| **Tag** | A free label you invent | `retirement`, `liquid`, `swiss` |
+
+An asset belongs to exactly one institution and one category, and has one currency.
+A snapshot belongs to one asset and one date. That is the whole schema in spirit; the
+rest is presentation.
+
+## The rule everything depends on
+
+**The newest snapshot of an asset is its current value.** Not an average, not a
+projection — the last value you typed. An asset with no snapshot contributes nothing to
+the portfolio value, and an asset you stopped updating keeps its last value forever.
+
+That is why the dashboard has a **Days Since Update** tile: it is the only signal that
+the numbers might be stale.
+
+<Shot name="dashboard" alt="The FinanceTracker dashboard: total assets, portfolio value, currencies and the Days Since Update tile" caption="Days Since Update is the amber tile on the right: it counts from the newest snapshot of any asset." />
+
+## What it deliberately does not do
+
+- **No bank connections.** Nothing logs into your accounts, and no aggregator sees your
+  credentials.
+- **No transactions or budgets.** It tracks balances over time, not spending. The AI
+  assistant can discuss a budget, but the app does not store one.
+- **No multi-user or sync.** The database is a local file. Two Macs mean two databases
+  and a manual export/import.
+- **No cloud.** The only outbound requests are the optional European Central Bank rate
+  fetch and the AI provider you configure.
+
+## What you get in return
+
+- Multi-currency totals with rates you control, and a visible warning when a conversion
+  is missing instead of a silently wrong total.
+- Performance over a period, including the honest caveat that a deposit is not a gain.
+- Composition of a fund by ISIN, when you want it, without turning the app into a
+  portfolio accounting system.
+- An assistant that reads your figures and can *propose* a snapshot or a memory, but
+  cannot write anything without a confirmation click.
+
+Next: [install it](/start/install/), or jump to
+[the concepts in practice](/start/first-hour/).

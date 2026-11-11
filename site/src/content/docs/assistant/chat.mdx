@@ -1,0 +1,93 @@
+---
+title: Chatting
+description: Sessions, the composer, confirmation cards, and how to rewind a conversation.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+<Shot name="chat" alt="A conversation about goals, with the session list, model selector and prompt rail" />
+
+## Sessions
+
+The left column is the conversation list. **+** creates a session, titled automatically
+from the first 60 characters of your first message.
+
+- **Rename** — double-click a title, type, press Enter. Escape cancels; an empty title is
+  discarded.
+- **Pin** — the pin icon keeps a session at the top without changing its date.
+- **Delete** — removes the conversation and its messages, after a confirmation that names it.
+- **Search** — substring match on titles only.
+
+Sessions are grouped into **Pinned**, **This week** and **Earlier**.
+
+## The composer
+
+- **Enter** sends, **Shift+Enter** adds a line.
+- Maximum **4,000 characters** per message.
+- While a reply is coming, the send button becomes a **Stop** button. Stopping keeps your
+  message and any tool rows, but never stores a partial answer.
+- If you leave the page mid-answer, the request continues and a toast offers **Open chat**
+  when the answer lands.
+
+## Confirmation cards
+
+The assistant cannot write to your database. Two kinds of proposal arrive as cards in the
+transcript:
+
+| Card | What it does |
+|---|---|
+| **Remember this?** | Category, content and importance; **Confirm** writes the memory, **Reject** discards it |
+| **Pending Action: Create Snapshot** | Asset, amount, date; warns if a snapshot already exists on that date; **Confirm** creates or updates it |
+
+Confirming writes an assistant message recording what changed, for example *"Snapshot
+created for Global Equity Fund: 64,000.00 CHF on 2026-11-01."* A card can only be resolved
+once; confirming again reports *"That action was already resolved."*
+
+## Editing and rewinding
+
+- Hover a message to reveal its actions.
+- **Edit** on a user message rewinds the conversation to that point, then asks again with
+  your corrected text. This deletes everything after it — the warning says so.
+- **Delete** on any message removes it and everything after it, so the assistant loses that
+  context.
+
+Both are destructive and cannot be undone. Export the conversation first if it matters.
+
+## Actions menu
+
+| Action | Result |
+|---|---|
+| **Export as Markdown** | Saves the conversation as a `.md` file through the macOS save panel |
+| **Summarise** | Appends a summary of at most 250 words: decisions, open questions, stated facts |
+| **Extract memories** | Asks the model for new facts and stages each as a *Remember this?* card |
+
+Extract memories is a review step, not a bulk write: you still confirm each fact.
+
+## The prompt rail
+
+**Ask your advisor** offers seven canned questions, sent immediately on click:
+
+Portfolio review · Allocation & risk · Performance · Priorities · Stress test ·
+Retirement plan · Succession
+
+Collapse it with the chevron; the choice is remembered.
+
+## What the assistant sees
+
+Only the current conversation's last 60 messages, plus the tools it can call. It cannot read
+another conversation, a file, or a document. See
+[what it can see and do](/assistant/what-it-knows/).
+
+## Limits
+
+| Limit | Value |
+|---|---|
+| Message length | 4,000 characters |
+| History sent per request | Last 60 messages |
+| Tool rounds per turn | 5, then one final answer without tools |
+| Memories in the prompt | The 10 with the highest importance |
+| Conversation summary input | 24,000 characters, newest kept |
+
+When it hits the tool-round cap, the answer says so: *"I stopped after 5 tool rounds
+without a final answer. Try narrowing the question."* That is a reason to ask a smaller
+question, not a reason to retry the same one.

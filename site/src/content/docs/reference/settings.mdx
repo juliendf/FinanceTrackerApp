@@ -1,0 +1,74 @@
+---
+title: Settings
+description: Every preference, what it changes, and which ones are stored for a later release.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+<Shot name="settings" alt="The General settings page: currency, application and display sections" />
+
+## Currency
+
+| Setting | Default | Effect |
+|---|---|---|
+| **Base Currency** | EUR | The currency of every total, the dashboard, performance and the assistant |
+| **Show Converted Amounts** | On | Stored and exported. No screen applies it in this build — amounts are shown in the base currency where a total is shown |
+
+## Application
+
+| Setting | Default | Effect |
+|---|---|---|
+| **Items Per Page** | 20 | Default page size on the asset and snapshot lists; the list selector overrides it for that visit |
+| **Date Format** | `YYYY-MM-DD` | Stored and exported. Several screens still print their own format in this build, so do not rely on it changing every date |
+
+## Display
+
+| Setting | Default | Effect |
+|---|---|---|
+| **Theme** | Light | Light, Dark or Auto (system). Applied immediately on save |
+| **Enable Animations** | On | Turns the count-up animation on the dashboard tiles on or off (and only when macOS is not asking for reduced motion) |
+
+## The buttons under the form
+
+- **Save Settings** — writes every field in one transaction and toasts *"Settings saved
+  successfully!"*.
+- **Reset to Defaults** — opens the settings-only reset page. Assets, snapshots and rates
+  are untouched.
+- **LLM Providers** — jumps to the AI configuration.
+- **Export Settings** — writes the preference keys to a JSON textarea you can save.
+
+## Export and import settings
+
+**Settings → Export** shows the merged preferences as JSON, including keys that have no
+control on the page (AI enablement, streaming, standing instructions, rate-source
+bookkeeping). **Import** accepts a JSON object back: known keys are applied in one
+transaction, unknown keys are ignored and listed, and invalid JSON is refused with
+*"That is not valid JSON."*
+
+This is preferences only. For data, use **Data & Backup** and read
+[backup and import](/data/backup/).
+
+## Exchange rates
+
+Its own page, with the ECB source. Covered in
+[currencies and exchange rates](/data/currencies/).
+
+## LLM providers
+
+The AI toggle, streaming, standing instructions, provider list, model lists, connection
+test and the request-timeout field. Covered in [setting up the assistant](/assistant/setup/).
+
+:::note[The timeout field]
+**AI request timeout** accepts 5–600 seconds and is saved with the other settings. This
+build keeps a fixed 300-second ceiling on the underlying HTTP client, so the value is
+recorded for a later release rather than enforced today.
+:::
+
+## Data & Backup
+
+Counts, JSON export with per-entity checkboxes, the import wizard, the database reset and —
+in demo builds only — the sample-data button. See [backup and import](/data/backup/).
+
+## Updates
+
+**Check for updates** lives at the bottom of General. See [updates](/reference/updates/).

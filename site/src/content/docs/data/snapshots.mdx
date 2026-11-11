@@ -1,0 +1,98 @@
+---
+title: Snapshots
+description: One value per asset per day, how to record and edit it, and what the list can do.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+A snapshot is the value of one asset on one calendar date. It is the only way a number
+enters the app, and the only thing the dashboard and the performance figures read.
+
+:::note[Why you type it in]
+There is no bank connector, and that is a decision rather than a gap: no integration
+covers every bank, broker, pension fund and wallet, and keeping a hundred of them alive is
+a product of its own. You read the value where it lives and type it in — five to ten
+minutes, once a month if that is your rhythm. [The reasoning](/start/why/#why-snapshots-are-manual).
+:::
+
+## The rules
+
+- **One snapshot per asset per date.** The form checks it and the database enforces it. A
+  second entry on the same date is refused with *"A snapshot for this asset already exists
+  on &lt;date&gt;"* — edit the existing one instead.
+- **Amount 0.01 to 10,000,000**, at most 2 decimal places. Amounts are stored as integer
+  minor units, so nothing drifts.
+- **The date cannot be in the future.** The picker stops at today.
+- **Dates are calendar dates.** No time, no timezone conversion.
+
+## Recording one
+
+From the asset list (camera icon), from the asset page (**Add Snapshot**), or from
+**Snapshots → Add Snapshot**:
+
+| Field | Notes |
+|---|---|
+| Asset | Preselected when you arrive from an asset. Not editable when editing an existing snapshot |
+| Date | Defaults to today |
+| Amount | Shows the asset's currency symbol once an asset is chosen |
+
+When the asset already has a snapshot, the form shows the previous one (*"Previous
+snapshot: 62,100.00 CHF on 2026-10-01"*) so you can see the movement.
+
+Three save buttons:
+
+- **Create Snapshot** — save and go to the snapshot detail.
+- **Save & Create Another** — keeps the asset, clears the amount, resets the date to today.
+- **Save & Back to Asset** — save and return to the asset page.
+
+## Editing one
+
+Editing changes the **date and the amount only**; the asset is fixed. The form lists the
+pending changes before you save (`Date: old → new`, `Amount: old → new (+delta)`).
+
+Deleting a snapshot removes that row and nothing else. The asset and its other snapshots
+stay.
+
+## The list
+
+<Shot name="snapshots" alt="The Snapshots screen: filters by date, institution, currency, amount range and text" />
+
+| Control | Behaviour |
+|---|---|
+| Start Date / End Date | Inclusive bounds |
+| Institution / Currency | Exact match |
+| Min Amount / Max Amount | Inclusive, in the snapshot's own currency |
+| Search | Asset name, institution, product, category |
+| Per Page | 10, 20, 50 or 100; defaults to your Items Per Page setting |
+
+- Sortable headers: **Date**, **Asset**, **Amount**. Default is date descending.
+- The checkbox column selects **the current page only**; the selection clears when you
+  change filters, sort or page.
+- With rows selected, a bar offers **Bulk Edit** and **Bulk Delete**. Bulk delete is one
+  transaction and one confirmation.
+
+## Export to CSV
+
+**Export CSV** writes the **currently filtered** set — not just the visible page — always
+sorted by date descending, whatever the on-screen sort says. Columns:
+
+```
+Date, Asset Name, Institution, Product, Category, Amount, Currency, Created At
+```
+
+The default file name is `snapshots_export_<date>.csv`; you choose the destination in the
+macOS save panel. Amounts are written with two decimals, which is what a spreadsheet wants.
+
+## Reading a snapshot page
+
+The detail page shows the value, the weekday and date, the asset it belongs to, when the
+row was created and last changed, plus a timeline of the other snapshots of that asset
+(the ten most recent) and two quick facts. It is mostly a place to confirm you edited the
+right row.
+
+## A habit that keeps the numbers honest
+
+Record on the **same day each month**. Performance is measured from the latest snapshot at
+or before the start of the period, so irregular dates make the comparison noisier than the
+market. If you miss a month, record it late rather than inventing a value — a gap is
+visible, a guess is not.

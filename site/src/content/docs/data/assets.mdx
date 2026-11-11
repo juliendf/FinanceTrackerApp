@@ -1,0 +1,109 @@
+---
+title: Assets
+description: Every field on the asset form, the display-name rule, holdings and what deleting an asset removes.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+An asset is one account or position: a savings account, a fund, a pension pot, a crypto
+wallet. It belongs to one institution, one category and one currency, and it is valued
+exclusively by its snapshots.
+
+<Shot name="assets" alt="The Assets screen: summary tiles per currency, filters, and a table with per-row actions" />
+
+## The display name
+
+If you leave **Custom Name** empty, the app builds the name as:
+
+```
+Institution - Product (Category)
+```
+
+That generated string appears in lists, page titles, delete dialogs and toasts. A custom
+name overrides it everywhere. It is the cheapest way to make a long list readable.
+
+## Fields
+
+| Field | Required | Rules |
+|---|---|---|
+| Institution | Yes | Must exist; create one with **+** |
+| Product Name | Yes | 1–100 characters |
+| Category | Yes | Must exist; create one with **+** |
+| Currency | Yes | EUR, USD or CHF |
+| Custom Name | No | Up to 100 characters |
+| Description | No | Up to 1,000 characters |
+| Notes | No | Up to 5,000 characters, line breaks preserved |
+| Code/NIN | No | Up to 50 characters — account number, IBAN, whatever identifies it |
+| Interest Rate (%) | No | 0–100, stored as typed: `1.25` means 1.25 % |
+| Cost/Charges (%) | No | 0–100, same convention |
+| Tags | No | Any number, from the tag list |
+| Initial Snapshot | On by default | Amount and date; amount must be at least 0.01 |
+
+The interest rate and cost fields are descriptive. Nothing in the app computes interest or
+deducts fees from a value.
+
+## The initial snapshot
+
+Creating an asset can create its first snapshot in the same transaction. The checkbox is
+**ticked by default** — if you press **Create Asset** without touching it and without an
+amount, the form refuses with *"Please enter an initial amount or uncheck Create Initial
+Snapshot"*. That is not an error; it is a nudge that an asset without a valuation
+contributes nothing to the dashboard.
+
+## Changing the currency
+
+Currency is not converted. On save, the app asks:
+
+> You are changing the currency from CHF to EUR. This will not convert existing snapshot
+> values. Are you sure you want to continue?
+
+Every existing snapshot keeps its numeric value and is simply read in the new currency.
+Only do it when the label was wrong.
+
+## Holdings: what an asset is made of
+
+The holdings section appears only when the chosen category's **system role** is
+`Stocks / ETF` or `Bonds`. One row per instrument:
+
+| Column | Required | Rules |
+|---|---|---|
+| Name | No | Up to 80 characters, a readable label ("iShares Core MSCI World") |
+| ISIN | Yes | 12 characters, must pass the check digit, unique within the asset |
+| Quantity | Yes | Greater than zero, up to 8 decimal places, `,` accepted as separator |
+| Price | No | Unit price in the asset's currency, greater than zero, up to 8 decimals |
+
+**The snapshot still owns the value.** Holdings prices never override it. When every line
+has a price and a snapshot exists, the app splits the snapshot amount by
+`quantity × price` and shows each line's share. When only some lines are priced, it shows
+raw `quantity × price` and says so in the help text. A fund you never price can still
+have holdings — it just cannot show shares.
+
+:::caution[Two ways to lose holdings]
+- Changing the category to one whose role does not hold instruments clears every row,
+  with a toast that says so.
+- Duplicate ISINs inside one asset are rejected; the same ISIN in two different assets is
+  fine.
+
+Rows are re-sorted by ISIN when you reopen the form, so the order you typed is not kept.
+:::
+
+## Deleting an asset
+
+The confirmation names the asset and warns that it is permanent. Deleting removes the
+asset, **all of its snapshots**, its holdings and its tag links, in one transaction. The
+page that opened the dialog shows the snapshot count; the list does not.
+
+## The list
+
+- Summary tiles: total value in the base currency (when every currency converts), the
+  number of assets with the date range of their snapshots, then one tile per currency.
+- Filters: search (institution, product, category, code), currency, category, institution,
+  tag. Search debounces 300 ms; selects apply immediately.
+- Sorting is fixed: institution name, then product. Clicking a column header does nothing.
+- **Status** is a freshness badge: `Current` up to 30 days, `Outdated` up to 90, `Stale`
+  beyond, `No data` when the asset has no snapshot.
+- Row actions: record a snapshot, open, edit, delete. On a narrow window they collapse into
+  a `⋮` menu.
+
+If a currency has no usable rate to your base currency, the total-value tile is hidden
+rather than shown wrong. See [currencies and exchange rates](/data/currencies/).
