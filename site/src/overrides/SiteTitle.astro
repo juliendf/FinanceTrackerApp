@@ -1,14 +1,14 @@
 ---
 /**
- * Starlight SiteTitle override: adds the version badge next to the site
- * title in the header, on the same row as the search box and the GitHub icon.
+ * Starlight SiteTitle override: the site title plus the release version,
+ * on the same row as the search box and the GitHub icon.
  *
- * The badge links to the latest release. Markup below mirrors the stock
- * component (node_modules/@astrojs/starlight/dist/components/SiteTitle.astro)
- * so the logo and title keep behaving identically — if Starlight changes
- * that component, copy its changes here.
+ * Markup mirrors the stock component (node_modules/@astrojs/starlight/dist/
+ * components/SiteTitle.astro) so the logo and title behave identically — if
+ * Starlight changes that component, copy its changes here.
  */
 
+import VersionBadge from "../components/VersionBadge.astro";
 import { appVersion } from "../lib/version.mjs";
 import config from "virtual:starlight/user-config";
 import { logos } from "virtual:starlight/user-images";
@@ -20,17 +20,26 @@ const releaseUrl =
   "https://github.com/juliendf/FinanceTrackerApp/releases/latest";
 ---
 
-<a href={siteTitleHref} class="site-title sl-flex">
-	{logo && logos.dark && (
-		<img alt={logo.alt} src={logos.dark.src} width={logos.dark.width} height={logos.dark.height} />
-	)}
-	<span translate="no">{siteTitle}</span>
-</a>
-
-<a href={releaseUrl} class="site-version" title={`Latest release: v${version}`}>v{version}</a>
+<div class="title-row">
+	<a href={siteTitleHref} class="site-title sl-flex">
+		{logo && logos.dark && (
+			<img alt={logo.alt} src={logos.dark.src} width={logos.dark.width} height={logos.dark.height} />
+		)}
+		<span translate="no">{siteTitle}</span>
+	</a>
+	<VersionBadge version={version} href={releaseUrl} />
+</div>
 
 <style>
 	@layer starlight.core {
+		.title-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-width: 0;
+			--version-color: var(--sl-color-gray-3);
+			--version-hover: var(--sl-color-text-accent);
+		}
 		.site-title {
 			align-items: center;
 			gap: var(--sl-nav-gap);
@@ -50,21 +59,6 @@ const releaseUrl =
 			max-width: 100%;
 			object-fit: contain;
 			object-position: 0 50%;
-		}
-		.site-version {
-			font-size: var(--sl-text-xs);
-			font-weight: 600;
-			line-height: 1;
-			padding: 4px 8px;
-			border-radius: 999px;
-			border: 1px solid var(--sl-color-gray-5);
-			color: var(--sl-color-gray-3);
-			text-decoration: none;
-			white-space: nowrap;
-		}
-		.site-version:hover {
-			color: var(--sl-color-text-accent);
-			border-color: var(--sl-color-gray-3);
 		}
 	}
 </style>

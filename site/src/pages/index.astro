@@ -1,6 +1,7 @@
 ---
 import "@fontsource-variable/inter";
 import { appVersion } from "../lib/version.mjs";
+import VersionBadge from "../components/VersionBadge.astro";
 
 const base = import.meta.env.BASE_URL;
 const url = (path: string) => `${base}${path.replace(/^\//, "")}`;
@@ -93,7 +94,7 @@ const steps = [
           <a href={url("start/why/")}>Docs</a>
           <a class="nav-secondary" href={url("start/install/")}>Install</a>
           <a class="nav-secondary" href="https://github.com/juliendf/FinanceTrackerApp">GitHub</a>
-          <a class="nav-version" href="https://github.com/juliendf/FinanceTrackerApp/releases/latest">v{version}</a>
+          <VersionBadge version={version} href="https://github.com/juliendf/FinanceTrackerApp/releases/latest" />
           <a class="nav-cta" href="https://github.com/juliendf/FinanceTrackerApp/releases/latest">Download</a>
         </nav>
       </header>
@@ -374,6 +375,8 @@ const steps = [
     align-items: center;
     gap: 26px;
     font-size: 14.5px;
+    --version-color: var(--muted);
+    --version-hover: var(--text);
   }
 
   .nav-links a {
@@ -396,15 +399,6 @@ const steps = [
 
   .nav-cta:hover {
     filter: brightness(1.08);
-  }
-
-  .nav-version {
-    font-size: 12.5px;
-    font-weight: 600;
-    padding: 3px 9px;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    white-space: nowrap;
   }
 
   main {
