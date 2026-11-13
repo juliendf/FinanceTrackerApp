@@ -67,7 +67,7 @@ const steps = [
     <title>FinanceTracker — local-first portfolio tracking for macOS</title>
     <meta
       name="description"
-      content="A native macOS app that tracks what you own over time: snapshots, multi-currency totals, performance, and an optional AI assistant. Single user, offline, MIT."
+      content="A native macOS app that tracks what you own over time: snapshots, multi-currency totals, performance and an optional AI assistant. Local-first, single user, MIT."
     />
     <link rel="icon" href={url("favicon.svg")} type="image/svg+xml" />
     <link rel="canonical" href={url("")} />
@@ -105,11 +105,11 @@ const steps = [
             <p class="eyebrow">
               <span class="eyebrow-plain">macOS · Apple silicon · v{version} · MIT</span>
             </p>
-            <h1>Know what you <em>own.</em></h1>
+            <h1>Know what you own,<br /><em>and what it is worth.</em></h1>
             <p class="lede">
-              Track your wealth — bank, broker, pension, wallet — in one place, and watch it evolve over
-              time. Use the AI for insight built around your profile, goals and what it remembers.
-              Provider-agnostic: hosted or local models. No budgets, no bank connectors, no account to create.
+              Track your wealth — bank, broker, pension, wallet, etc. — in one place, and see how it evolves over
+              time. Use the AI feature to get insights built entirely around your profile, goals and memories.
+              Any LLM provider, hosted or local. No budgets, no bank connectors, no account to create.
             </p>
             <div class="actions">
               <a class="btn primary" href="https://github.com/juliendf/FinanceTrackerApp/releases/latest">
@@ -124,12 +124,12 @@ const steps = [
                 <span>Local or remote LLMs</span>
               </div>
               <div>
-                <strong>One SQLite file</strong>
+                <strong>Local SQLite file</strong>
                 <span>No account, no telemetry, no server</span>
               </div>
               <div>
                 <strong>EUR, USD, CHF</strong>
-                <span>ECB reference rates, refreshed daily</span>
+                <span>ECB reference rates, on working days</span>
               </div>
             </div>
 
@@ -161,21 +161,20 @@ const steps = [
         <section class="story">
           <div class="story-copy">
             <p class="story-kicker">Why this exists</p>
-            <h2>I wanted a simple tracking app</h2>
+            <h2>I wanted a simple tracking tool, not another budgeting app.</h2>
             <p>
-              My net worth lived in a Google Sheet for years: one row per account, one column per month, a chart
+              For several years my wealth tracking lived in a Google Sheet: one row per account, one column per month, a chart
               I rebuilt every time something moved. The sheet was never the problem — the evening I spent repairing
               it was.
             </p>
             <p>
-              Every app I tried wanted to manage my spending instead. I did not want a budget; I wanted to know
-              what I own and how it moved. So this is that app, with one rule: if a number cannot be computed from
-              the snapshots you typed in, it does not belong on the screen.
+              Every app I tried wanted to manage my spending. I did not want a budget; I wanted to know what I
+              own and how it moved, line by line and as a whole. So this is that app.
             </p>
             <p>
-              Instead of banking integrations that break twice a year, you open your banking app, your broker, the
-              pension statement, and copy the value across. <strong>Five to ten minutes a month.</strong> That is
-              the whole ritual.
+              No integrations that break twice a year. Instead, you open your banking app, your broker, your
+              pension statement, and copy the value across. Simple: <strong>five to ten minutes a month</strong>.
+              That's it.
             </p>
             <a class="text-link" href={url("start/why/")}>Read the longer version →</a>
           </div>
@@ -183,8 +182,8 @@ const steps = [
             <h3>Four decisions, made once</h3>
             <ol>
               <li>
-                <strong>Assets, not habits.</strong> No transaction ledger and no spending categories. The
-                monthly totals in your profile are the only expenses the app knows.
+                <strong>Assets, not habits.</strong> No transaction ledger, no spending categories, nothing to
+                classify. The monthly figures in your profile are the only income and expenses the app knows.
               </li>
               <li>
                 <strong>Manual by design.</strong> No connector covers every bank, broker, pension fund and wallet —
@@ -203,7 +202,7 @@ const steps = [
         </section>
 
         <section class="features">
-          <h2>The whole picture, on one Mac</h2>
+          <h2>The whole picture, on your Mac</h2>
           <div class="grid">
             {
               features.map((feature) => (
@@ -242,9 +241,9 @@ const steps = [
             <p>There is no server to log in to and no analytics to opt out of.</p>
             <ul>
               <li>
-                Only three things touch the network. The update check runs when you press it. The ECB fetch
-                <em>downloads</em> a public rates file and sends nothing about you. AI requests are the only ones
-                that carry anything: your questions, and the figures the model looks up.
+                Two things touch the network, both on request: the European Central Bank rates file is
+                <em>downloaded</em> on working days and sends nothing about you, and AI requests go only to the
+                provider you configure.
               </li>
               <li>API keys live in the macOS Keychain, bound to the endpoint they were entered for.</li>
               <li>Backups are plain JSON. You can read them, diff them and keep them forever.</li>
@@ -264,8 +263,8 @@ const steps = [
         <section class="docs-teaser">
           <h2>Read before you trust it</h2>
           <p class="docs-lede">
-            The guide is written against the shipped build, screen by screen. Start with the concepts, then
-            whichever page matches what you are about to do.
+            The guide is written against the shipped build, screen by screen. Start with the concepts, then the
+            two pages most people need first.
           </p>
           <div class="doc-cards">
             <a class="doc-card" href={url("start/what-it-is/")}>
