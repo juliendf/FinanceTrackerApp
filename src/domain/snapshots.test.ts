@@ -1,9 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   amountError,
-  csvField,
   filterSnapshots,
-  generateSnapshotsCsv,
   latestBefore,
   nextSort,
   parseSnapshotFilters,
@@ -126,22 +124,6 @@ describe("sortSnapshots", () => {
   it("by asset puts NULL names last ascending and first descending", () => {
     expect(ids({ sort_by: "asset", sort_order: "asc" })).toEqual([3, 1, 2]);
     expect(ids({ sort_by: "asset", sort_order: "desc" })).toEqual([2, 1, 3]);
-  });
-});
-
-describe("CSV", () => {
-  it("quotes only when needed and doubles quotes", () => {
-    expect(csvField("plain")).toBe("plain");
-    expect(csvField("a,b")).toBe('"a,b"');
-    expect(csvField('say "hi"')).toBe('"say ""hi"""');
-    expect(csvField("two\nlines")).toBe('"two\nlines"');
-  });
-  it("writes CRLF rows, 2dp amounts and second-resolution timestamps", () => {
-    const csv = generateSnapshotsCsv([row(1, { amount_minor: 123456, product_name: "A, B" })]);
-    expect(csv).toBe(
-      "Date,Asset Name,Institution,Product,Category,Amount,Currency,Created At\r\n" +
-        '2026-01-01,"Boursorama - A, B (Cash)",Boursorama,"A, B",Cash,1234.56,EUR,2026-01-01 10:00:00\r\n',
-    );
   });
 });
 

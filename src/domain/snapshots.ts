@@ -1,6 +1,6 @@
 /**
  * Snapshot screens' pure logic: URL filters, filtering, sorting, pagination
- * window, CSV export, form validation and the bulk entry / bulk edit rules.
+ * window, form validation and the bulk entry / bulk edit rules.
  *
  * The dataset is small, so joined rows are filtered in memory rather than in
  * SQL, which keeps these functions pure and testable.
@@ -266,65 +266,6 @@ export function summariseSnapshots(rows: readonly Pick<SnapshotListRow, "date">[
 /** Distinct currencies, sorted, as the filter dropdown offers them. */
 export function snapshotCurrencyOptions(rows: readonly Pick<SnapshotListRow, "currency">[]): string[] {
   return [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort();
-}
-
-// --- CSV export --------------------------------------------------------------
-
-export const CSV_HEADERS = [
-  "Date",
-  "Asset Name",
-  "Institution",
-  "Product",
-  "Category",
-  "Amount",
-  "Currency",
-  "Created At",
-] as const;
-
-/**
- * One CSV field: quoted only when it holds a comma, a double quote or a line
- * break, with embedded quotes doubled.
- */
-export function csvField(value: string): string {
-  return /[",\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
-}
-
-/** `strftime('%Y-%m-%d %H:%M:%S')` of a stored ISO timestamp; '' when missing. */
-export function csvTimestamp(value: string | null | undefined): string {
-  if (!value) return "";
-  return value.slice(0, 19).replace("T", " ");
-}
-
-/**
- * The CSV export.
- *
- * Rows end in `\r\n`, the CSV convention on every platform, and the export is
- * newest first. The amount is fixed to two decimals.
- */
-export function generateSnapshotsCsv(rows: readonly SnapshotListRow[]): string {
-  const lines = [CSV_HEADERS.map(csvField).join(",")];
-  for (const row of rows) {
-    lines.push(
-      [
-        row.date,
-        snapshotAssetName(row),
-        row.institution_name,
-        row.product_name,
-        row.category_name,
-        (fromMinorUnits(row.amount_minor) ?? new Decimal(0)).toFixed(2),
-        row.currency,
-        csvTimestamp(row.created_at),
-      ]
-        .map(csvField)
-        .join(","),
-    );
-  }
-  return lines.map((line) => `${line}\r\n`).join("");
-}
-
-/** `snapshots_export_{date.today()}.csv` */
-export function csvFileName(today: string): string {
-  return `snapshots_export_${today}.csv`;
 }
 
 // --- messages ----------------------------------------------------------------

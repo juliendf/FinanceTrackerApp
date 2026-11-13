@@ -4,6 +4,15 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## Unreleased
+
+**Removed**
+- **The snapshot CSV export is gone.** The Snapshots screen offered a button that
+  wrote the currently filtered rows to a spreadsheet. It was a one-way format that
+  could not be imported back, so it duplicated the backup's reason to exist and
+  added a second format to keep correct. The JSON backup in **Settings → Data &
+  Backup** is now the only way out of the app, and the only one that can come back.
+
 ## 0.7.1
 
 0.7.0 was never released, so this entry covers both what it added and the fixes
