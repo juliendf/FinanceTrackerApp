@@ -1,6 +1,6 @@
 ---
 title: FAQ
-description: Short answers to the questions the README does not cover.
+description: Short answers to the questions a new user asks first.
 ---
 
 **Is it free?**

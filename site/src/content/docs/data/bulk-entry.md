@@ -24,7 +24,7 @@ Two shortcuts:
 
 The header counts `<filled> of <visible> assets filled`.
 
-### All or nothing
+## If one row is wrong, nothing is written
 
 The whole batch is one transaction. One invalid amount, one future date, one duplicate for
 the same asset and date, and **nothing** is written. The errors appear in a red alert and
@@ -37,7 +37,7 @@ Global Equity Fund: A snapshot for this asset already exists on 2026-11-01
 That is deliberate. A half-written month is worse than a refused one, because you cannot
 tell which half.
 
-### The table
+## The Bulk Entry table
 
 | Column | Meaning |
 |---|---|
