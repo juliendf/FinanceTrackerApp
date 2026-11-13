@@ -214,34 +214,6 @@ export function SearchFilter({
   );
 }
 
-/** `export_buttons` */
-export function ExportButtons({
-  onExport,
-  formats = ["csv"],
-  disabled = false,
-}: {
-  onExport: (format: string) => void;
-  formats?: string[];
-  disabled?: boolean;
-}) {
-  return (
-    <div className="export-buttons d-flex gap-2">
-      {formats.map((format) => (
-        <button
-          key={format}
-          type="button"
-          className="btn btn-outline-secondary btn-sm"
-          disabled={disabled}
-          onClick={() => onExport(format)}
-        >
-          <i className="bi bi-download me-1" aria-hidden="true" />
-          {format.toUpperCase()}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 /** `tag_badge` */
 export function TagBadge({ name, color }: { name: string; color?: string | null }) {
   return (

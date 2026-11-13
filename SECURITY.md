@@ -6,7 +6,7 @@ Threat model: a single user's personal finance data on their own Mac. There is n
 
 - The database is a plain SQLite file in `~/Library/Application Support/app.financetracker/`. It is **not encrypted** by the app; protection is macOS user permissions and FileVault. Turn FileVault on.
 - Time Machine and other backups of that folder include the database.
-- Backup exports (JSON) and CSV exports are plain text written wherever the user chooses. Treat them as sensitive.
+- Backup exports (JSON) are plain text written wherever the user chooses. Treat them as sensitive.
 
 ## Secrets
 
@@ -74,7 +74,7 @@ The webview never passes a path. `pick_and_read_text_file` and `save_text_file` 
 1. **`run_transaction` has no table allow-list** beyond the provider tables. Statements are validated (DML only, no stacking, no comments, enforced by the authorizer) and `llm_providers`/`provider_models` are refused outright, but any other table can still be rewritten or deleted by a compromised webview. Replace with named, parameterised operations as the write set stabilises.
 2. **Database is unencrypted** (see Data at rest).
 
-Personal data is git-ignored: `finance_tracker_data_*.json`, `snapshots_export_*.csv`, `*.db`, `*.db-wal`, `*.db-shm`.
+Personal data is git-ignored: `finance_tracker_data_*.json`, `*.db`, `*.db-wal`, `*.db-shm`.
 
 ## Reporting
 

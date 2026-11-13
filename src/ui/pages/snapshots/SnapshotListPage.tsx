@@ -7,18 +7,14 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Dropdown } from "react-bootstrap";
-import { invoke } from "@tauri-apps/api/core";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { listInstitutions } from "../../../db/repositories/institutions";
 import { deleteSnapshot, deleteSnapshots, listSnapshotRows } from "../../../db/repositories/snapshots";
-import { todayIso } from "../../../domain/dates";
 import { formatDate, formatMinorAsCurrency, formatSymbolAmount, relativeDate } from "../../../domain/format";
 import { fromMinorUnits } from "../../../domain/money";
 import { pageNumbers, paginate } from "../../../domain/pagination";
 import {
-  csvFileName,
   filterSnapshots,
-  generateSnapshotsCsv,
   messages,
   nextSort,
   parseSnapshotFilters,
@@ -136,22 +132,6 @@ export function SnapshotListPage() {
     },
   });
 
-  const exportCsv = async () => {
-    const rows = sortSnapshots(filterSnapshots(allRows, filters), { sort_by: "date", sort_order: "desc" });
-    try {
-      const path = await invoke<string | null>("save_text_file", {
-        defaultName: csvFileName(todayIso()),
-        filterName: "CSV",
-        extensions: ["csv"],
-        contents: generateSnapshotsCsv(rows),
-      });
-      if (!path) return;
-      toast.success(`Exported ${rows.length} snapshot${rows.length === 1 ? "" : "s"} to ${path}`);
-    } catch (error) {
-      toast.error(`Export failed: ${errText(error)}`);
-    }
-  };
-
   const selectedRows = page.items.filter((row) => selected.has(row.id));
   const allSelected = page.items.length > 0 && selectedRows.length === page.items.length;
   const first = page.perPage * (page.page - 1) + 1;
@@ -183,15 +163,11 @@ export function SnapshotListPage() {
     <>
       <PageHeader
         title="Snapshots"
-        subtitle="Browse, filter and export recorded snapshots"
+        subtitle="Browse, filter and edit recorded snapshots"
         icon="camera"
         showDate={false}
         actions={
           <>
-            <button type="button" className="btn btn-secondary btn-sm" onClick={() => void exportCsv()}>
-              <i className="bi bi-download" aria-hidden="true" />
-              Export CSV
-            </button>
             <Link to="/snapshots/bulk" className="btn btn-secondary btn-sm">
               <i className="bi bi-list-ul" aria-hidden="true" />
               Bulk Entry

@@ -59,7 +59,7 @@ const LIST_SQL = `
     JOIN categories c   ON c.id = a.category_id
 `;
 
-/** Every snapshot with the labels the list, detail and CSV export need. */
+/** Every snapshot with the labels the list and detail screens need. */
 export async function listSnapshotRows(): Promise<SnapshotListRow[]> {
   const db = await getDb();
   return db.select<SnapshotListRow[]>(`${LIST_SQL} ORDER BY s.date DESC, s.id ASC`);
