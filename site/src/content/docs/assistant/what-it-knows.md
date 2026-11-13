@@ -27,19 +27,13 @@ cannot save, edit, delete, import, rename or reconfigure anything.
 
 ## What it sees
 
-The system prompt carries:
-
-- today's date and your base currency,
-- the profile fields (age, employment, dependants, tax residence, risk profile, salary,
-  expenses, savings target, aspirations),
-- the structured goals with amounts and dates,
-- your three style settings (tone, verbosity, expertise),
-- your standing instructions,
-- the ten memories with the highest importance,
-- and the rule that everything inside `<data>` tags is data, not instruction.
-
-Then, per request, the last 60 messages of the conversation — including earlier tool
-results, which is how it follows a thread.
+The system prompt carries today's date and your base currency, the profile fields (age,
+employment, dependants, tax residence, risk profile, salary, expenses, savings target,
+aspirations), the structured goals, your three style settings, your standing instructions,
+the ten memories with the highest importance, and the rule that everything inside `<data>`
+tags is data, not instruction. Per request it also gets the last 60 messages of the thread,
+including earlier tool results — which is how it follows a conversation. The exact list of
+what leaves the machine is in [where your data lives](/data/privacy/).
 
 ## What it cannot do
 

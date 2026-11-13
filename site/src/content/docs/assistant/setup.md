@@ -8,17 +8,11 @@ it an endpoint.
 
 ## What enabling means
 
-When it is on, sending a message sends:
-
-- your message,
-- the system prompt (your profile, goals, response style, standing instructions and the ten
-  most important memories),
-- the last 60 messages of the conversation,
-- and whatever the model asks the app to look up — balances, asset names, notes, holdings,
-  snapshot history.
-
-That goes to the endpoint you configure and nowhere else. A local provider keeps it on the
-Mac; a hosted one does not.
+When it is on, a message sends your text, the system prompt (profile, goals, style,
+standing instructions, the ten most important memories), the last 60 messages of the
+conversation, and whatever the model asks the app to look up. That goes to the endpoint you
+configure and nowhere else: a local provider keeps it on the Mac, a hosted one does not.
+The full inventory is in [where your data lives](/data/privacy/#the-complete-list-of-outbound-requests).
 
 ## Step 1: add a provider
 
@@ -62,7 +56,8 @@ Two more options live there:
 
 ## About keys and endpoints
 
-Keys are stored in the Keychain, bound to the endpoint they were entered for:
+The Keychain and the endpoint binding are explained in
+[where your data lives](/data/privacy/#api-keys). What that means when you edit a provider:
 
 - Editing the **path** of a base URL keeps the key.
 - Changing the **scheme, host or port** drops it. You will be told: *"the saved API key
@@ -76,10 +71,10 @@ figures the assistant looks up are sent there. Loopback addresses never ask.
 
 ## Choosing a local model
 
-Tool calling is the requirement: the model must emit structured calls, not just prose.
-Models that work through the OpenAI-compatible endpoint and are known to call tools
-correctly include `qwen3.5:4b` and `ministral-3:8b`. `qwen2.5-coder:14b` does not — it
-answers in text and the assistant never reads your data.
+Tool calling is the requirement: the model must emit structured calls, not just prose. Any
+model that does so through an OpenAI-compatible endpoint works — ask it one question about
+your data and watch whether a tool row appears. At the time of writing, `qwen3.5:4b` and
+`ministral-3:8b` do; `qwen2.5-coder:14b` does not.
 
 Practical notes:
 

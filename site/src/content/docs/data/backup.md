@@ -47,16 +47,12 @@ update the app first.
 
 ### Pre-flight
 
-Before anything is written, the plan is validated. **Blocking errors** include:
-
-- An asset pointing at a missing institution or category.
-- A currency other than EUR/USD/CHF.
-- A snapshot whose date is not `YYYY-MM-DD`, two snapshots for the same asset and date, or
-  an amount that cannot be read.
-- A conversation pointing at a missing provider, or a message with no conversation.
-- A holding pointing at a missing asset, or the same ISIN twice for one asset.
-- Duplicate institution, category, tag, provider or setting names.
-- More than one default provider.
+Before anything is written, the plan is validated: an asset pointing at a missing
+institution or category, a currency other than EUR/USD/CHF, an unreadable amount, two
+snapshots for the same asset and date, a holding pointing at a missing asset, a duplicate
+name, or more than one default provider. Any of these blocks the import and the wizard
+lists every problem it found. The exhaustive list is in
+[the import format](https://github.com/juliendf/FinanceTrackerApp/blob/main/docs/IMPORT_FORMAT.md).
 
 **Warnings** do not block: categories with no system role (you will be asked to map them),
 API keys that will move to the Keychain, memories whose conversation is not in the file.
