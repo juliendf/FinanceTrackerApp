@@ -23,6 +23,10 @@ npm test                 # vitest: domain, repositories, components, docs guards
 npm run release:check    # typecheck + vitest + cargo test, what CI runs
 cd src-tauri && cargo test
 npm run tauri build      # local bundle
+
+npm run site:install     # web site dependencies, once
+npm run site:dev         # user guide + landing page, hot reload
+npm run site:build       # static site into site/dist
 ```
 
 ## Hard rules
@@ -65,6 +69,7 @@ Details, including the demo build and the verification commands:
 | `src-tauri/src/commands/` | Rust: guarded SQL, files, secrets, LLM HTTP |
 | `src-tauri/migrations/` | schema, append-only |
 | `docs/` | release, maintaining, import format, troubleshooting, changelog |
+| `site/` | website and user guide (Astro + Starlight), published to GitHub Pages |
 
 ## Conventions
 

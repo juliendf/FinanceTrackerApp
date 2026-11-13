@@ -1,0 +1,79 @@
+---
+title: Your first hour
+description: From an empty database to a dashboard with history, in the order that avoids rework.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+If the database has no assets, institutions or snapshots, the app opens on a welcome
+screen with two honest choices:
+
+- **Import a backup** — bring a JSON export from another install.
+- **Start empty** — defaults, six seeded EUR/USD/CHF exchange rates and one key-less
+  Ollama provider are already in place.
+
+This page walks the second path. It takes about an hour, mostly because you have to look
+up what your accounts are worth.
+
+## 1. Create the structure
+
+Two reference lists first, because every asset needs them:
+
+- **Institutions** — one per bank or broker.
+- **Categories** — one per kind of money, and each needs a **system role**. The role is
+  what the dashboard's Cash and Emergency fund tiles, the allocation breakdown and the
+  assistant's liquidity figure use. A category without a role still exists, but those
+  numbers read zero until you pick one.
+
+You can also create both on the fly from the asset form with the **+** buttons next to
+the selects.
+
+## 2. Add the assets you care about
+
+**Assets → Add New Asset**. For each account you need:
+
+| Field | Why it matters |
+|---|---|
+| Institution, Product Name | Together they form the default display name |
+| Category | Drives the breakdown, and whether the asset can hold ISINs |
+| Currency | EUR, USD or CHF. It never changes on its own |
+| Custom Name | Optional; replaces the generated name everywhere |
+| Initial Snapshot | On by default. Enter the current value or untick it |
+
+Give the starting value the date you actually know it for. Recording "today" for every
+account is fine; backfilling your last statement date is better.
+
+## 3. Record the next value
+
+Each month, or each time you look at your accounts:
+
+- One asset: the camera icon in **Assets**, or **Add Snapshot** on the asset page.
+- Many assets at once: **Snapshots → Bulk Entry**, pick a date, fill the rows,
+  **Create Snapshots**.
+
+Bulk Entry has two shortcuts worth knowing: **Apply same amount** fills every visible row
+with one number, and **Copy previous** fills each row with that asset's last value before
+the chosen date.
+
+<Shot name="snapshots" alt="The Snapshots screen with filters, a date-ordered table and per-row actions" caption="Snapshots is the ledger: every value you ever recorded, filterable and editable." />
+
+## 4. Look at what you have
+
+**Dashboard** values the portfolio from the latest snapshot of each asset. **Performance**
+compares the value at the start of a period with the value now.
+
+<Shot name="dashboard" alt="The dashboard after a year of monthly snapshots, with four KPI tiles and a portfolio breakdown" caption="The dashboard after twelve months of monthly snapshots." />
+
+## 5. Export a backup before you forget
+
+**Settings → Data & Backup → Export backup** writes a version 4 JSON file. Everything is
+ticked by default and API keys are never included. Keep the file outside the project and
+outside this Mac if the numbers matter.
+
+That is the whole loop:
+
+1. Describe what you own.
+2. Record values.
+3. Read the result.
+
+Everything else in the app is detail on one of those three steps.

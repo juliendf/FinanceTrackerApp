@@ -1,0 +1,57 @@
+---
+/**
+ * The release version, styled like a repository header: a small tag glyph and
+ * muted text, no border, deliberately quieter than whatever it sits next to.
+ *
+ * Colour comes from --version-color so the landing page and the docs header
+ * can each use their own palette without duplicating the markup.
+ */
+
+interface Props {
+  version: string;
+  href: string;
+}
+
+const { version, href } = Astro.props;
+---
+
+<a class="version" href={href} title={`Latest release: v${version}`}>
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.9"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z" />
+    <circle cx="7.5" cy="7.5" r=".5" fill="currentColor" />
+  </svg>
+  <span>v{version}</span>
+</a>
+
+<style>
+  .version {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: 0;
+    line-height: 1;
+    color: var(--version-color, currentColor);
+    text-decoration: none;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    transition: color 0.15s ease;
+  }
+  .version svg {
+    width: 13px;
+    height: 13px;
+    flex-shrink: 0;
+  }
+  .version:hover {
+    color: var(--version-hover, currentColor);
+  }
+</style>

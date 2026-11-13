@@ -1,0 +1,64 @@
+---
+/**
+ * Starlight SiteTitle override: the site title plus the release version,
+ * on the same row as the search box and the GitHub icon.
+ *
+ * Markup mirrors the stock component (node_modules/@astrojs/starlight/dist/
+ * components/SiteTitle.astro) so the logo and title behave identically — if
+ * Starlight changes that component, copy its changes here.
+ */
+
+import VersionBadge from "../components/VersionBadge.astro";
+import { appVersion } from "../lib/version.mjs";
+import config from "virtual:starlight/user-config";
+import { logos } from "virtual:starlight/user-images";
+
+const { siteTitle, siteTitleHref } = Astro.locals.starlightRoute;
+const { logo } = config;
+const version = await appVersion();
+const releaseUrl =
+  "https://github.com/juliendf/FinanceTrackerApp/releases/latest";
+---
+
+<div class="title-row">
+	<a href={siteTitleHref} class="site-title sl-flex">
+		{logo && logos.dark && (
+			<img alt={logo.alt} src={logos.dark.src} width={logos.dark.width} height={logos.dark.height} />
+		)}
+		<span translate="no">{siteTitle}</span>
+	</a>
+	<VersionBadge version={version} href={releaseUrl} />
+</div>
+
+<style>
+	@layer starlight.core {
+		.title-row {
+			display: flex;
+			align-items: center;
+			gap: 10px;
+			min-width: 0;
+			--version-color: var(--sl-color-gray-3);
+			--version-hover: var(--sl-color-text-accent);
+		}
+		.site-title {
+			align-items: center;
+			gap: var(--sl-nav-gap);
+			font-size: var(--sl-text-h4);
+			font-weight: 600;
+			color: var(--sl-color-text-accent);
+			text-decoration: none;
+			white-space: nowrap;
+			min-width: 0;
+		}
+		.site-title span {
+			overflow: hidden;
+		}
+		.site-title img {
+			height: calc(var(--sl-nav-height) - 2 * var(--sl-nav-pad-y));
+			width: auto;
+			max-width: 100%;
+			object-fit: contain;
+			object-position: 0 50%;
+		}
+	}
+</style>

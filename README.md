@@ -4,6 +4,12 @@ A native macOS app for tracking assets and their value over time. Single user, o
 
 Version 0.7.1 · MIT · macOS 11+ (Apple silicon)
 
+> It started as a replacement for a Google Sheet: one number — what is my wealth today,
+> and how did it move? Not a budget, not an expense tracker, and no bank connectors,
+> because nothing covers every account you own and maintaining a hundred of them is a
+> product of its own. You read the value where it lives and type it in: five to ten
+> minutes a month. [Why it is built this way](https://juliendf.github.io/FinanceTrackerApp/start/why/).
+
 ![FinanceTracker on first launch: a sidebar with Dashboard, Assets, Snapshots and Performance, and a welcome screen offering to import a backup or start empty](docs/screenshots/first-run.png)
 
 > **Alpha.** The app is under active development: features move, bugs are
@@ -157,8 +163,13 @@ shows the error boundary.
 
 ## Documentation
 
+The **user guide** and the landing page live in [`site/`](site/README.md) (Astro +
+Starlight) and are published at
+[juliendf.github.io/FinanceTrackerApp](https://juliendf.github.io/FinanceTrackerApp/).
+
 | Document | Purpose |
 |---|---|
+| [site/](site/README.md) | Website and user guide: how to run, add a page, capture screenshots |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Layers, data model, transactions |
 | [SECURITY.md](SECURITY.md) | Threat model, secrets, open issues |
 | [docs/MAINTAINING.md](docs/MAINTAINING.md) | How releases, versioning and data safety work |

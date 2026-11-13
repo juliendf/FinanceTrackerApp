@@ -1,0 +1,65 @@
+---
+title: Dashboard
+description: What each tile computes, which snapshot it reads, and why a stale asset still counts.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+The dashboard answers one question: what is the portfolio worth now?
+
+<Shot name="dashboard" alt="The dashboard with four KPI tiles and the portfolio breakdown" />
+
+## The four tiles
+
+| Tile | Value | How it is computed |
+|---|---|---|
+| **Total Assets** | A count | Number of assets, including ones with no snapshot. It is not a money figure |
+| **Portfolio Value** | Money | For each asset, the newest snapshot on or before today, converted to the base currency and summed |
+| **Currencies** | A count plus the codes | Distinct currencies across all assets, whether or not they have snapshots |
+| **Days Since Update** | Days | Today minus the **newest** snapshot date in the whole database. Turns amber beyond 30 days |
+
+Two consequences worth internalising:
+
+- **An asset with no snapshot contributes nothing to the value** but still counts in Total
+  Assets. Six assets and a total that looks like four is normal.
+- **The newest snapshot is used forever.** There is no age limit: an account you stopped
+  updating in March is still valued at its March number. Days Since Update is the only
+  warning, and one recently updated asset hides nine stale ones.
+
+## The breakdown
+
+The segmented control switches the pie between four groupings:
+
+| Group | Each slice |
+|---|---|
+| **Category** (default) | Total latest value of the assets in that category, in the base currency |
+| **Currency** | Native balances per currency, unconverted |
+| **Institution** | Total per institution, in the base currency |
+| **Product** | Total per product name, in the base currency |
+
+The legend can be sorted by **Highest** or **Name**, and each row shows the amount and its
+share as a percentage.
+
+:::caution[The currency grouping is not additive]
+Slices in *Currency* are in their own currencies, and the percentage is computed against a
+sum of different currencies. Treat the dollars and the francs as separate numbers; the
+percentages only tell you the raw size order.
+:::
+
+## The numbers can be wrong in a visible way
+
+| Symptom | Cause | Fix |
+|---|---|---|
+| Value is lower than expected | Missing exchange rate for a currency: those amounts are added unconverted, with a badge | Set the rate in Settings → Exchange Rates |
+| A category is missing from the pie | Every asset in it has no snapshot | Record a snapshot |
+| Days Since Update is amber | Newest snapshot is over 30 days old | Record a snapshot |
+| Total does not move after an edit | You edited an older snapshot; only the latest counts | Edit the latest one, or add a new snapshot |
+
+The dashboard never estimates, interpolates or carries a trend forward. If you want a
+number in it, record a snapshot.
+
+## Where to go next
+
+- **Performance** compares the portfolio against a period.
+- **Assets** shows the same values per asset, with freshness badges.
+- **Snapshots** is where the values came from.

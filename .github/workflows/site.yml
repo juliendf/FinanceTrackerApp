@@ -1,0 +1,74 @@
+name: site
+
+# Builds the documentation site in site/ and publishes it to GitHub Pages.
+# Only runs when the site changes, so app commits never touch this workflow.
+#
+# One-time setup: Settings -> Pages -> Build and deployment -> Source:
+# "GitHub Actions". For a custom domain, set the repository variables
+# SITE_URL (https://example.com) and SITE_BASE (/) and add a CNAME file in
+# site/public/ — see site/README.md.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "site/**"
+      - ".github/workflows/site.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Read the app version
+        run: echo "APP_VERSION=$(node -p 'require("./package.json").version')" >> "$GITHUB_ENV"
+
+      - run: npm ci
+        working-directory: site
+
+      - run: npm run build
+        working-directory: site
+        env:
+          APP_VERSION: ${{ env.APP_VERSION }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://juliendf.github.io' }}
+          SITE_BASE: ${{ vars.SITE_BASE || '/FinanceTrackerApp' }}
+
+      # Catches links left without the base prefix, dead pages and missing
+      # anchors in the built output — the failure mode source checks cannot see.
+      - run: npm run check:links
+        working-directory: site
+        env:
+          SITE_BASE: ${{ vars.SITE_BASE || '/FinanceTrackerApp' }}
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

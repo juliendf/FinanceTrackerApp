@@ -1,0 +1,49 @@
+/* Starlight theme overrides: same accent as the app, Inter everywhere. */
+
+:root {
+  --sl-font: "Inter Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --sl-font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --sl-color-accent-low: #06281f;
+  --sl-color-accent: #12a37c;
+  --sl-color-accent-high: #b8f5e3;
+
+  --sl-color-text-accent: #2dd4a7;
+}
+
+:root[data-theme="light"] {
+  --sl-color-accent-low: #c8f6e8;
+  --sl-color-accent: #0d8a69;
+  --sl-color-accent-high: #04392c;
+
+  --sl-color-text-accent: #0a6b53;
+}
+
+/* Screenshots sit in a frame, like the app window. */
+.doc-shot {
+  margin: 1.5rem 0 2rem;
+}
+
+.doc-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  border: 1px solid var(--sl-color-hairline);
+  box-shadow: 0 24px 60px -32px rgb(0 0 0 / 0.55);
+}
+
+.doc-shot figcaption {
+  margin-top: 0.6rem;
+  font-size: var(--sl-text-sm);
+  color: var(--sl-color-gray-3);
+}
+
+/* Tables in this guide are dense; keep them readable rather than airy. */
+.sl-markdown-content table {
+  font-size: var(--sl-text-sm);
+}
+
+.sl-markdown-content :is(h2, h3) {
+  letter-spacing: -0.01em;
+}

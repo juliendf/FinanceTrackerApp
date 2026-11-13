@@ -110,10 +110,33 @@ for agents; this file is the reasoning.
   out there.
 
 ## Demo build
-
 `npm run demo:build` builds the demo locally (product name "FinanceTracker
 Demo", identifier `app.financetracker.demo`, sample data enabled, own data
 directory); `npm run demo:local` opens it and `npm run demo:install` replaces
 the copy in `/Applications`. Every release also publishes the demo DMG, its
 signed archive and `latest-demo.json`, so the installed demo updates itself like
 the normal app.
+
+## The website and the user guide
+
+`site/` holds two deliverables that ship together: the landing page
+(`site/src/pages/index.astro`) and the user guide (`site/src/content/docs/`, Astro +
+Starlight). `.github/workflows/site.yml` builds and publishes it to GitHub Pages on any
+push to `main` that touches `site/`. `site/README.md` covers the commands, the base-path
+rewrite, the custom-domain setup and how to add a page.
+
+Two rules:
+
+- **A user-visible change updates the guide in the same commit.** The guide describes
+  what the shipped build does, not what it is meant to do. If a screen gained a field or
+  changed a label, the page for that screen changes with the code. `src/docs.test.ts`
+  checks structure (titles, sidebar coverage, internal links, screenshots) but cannot
+  check whether the prose is still true.
+- **Screenshots come from the demo build only.** Never capture the real database. The
+  workflow is in `site/README.md`: `npm run demo:local`, load sample data, capture at
+  1280×860.
+
+Do not hardcode the GitHub Pages prefix (`/FinanceTrackerApp`) in markdown.
+`site/base-links.mjs` adds the base path at build time, so the same pages work on a custom
+domain without edits. It is a Sätteri visitor plugin; `npm run check:links`, run by the
+deploy workflow, fails the build when a link loses that prefix.

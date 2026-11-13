@@ -7,7 +7,7 @@
  * human.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
@@ -86,6 +86,92 @@ describe("links", () => {
         const [path] = target.split("#");
         if (!path) continue;
         if (!existsSync(resolve(base, decodeURIComponent(path)))) broken.push(`${file} -> ${target}`);
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+});
+
+/**
+ * The user guide is a second documentation surface with its own links, images and
+ * sidebar. It drifts the same way the markdown docs did: a page gets renamed and
+ * the sidebar keeps pointing at the old slug, or a screenshot is deleted and the
+ * figure renders as a broken box. These checks are cheap and catch both.
+ */
+describe("site guide", () => {
+  const siteRoot = resolve(root, "site");
+  const guideDir = resolve(siteRoot, "src/content/docs");
+  const config = readFileSync(resolve(siteRoot, "astro.config.mjs"), "utf8");
+
+  function pages(dir = guideDir, found: string[] = []): string[] {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = resolve(dir, entry.name);
+      if (entry.isDirectory()) pages(full, found);
+      else if (/\.mdx?$/.test(entry.name)) found.push(full);
+    }
+    return found;
+  }
+
+  const guidePages = pages();
+  const slugOf = (file: string) =>
+    file.slice(guideDir.length + 1).replace(/\.mdx?$/, "").replace(/\/index$/, "");
+
+  it("has pages", () => {
+    expect(guidePages.length).toBeGreaterThan(10);
+  });
+
+  it("gives every page a title and a description", () => {
+    const missing: string[] = [];
+    for (const page of guidePages) {
+      const front = /^---\n([\s\S]*?)\n---/.exec(readFileSync(page, "utf8"))?.[1] ?? "";
+      if (!/^title:\s*\S/m.test(front)) missing.push(`${slugOf(page)}: title`);
+      if (!/^description:\s*\S/m.test(front)) missing.push(`${slugOf(page)}: description`);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("lists every page in the sidebar", () => {
+    const unlisted = guidePages.map(slugOf).filter((slug) => !config.includes(`slug: "${slug}"`));
+    expect(unlisted).toEqual([]);
+  });
+
+  it("has no sidebar entry without a page", () => {
+    const slugs = [...config.matchAll(/slug: "([^"]+)"/g)].map((m) => m[1]);
+    const orphan = slugs.filter(
+      (slug) => !existsSync(resolve(guideDir, `${slug}.md`)) && !existsSync(resolve(guideDir, `${slug}.mdx`)),
+    );
+    expect(orphan).toEqual([]);
+  });
+
+  it("every internal link resolves to a page", () => {
+    const broken: string[] = [];
+    for (const page of guidePages) {
+      for (const match of readFileSync(page, "utf8").matchAll(/\]\((\/[^)\s]*)\)/g)) {
+        const [path] = match[1].split("#");
+        const slug = path.replace(/^\/|\/$/g, "");
+        if (!slug) continue; // "/" is the landing page
+        const candidates = [`${slug}.md`, `${slug}.mdx`, `${slug}/index.md`, `${slug}/index.mdx`];
+        if (!candidates.some((candidate) => existsSync(resolve(guideDir, candidate)))) {
+          broken.push(`${slugOf(page)} -> ${match[1]}`);
+        }
+      }
+    }
+    expect(broken).toEqual([]);
+  });
+
+  it("every referenced screenshot exists", () => {
+    const broken: string[] = [];
+    for (const page of guidePages) {
+      const text = readFileSync(page, "utf8");
+      for (const match of text.matchAll(/<Shot\s+name="([^"]+)"/g)) {
+        if (!existsSync(resolve(siteRoot, "public/shots", `${match[1]}.png`))) {
+          broken.push(`${slugOf(page)} -> shots/${match[1]}.png`);
+        }
+      }
+      for (const match of text.matchAll(/!\[[^\]]*\]\(\/shots\/([^)\s]+)\)/g)) {
+        if (!existsSync(resolve(siteRoot, "public/shots", match[1]))) {
+          broken.push(`${slugOf(page)} -> shots/${match[1]}`);
+        }
       }
     }
     expect(broken).toEqual([]);

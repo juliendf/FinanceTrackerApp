@@ -1,0 +1,100 @@
+---
+title: Performance
+description: What the four figures measure, what counts as a gain, and the cases that show N/A.
+---
+
+import Shot from "../../../components/Shot.astro";
+
+Performance compares the portfolio at the start of a period with the portfolio now. It is
+one measure across all assets, not a per-asset return.
+
+**A deposit is counted as performance.** The baseline is a value, not a list of
+contributions, so adding money inside the period reads as growth. That is the caveat to
+carry into every number on this page; the rest explains each figure and the case that shows
+`N/A`.
+
+<Shot name="performance" alt="The Performance screen: period selector, four figures, and the portfolio evolution chart" />
+
+## The period
+
+Six buttons in the header:
+
+`1 month` · `3 months` · `6 months` · `1 year` · `YTD` · `All time`
+
+- The fixed ranges are counted back from **today**, not from your last snapshot. If you have
+  not recorded anything for three months, a "1 month" window can start after all your data.
+- **YTD** starts on 1 January of the current year.
+- **All time** starts at the oldest snapshot in the database.
+
+The start and end dates are printed under the title as `YYYY-MM-DD — YYYY-MM-DD`.
+
+## The four figures
+
+| Figure | Meaning | Formula |
+|---|---|---|
+| **Total portfolio value** | What the portfolio is worth at the end | Each asset's newest snapshot on or before today, converted and summed |
+| **Net performance** | Growth on the capital you held at the start | `(end − start) / start × 100`, two decimals, signed |
+| **Absolute performance** | The same thing in money | `end − start`, base currency |
+| **Annualised performance** | Growth per year over the period | `(end / start) ^ (1 / years) − 1`, where `years = days / 365.25` |
+
+"Start" is **invested capital**: each asset's newest snapshot at or before the first day of
+the period, converted and summed.
+
+`N/A` appears instead of a percentage when the start value is zero or negative, when the
+period has no length, or when the start date is today. It is not an error; there is simply
+nothing to divide by.
+
+## What counts as a gain — and what does not
+
+The deposit caveat above is the whole limitation, and it has two shapes:
+
+- A deposit inside the period raises Net performance as though the market did it.
+- A new asset added mid-period has no snapshot at the start, so its entire value appears as
+  growth.
+
+This is why the figure is labelled *"On the capital held at the start"* rather than
+"return".
+
+There is no cash-flow adjustment, no time-weighted return and no benchmark. For a
+single-person net worth tracker that is a deliberate trade-off; for comparing against an
+index it is not the right tool.
+
+## The chart
+
+**Portfolio Evolution** plots the running total across the period.
+
+- Assets whose last snapshot predates the period are carried in at their last value, so a
+  stale account still appears in the line.
+- The final point is set to the summary total, so the line and the **Total portfolio value**
+  tile always agree — even if that means the last plotted date is not the date of your last
+  snapshot.
+- The range label sits in the card header.
+
+An empty period shows *"No snapshots in this period."* rather than a flat line at zero.
+
+## The period card
+
+| Field | Meaning |
+|---|---|
+| **Period length** | Days between the start and end dates |
+| **Invested capital** | The start value, in the base currency |
+
+## The assets card
+
+Two figures come from **system roles**, not from category names:
+
+- **Cash** — total of assets in categories with the `cash` role.
+- **Emergency fund** — total of assets in categories with the `emergency_fund` role.
+
+**Show breakdown** expands one row per role present, in the base currency. Unclassified
+categories fall into **Other**.
+
+A `0.00` next to Cash means either that you have no cash or that no category is classified
+as cash. Check **Categories** before concluding the first.
+
+## How to make the number meaningful
+
+- Record snapshots on the same day each month.
+- Do not add assets mid-period if you want to read Net performance as a return.
+- If you must compare across a change in exchange rates, remember that rates are not
+  historical: editing one rewrites the past too.
