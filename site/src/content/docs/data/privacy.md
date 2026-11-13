@@ -5,12 +5,14 @@ description: The database file, the Keychain, and the complete list of outbound 
 
 ## The database
 
+Everything the app knows lives in one SQLite file:
+
 ```
 ~/Library/Application Support/app.financetracker/financetracker.db
 ```
 
-One SQLite file. It holds assets, snapshots, institutions, categories, tags, holdings,
-exchange rates, providers (without keys), settings, profile, goals, memories and chat.
+It holds assets, snapshots, institutions, categories, tags, holdings, exchange rates,
+providers (without keys), settings, profile, goals, memories and chat.
 
 **In a terminal, quote the path.** The folder name has a space in it, so an unquoted
 `cat ~/Library/Application Support/…` is read as two arguments. `~` does not expand inside
