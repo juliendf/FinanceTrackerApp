@@ -37,7 +37,7 @@ therefore shows the deltas between consecutive snapshots in the **Snapshot Histo
 (`Change` and `% Change` columns), which is honest about what it measures, and leaves the
 period-level performance to the Performance screen.
 
-## Screenshot and export
+## Getting a number out of the app
 
 There is no chart export and no spreadsheet export. A number you want in a document is
 read off the screen, and the whole dataset leaves the app only through the JSON backup in

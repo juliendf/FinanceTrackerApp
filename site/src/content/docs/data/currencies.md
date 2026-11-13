@@ -45,11 +45,11 @@ not market data:
 | EUR → CHF | 0.95 | CHF → EUR | 1.0526 |
 | USD → CHF | 0.86 | CHF → USD | 1.1628 |
 
-Two further pairs — CHF → USD and USD → CHF — are created at rate `0` when missing. A rate
-of **0 counts as unset**: it is ignored by conversion and shown with an `unset` badge. That
-is how a placeholder looks different from a real, tiny rate.
-
 Replace the examples with real numbers on day one.
+
+Two of those pairs — CHF → USD and USD → CHF — are also **required placeholders**: when a
+database has no row for one of them (an old install, or a partial import), the rate list
+creates it at `0` so you can fill it in. It reads as `unset`, never as a rate of zero.
 
 ## Editing rates
 

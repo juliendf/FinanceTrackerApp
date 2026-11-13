@@ -38,8 +38,8 @@ endpoint — read it before accepting.
 
 ## Lists and filters
 
-The asset and snapshot lists keep their filter and page state in the view, so a reload or
-going back restores what you were looking at. Every list has a **Clear filters** control
+The asset and snapshot lists keep their filters, sort and page in the URL, so a reload or
+the back button returns you to the same rows. Every list has a **Clear filters** control
 that resets all of them at once.
 
 Pagination size comes from **Settings → Items Per Page** (default 20); the selector above
