@@ -54,19 +54,12 @@ It does not support tool calls through the OpenAI-compatible endpoint.
 `qwen2.5-coder:14b` is one such model; `qwen3.5:4b` and `ministral-3:8b` work. The model must
 also be ticked under **Load models** on the provider form.
 
-**`400 INVALID_ARGUMENT` — "Function call is missing a thought_signature"**
+**`400 INVALID_ARGUMENT` from Gemini, a Stop button that does nothing, or a blank job title**
 
-A Gemini issue fixed in 0.1.1. Update.
-
-**`400 INVALID_ARGUMENT` — "Value is not a struct: null"**
-
-Fixed in 0.1.3. Update.
-
-**`Unknown tool: get_allocationget_allocationlist_assets`**
-
-Fixed in 0.1.2 — Gemini streams tool calls without an index and they were merged. Old
-conversations containing those rows are skipped by the history repair, so start a new chat
-rather than retrying one.
+All fixed in older releases — Gemini tool-call format in 0.1.1–0.1.3, Stop in 0.2.2, the
+profile save that blanked job title and Other Aspirations in 0.4.0. Update instead of
+debugging them. Old conversations that carry the broken Gemini rows are skipped by the
+history repair, so start a new chat rather than retrying one.
 
 **"The saved API key belongs to …, but this provider now points at …"**
 
@@ -77,15 +70,6 @@ key again for the new one. Changing a provider's URL deliberately drops the old 
 
 A key stored by an older version has no recorded origin and cannot be sent safely. Open the
 provider and enter it once.
-
-**Stop does nothing**
-
-Fixed in 0.2.2. Update.
-
-**Job title or "Other Aspirations" is empty after saving**
-
-Fixed in 0.4.0: the profile query did not read those columns, and the next save wrote NULL
-over them. Re-enter them once.
 
 ## Data
 

@@ -8,6 +8,11 @@ import Shot from "../../../components/Shot.astro";
 Performance compares the portfolio at the start of a period with the portfolio now. It is
 one measure across all assets, not a per-asset return.
 
+**A deposit is counted as performance.** The baseline is a value, not a list of
+contributions, so adding money inside the period reads as growth. That is the caveat to
+carry into every number on this page; the rest explains each figure and the case that shows
+`N/A`.
+
 <Shot name="performance" alt="The Performance screen: period selector, four figures, and the portfolio evolution chart" />
 
 ## The period
@@ -41,14 +46,11 @@ nothing to divide by.
 
 ## What counts as a gain — and what does not
 
-This is the honest limitation of the screen:
+The deposit caveat above is the whole limitation, and it has two shapes:
 
-> **A deposit is counted as performance.** The baseline is a value, not a list of
-> contributions. If you add 20,000 CHF to an account inside the period, Net performance
-> rises as though the market did it.
-
-The same applies to a new asset added mid-period: it has no snapshot at the start, so its
-entire value appears as growth. This is why the figure is labelled *"On the capital held at
+- A deposit inside the period raises Net performance as though the market did it.
+- A new asset added mid-period has no snapshot at the start, so its entire value appears as
+  growth. This is why the figure is labelled *"On the capital held at
 the start"* rather than "return".
 
 There is no cash-flow adjustment, no time-weighted return and no benchmark. For a

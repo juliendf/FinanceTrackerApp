@@ -20,8 +20,8 @@ minutes, once a month if that is your rhythm. [The reasoning](/start/why/#why-sn
 - **One snapshot per asset per date.** The form checks it and the database enforces it. A
   second entry on the same date is refused with *"A snapshot for this asset already exists
   on &lt;date&gt;"* — edit the existing one instead.
-- **Amount 0.01 to 10,000,000**, at most 2 decimal places. Amounts are stored as integer
-  minor units, so nothing drifts.
+- **Amount 0.01 to 10,000,000**, at most 2 decimal places. Amounts are stored as whole
+  cents (integer minor units), so nothing drifts.
 - **The date cannot be in the future.** The picker stops at today.
 - **Dates are calendar dates.** No time, no timezone conversion.
 

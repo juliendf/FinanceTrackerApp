@@ -8,16 +8,19 @@ comes through them; everything it changes goes through you.
 
 ## The tools
 
-| Tool | In plain words |
+Eight functions, in plain words first — the identifier is only here for anyone reading the
+source:
+
+| In plain words | Identifier |
 |---|---|
-| `get_portfolio_summary` | Total value in the base currency, asset count, last update date, days since update, and a **liquid** figure that counts only `cash` and `emergency_fund` categories |
-| `list_assets` | Up to 50 assets, optionally filtered by institution, category or tag, with latest value and date |
-| `get_asset_details` | One asset: description, notes, cost and interest, latest value, 30- and 90-day changes, and holdings with shares |
-| `get_asset_history` | Snapshot history for one asset (default 90 days), plus absolute and percentage change |
-| `get_allocation` | Breakdown by category, institution or currency, converted to the base currency |
-| `calculate` | Arithmetic only: percent change, percentage of a total, compound growth, runway, goal gap, applying a rate |
-| `propose_snapshot` | Proposes a value for an asset. **Does not write** — it creates the confirmation card |
-| `remember_fact` | Proposes a memory, with a category and an importance from 1 to 5. Also a card |
+| Total value in the base currency, asset count, last update date, days since update, and a **liquid** figure that counts only `cash` and `emergency_fund` categories | `get_portfolio_summary` |
+| Up to 50 assets, optionally filtered by institution, category or tag, with latest value and date | `list_assets` |
+| One asset: description, notes, cost and interest, latest value, 30- and 90-day changes, and holdings with shares | `get_asset_details` |
+| Snapshot history for one asset (default 90 days), plus absolute and percentage change | `get_asset_history` |
+| Breakdown by category, institution or currency, converted to the base currency | `get_allocation` |
+| Arithmetic only: percent change, percentage of a total, compound growth, runway, goal gap, applying a rate | `calculate` |
+| Proposes a value for an asset. **Does not write** — it creates the confirmation card | `propose_snapshot` |
+| Proposes a memory, with a category and an importance from 1 to 5. Also a card | `remember_fact` |
 
 A useful way to read this: the model can *look* freely and can *propose* two things. It
 cannot save, edit, delete, import, rename or reconfigure anything.

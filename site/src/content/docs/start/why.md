@@ -5,6 +5,12 @@ description: The spreadsheet this replaced, why snapshots are manual, why it is 
 
 Initially, I built FinanceTracker for myself.
 
+:::tip[New here?]
+Install it from the [latest release](/start/install/), then follow
+[your first hour](/start/first-hour/) — an empty database to a dashboard with history.
+The rest of this page is why the app is shaped the way it is.
+:::
+
 For years my net worth lived in a Google Sheet: one row per account, one column per
 month, a chart I rebuilt every time something moved. The sheet was not the problem — the
 process was. Every month I would open it, forget which formula was fragile, paste over a
