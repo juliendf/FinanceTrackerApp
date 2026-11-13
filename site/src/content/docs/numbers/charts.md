@@ -39,5 +39,6 @@ period-level performance to the Performance screen.
 
 ## Screenshot and export
 
-There is no chart export. To put a number in a document, use **Snapshots → Export CSV**,
-which writes the filtered snapshot set with dates, amounts and currencies.
+There is no chart export and no spreadsheet export. A number you want in a document is
+read off the screen, and the whole dataset leaves the app only through the JSON backup in
+[Settings](/reference/settings/).

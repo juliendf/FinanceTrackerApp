@@ -71,17 +71,11 @@ stay.
 - With rows selected, a bar offers **Bulk Edit** and **Bulk Delete**. Bulk delete is one
   transaction and one confirmation.
 
-## Export to CSV
+## Taking the data out
 
-**Export CSV** writes the **currently filtered** set — not just the visible page — always
-sorted by date descending, whatever the on-screen sort says. Columns:
-
-```
-Date, Asset Name, Institution, Product, Category, Amount, Currency, Created At
-```
-
-The default file name is `snapshots_export_<date>.csv`; you choose the destination in the
-macOS save panel. Amounts are written with two decimals, which is what a spreadsheet wants.
+The list has no export button. A copy of your data is **Settings → Data & Backup →
+Export backup**, which writes one JSON file and can be imported back. See
+[backup, import and reset](/data/backup/).
 
 ## Reading a snapshot page
 

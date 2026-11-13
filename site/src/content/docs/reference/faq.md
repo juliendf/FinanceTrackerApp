@@ -38,9 +38,9 @@ It stays in `~/Library/Application Support/app.financetracker/` until you delete
 
 **Can I get the data into Excel?**
 
-**Snapshots → Export CSV** writes the filtered set with dates, amounts and currencies.
-Assets, institutions and categories are not in that file; use the JSON backup for a full
-picture.
+No. There is no CSV or spreadsheet export. The one way out is **Settings → Data & Backup →
+Export backup**, a JSON file that covers every entity and can be imported back into the app.
+It is plain text, so it is readable without the app, but it is not a table.
 
 **Why is my total different from my bank's?**
 
