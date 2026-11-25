@@ -4,6 +4,13 @@ Every build is ad-hoc signed and not notarised. Version numbers are bumped in
 `package.json`, `src-tauri/Cargo.toml` and `src-tauri/tauri.conf.json`
 together.
 
+## Unreleased
+
+- **A fresh install opens in the dark theme.** The seeded `theme` setting and the
+  pre-paint fallback in `index.html` both default to dark. Existing installs keep
+  the theme they already stored; the toolbar toggle still cycles light, dark and
+  system.
+
 ## 0.7.2
 
 **Security**

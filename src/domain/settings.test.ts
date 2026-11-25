@@ -27,7 +27,7 @@ describe("DEFAULT_SETTINGS", () => {
       items_per_page: "20",
       date_format: "%Y-%m-%d",
       llm_timeout: "120",
-      theme: "light",
+      theme: "dark",
       enable_animations: true,
       // The AI opt-in, the streaming preference and the standing instructions.
       ai_enabled: false,

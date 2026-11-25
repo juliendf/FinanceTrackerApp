@@ -18,7 +18,7 @@ export const DEFAULT_SETTINGS: Record<string, SettingValue> = {
   items_per_page: "20",
   date_format: "%Y-%m-%d",
   llm_timeout: "120",
-  theme: "light",
+  theme: "dark",
   enable_animations: true,
   /**
    * Deliberate opt-in. Chat stays off until the user turns it on here, because

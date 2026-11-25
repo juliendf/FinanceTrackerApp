@@ -34,7 +34,7 @@ export function resolveTheme(preference: ThemePreference): ThemeName {
 }
 
 export function readPreference(): ThemePreference {
-  return window.__themePreference ?? "auto";
+  return window.__themePreference ?? "dark";
 }
 
 export function currentTheme(): ThemeName {
